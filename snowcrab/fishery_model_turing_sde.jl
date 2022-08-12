@@ -5,15 +5,15 @@
 
 # For most Ito diagonal and scalar noise problems where a good amount of accuracy is required and mild stiffness may be an issue, the SOSRI algorithm should do well. If the problem has additive noise, then SOSRA will be the optimal algorithm. At low tolerances (<1e-4?) SRA3 will be more efficient, though SOSRA is more robust to stiffness. For commutative noise, RKMilCommute is a strong order 1.0 method which utilizes the commutivity property to greatly speed up the stochastic iterated integral approximation and can choose between Ito and Stratonovich. For non-commutative noise, difficult problems usually require adaptive time stepping in order to be efficient. In this case, LambaEM and LambaEulerHeun are adaptive and handle general non-diagonal problems (for Ito and Stratonovich interpretations respectively). If adaptivity isn't necessary, the EM and EulerHeun are good choices (for Ito and Stratonovich interpretations respectively).
 
-# For stiff problems with additive noise, the high order adaptive method SKenCarp is highly preferred and will solve problems with similar efficiency as ODEs. If possible, stiff problems should be converted to make use of this additive noise solver. If the noise term is large/stiff, then the split-step methods are required in order for the implicit methods to be stable. For Ito in this case, use ISSEM and for Stratonovich use ISSEulerHeun. These two methods can handle any noise form.
-project_directory = string(expanduser("~/projects/dynamical_model/"), "snowcrab")
-# project_directory = @__DIR__() #  same folder as the file
+# # For stiff problems with additive noise, the high order adaptive method SKenCarp is highly preferred and will solve problems with similar efficiency as ODEs. If possible, stiff problems should be converted to make use of this additive noise solver. If the noise term is large/stiff, then the split-step methods are required in order for the implicit methods to be stable. For Ito in this case, use ISSEM and for Stratonovich use ISSEulerHeun. These two methods can handle any noise form.
+# project_directory = string(expanduser("~/projects/dynamical_model/"), "snowcrab")
+# # project_directory = @__DIR__() #  same folder as the file
 
-push!(LOAD_PATH, project_directory)  # add the directory to the load path, so it can be found
+# push!(LOAD_PATH, project_directory)  # add the directory to the load path, so it can be found
 
-import Pkg  # or using Pkg
-Pkg.activate(project_directory)  # so now you activate the package
-# Pkg.activate(@__DIR__()) #  same folder as the file itself.
+# import Pkg  # or using Pkg
+# Pkg.activate(project_directory)  # so now you activate the package
+# # Pkg.activate(@__DIR__()) #  same folder as the file itself.
 
 Base.active_project()  # to make sure it's the package you meant to activate, print the path to console so you get a visual confirmation it's the package you meant to use
 

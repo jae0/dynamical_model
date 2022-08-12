@@ -8,7 +8,7 @@ Modified: 2022-08-01
 ---
 
 
-**A compartmental delay differential model of snow crab population dynamics in the Scotian Shelf of Atlantic Canada** \
+**A delay differential model of snow crab population dynamics in the Scotian Shelf of Atlantic Canada** \
 
 Choi, Jae S.\
 Population Ecology Division\
@@ -21,21 +21,34 @@ P.O. Box 1006, Dartmouth, Nova Scotia B2Y 4A2\
 
 Abstract 
 
+
+Introduction
+
+There are a mulititude of approaches to modelling population dynamics. Some are aggregates of a whole population (total number or total biomass). At intermediate numbers of subcompoents, one can discriminate sex, age or size groups and follow cohorts over time and space. Finally at the other end of the spectrum, there are individual-based models of organisms that interact, move and grow and die. The first class of models are extremely simple due to a phenomological perspective that simplifies a multitude of processes into a few externally facing parameters. In perhaps the simplest of such models, the logistic model, the dynamics are specified by two parameters: a specific rate of change, and some upper limit. Some additional parameters could be added to modify the expressiviity of the parameters specific to some organism. Their ultility is well known and used in many domains. 
+
+The third class of individual-based models are also extremely simple. Specification of probabilistic rules of biologically recognizable mechanisms: growth, death, reproduction, birth and movement are all that are required. These rules can be modified to explore "what if" scenarios via stochastic simulation and eventually aggregated to offer insight on dynamic and spatial control measures. They tend to be most expressive when numbers are low and stochastic effects become significant. But estimating the rules and parameters are a challenge due to the open-ended and contingent manner in which they apply to a particular set of environmental conditions in a particular population with a particular phylogenetic history surround by predators and prey that are themselves subject to their own particularieties. However, when system size is large, they generally become compuationally intractable. 
+
+Fortunately, stochastic similations of individual-based models generally converge upon the solutions of the second class of models. The second class of models  express the manner in which the mean (and somtimes the variablity) changes with time and often known as mean field models specified by differential equations. In models of exploited populations, this second class of models have come to dominate (Quinn 2003) as they are expressive and powerful. Indeed, most models of fish populations, the first question asked is: Is there enough information to represent the dynamics as an age-sex structured model. There are a large number such models each treating or approximating some subcomponent in some advantageous manner. Most tend to be discrete differential equation models that due to the annual nature of exploitation and data collection, are also discretized to annual increments. Space is usually ignored and treated as an externality, though of course, advection-diffusion differential equation models are readily formulated. The drawback of this second class of models is the need for a lot of information to parameterize it, information that usually not available or observable; and causing 
+
+In the case of snow crab (Chionoecetes opilio), as with other Crustacea, ageing is not possible. This has encouraged adoption of size-based models (Cadigan et al. 2015, Siddeek et al 2009, https://www.st.nmfs.noaa.gov/stocksmart?stockname=Snow%20crab%20-%20Bering%20Sea&stockid=10820, https://github.com/seacode/gmacs/blob/develop/docs/bbrkc/bbrkc.pdf ).    
+
+Most models of exploited populations tend to use a discrete form. This is largely due to limitations to computation and data assimilation in the past and convience of survey and assessment cycles. With such discretization, come differing approximations and assumptions and ultimately potential error or bias. 
+
+
+Snow crab are a commercially important fishery in the northern hemisphere. As such an operational model of the species would assist in providing both an understand the demography of the past and reasonable projections into the future. At present, there are very few such options. Some approach abundance estimation as a survey-based relative index. Sometimes, this is assumed to be sampled without bias. (https://github.com/seacode/gmacs/wiki)
+
+Snow crab (Chionoecetes opilio) have a complex life history that spans upto 14 years from planktonic to benthic stages. They moult 2 times a yea in the early benthic stages and then approximately annually …
+
+
+This life history complexity causes complexity in their dynamics and spatial distrubtions.
+
+
+
+
 Snow crab life history
 
-Snow crab have a complex life history. This complexity causes
-spatiotemporal complexity in their abundance distributions and so is the
-primary cause of the analytical difficulties of *spatiotemporal
-aggregation*. They are, first and foremost, cold-water *stenotherms*. In
-the Maritimes region, commercially fished snow crab are generally
-observed between depths of 50 to 300 m and between temperatures of -1 to
-7${^\circ}C$. Snow crab are thought to avoid temperatures above
-7${^\circ}C$, as metabolic costs have been shown to match metabolic
-gains near this temperature (Foyle et al. 1989). This means that their
-spatial distributions can fluctuate seasonally and annually due to the
-thermally complex nature of the Maritimes Region. Smaller crab and
-females also have differences in thermal *preferenda*. Further, snow
-crab are generally observed on soft mud bottoms. Small-bodied and
+Snow crab are, cold-water *stenotherms*. In the focal area of this study, the Northwest Atlantic continental region of Canada, known as the Scotian Shelf, they are generally observed between depths of 50 to 300 m and between temperatures of -1 to 7${^\circ}C$. They are thought to avoid temperatures above 7${^\circ}C$, as metabolic costs have been shown to exceed metabolic gains above this temperature (Foyle et al. 1989). As the focal area
+is thermally complex, their spatial distributions can fluctuate seasonally and annually. Smaller crab and females also have differences in thermal *preferenda*. Further, snow crab are generally observed on soft mud bottoms. Small-bodied and
 moulting crabs are also found on more complex (boulder, cobble)
 substrates presumably as they afford more shelter (Sainte-Marie and
 Hazel 1992; Comeau et al. 1998). There are of course many other factors

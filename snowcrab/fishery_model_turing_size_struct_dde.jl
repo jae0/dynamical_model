@@ -8,29 +8,38 @@
 
 # NOTE::: require 03.snowcrab_carstm.r to be completed 
 
-project_directory = string(expanduser("~/projects/dynamical_model/"), "snowcrab")
-# project_directory = @__DIR__() #  same folder as the file
-
-push!(LOAD_PATH, project_directory)  # add the directory to the load path, so it can be found
-
-import Pkg  # or using Pkg
-Pkg.activate(project_directory)  # so now you activate the package
-# Pkg.activate(@__DIR__()) #  same folder as the file itself.
-
-Base.active_project()  # to make sure it's the package you meant to activate, print the path to console so you get a visual confirmation it's the package you meant to use
 
 pkgs = [ 
-  "Revise", "RData", "MKL",  "LazyArrays", "Flux", "StatsBase", "StaticArrays", "ForwardDiff", "DiffResults",
-  "Turing", "Zygote", "Memoization", "ModelingToolkit", "Distributions", "DynamicPPL",
-  "Catalyst", "DifferentialEquations", "LinearAlgebra",  "Interpolations", 
-  "Plots", "StatsPlots", "MultivariateStats", "RData"
+  "Revise", "MKL", "StatsBase", "Distributions", "LinearAlgebra",  "Interpolations", 
+  "Plots", "StatsPlots", "MultivariateStats", "RData",
+  "Turing",  "ModelingToolkit", "DifferentialEquations",  
+  "StaticArrays", "LazyArrays", 
+  "ForwardDiff"
+  # "DiffResults", "Memoization", "DynamicPPL", "AbstractPPL", "AdvancedHMC", "MCMCChains", "SciMLSensitivity",
+   #"Tracker" #, "ReverseDiff", "Zygote", "ForwardDiff", "Diffractor", "Memoization",
 ]
- 
+  
 for pk in pkgs; @eval using $(Symbol(pk)); end
 
-#  Pkg.add( pkgs ) # add required packages
+# Pkg.add( pkgs ) # add required packages
 
-Threads.nthreads()
+# add Turing@v0.21.9   # 21.10 error?
+
+
+
+
+# Turing.setprogress!(false);
+# Turing.setrdcache(true)
+
+Turing.setadbackend(:forwarddiff)  # only AD that works right now
+# rev diff having issues 
+# Turing.setadbackend(:zygote) # 6.2 hrs, 
+# Turing.setadbackend(:forwarddiff)  # CFA 4X: 6.2 hrs 
+# Turing.setadbackend(:tracker)  # 5.7 hrs, but some stability issues?
+# Turing.setadbackend(:reversediff)  # 5.8 hrs 
+ 
+ 
+# include("/home/jae/bio/bio.snowcrab/inst/julia/fishery_model_turing_ode.jl")
 
 
 
@@ -78,37 +87,29 @@ else
 
 end
 
-plot(  Y[:,:yr], Y[:,:cfasouth_M0] )
-plot!( Y[:,:yr] .+1 , Y[:,:cfasouth_M1] )
-plot!( Y[:,:yr] .+2, Y[:,:cfasouth_M2] )
-plot!( Y[:,:yr] .+3, Y[:,:cfasouth_M3] )
-plot!( Y[:,:yr] .+4, Y[:,:cfasouth_M4] )
+plot(  Y[:,:yrs], Y[:,:cfasouth_M0] )
+plot!( Y[:,:yrs] .+1 , Y[:,:cfasouth_M1] )
+plot!( Y[:,:yrs] .+2, Y[:,:cfasouth_M2] )
+plot!( Y[:,:yrs] .+3, Y[:,:cfasouth_M3] )
+plot!( Y[:,:yrs] .+4, Y[:,:cfasouth_M4] )
 
 
-plot(  Y[:,:yr], Y[:,:cfanorth_M0] )
-plot!( Y[:,:yr] .+1 , Y[:,:cfanorth_M1] )
-plot!( Y[:,:yr] .+2 , Y[:,:cfanorth_M2] )
-plot!( Y[:,:yr] .+3, Y[:,:cfanorth_M3] )
-plot!( Y[:,:yr] .+4, Y[:,:cfanorth_M4] )
+plot(  Y[:,:yrs], Y[:,:cfanorth_M0] )
+plot!( Y[:,:yrs] .+1 , Y[:,:cfanorth_M1] )
+plot!( Y[:,:yrs] .+2 , Y[:,:cfanorth_M2] )
+plot!( Y[:,:yrs] .+3, Y[:,:cfanorth_M3] )
+plot!( Y[:,:yrs] .+4, Y[:,:cfanorth_M4] )
 
 
-plot(  Y[:,:yr], Y[:,:cfa4x_M0] )
-plot!( Y[:,:yr] .+1 , Y[:,:cfa4x_M1] )
-plot!( Y[:,:yr] .+2 , Y[:,:cfa4x_M2] )
-plot!( Y[:,:yr] .+3, Y[:,:cfa4x_M3] )
-plot!( Y[:,:yr] .+4, Y[:,:cfa4x_M4] )
+plot(  Y[:,:yrs], Y[:,:cfa4x_M0] )
+plot!( Y[:,:yrs] .+1 , Y[:,:cfa4x_M1] )
+plot!( Y[:,:yrs] .+2 , Y[:,:cfa4x_M2] )
+plot!( Y[:,:yrs] .+3, Y[:,:cfa4x_M3] )
+plot!( Y[:,:yrs] .+4, Y[:,:cfa4x_M4] )
 
 
 
 # ------------------------------
-
-Turing.setprogress!(true);
-# Turing.setadbackend(:zygote)
-# Turing.setadbackend(:forwarddiff)
-# Turing.setadbackend(:reversediff)
-# Turing.setadbackend(:tracker)
- 
- 
 
 function size_structured!( du, u, h, p, t)
   uu = max.( u, 0.0 )
@@ -223,7 +224,8 @@ aulab ="cfa4x"
 eps = 1.0e-9
 
 # convert to number .. 0.56 is ave mean weight
-kmu = Kmu[au] * 1000 *1000 / 0.56
+kmu = Kmu[au] * 1000 *1000 / 0.56 * 0.9
+# kmu = 1.25 * 1000 *1000 / 0.56
 
 # "survey index"
 statevars = [
@@ -385,14 +387,15 @@ n_samples = 3
 n_adapts = 3
 n_chains = 1
 sampler = Turing.MH()
+sampler = Turing.HMC(0.05,10)
 # sampler = Turing.NUTS(n_adapts, 0.65)
 res  =  sample( fmod, sampler, n_samples  )
 
 
-# production .. 5 hrs 
+# production .. ~ 5 hrs 
 n_samples = 500
 n_adapts = 500
-n_chains = 4
+n_chains = Threads.nthreads()
 sampler = Turing.NUTS(n_adapts, 0.65)
 
 
@@ -422,9 +425,9 @@ density(res[:"b[2]"])
 density(res[:"K[1]"])
 density(res[:"v[1]"])
 
-rng = MersenneTwister(26)
-resp = predict(rng, textmodel_marginal_pred(data), res)
-@df resp ecdfplot(:"b[1]"; label="birth rate 1")
+# rng = MersenneTwister(26)
+# resp = predict(rng, textmodel_marginal_pred(data), res)
+# @df resp ecdfplot(:"b[1]"; label="birth rate 1")
 
 
 # mean field dynamics:
