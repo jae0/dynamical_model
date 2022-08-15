@@ -112,19 +112,18 @@ plot!( Y[:,:yrs] .+4, Y[:,:cfa4x_M4] )
 # ------------------------------
 
 function size_structured!( du, u, h, p, t)
-  uu = max.( u, 0.0 )
   (b, K, d, v, tau, hsa)  = p
-  tr21 = v[1] * max(0.0, h(p, t-1)[2])   # transition 2 -> 1   
-  tr32 = v[2] * max(0.0, h(p, t-1)[3])   # transitiom 3 -> 2
-  tr43 = v[3] * max(0.0, h(p, t-1)[4])   # transitiom 4 -> 3
-  tr54 = v[4] * max(0.0, h(p, t-1)[5])   # transitiom 5 -> 4
-  FP  = max(0.0, h(p, t-8)[6]   )      # no mature fem 8  yrs ago
-  du[1] = tr21             - d[1] * uu[1] * (uu[1] / (K[1]*hsa(t,1)) )  # second order mortality       
-  du[2] = tr32      - tr21 - d[2] * uu[2] * (uu[2] / (K[2]*hsa(t,2)) )  
-  du[3] = tr43      - tr32 - d[3] * uu[3] * (uu[3] / (K[3]*hsa(t,3)) ) 
-  du[4] = tr54      - tr43 - d[4] * uu[4] * (uu[4] / (K[4]*hsa(t,4)) ) 
-  du[5] = b[1] * FP - tr54 - d[5] * uu[5] * (uu[5] / (K[5]*hsa(t,5)) )  
-  du[6] = b[2] * FP        - d[6] * uu[6] * (uu[6] / (K[6]*hsa(t,6)) )   # fem mat simple logistic with lag tau and density dep on present numbers
+  tr21 = v[1] * h(p, t-1)[2]    # transition 2 -> 1   
+  tr32 = v[2] * h(p, t-1)[3]    # transitiom 3 -> 2
+  tr43 = v[3] * h(p, t-1)[4]    # transitiom 4 -> 3
+  tr54 = v[4] * h(p, t-1)[5]    # transitiom 5 -> 4
+  FP  = h(p, t-8)[6]       # no mature fem 8  yrs ago
+  du[1] = tr21             - d[1] * u[1] * (u[1] / (K[1]*hsa(t,1)) )  # second order mortality       
+  du[2] = tr32      - tr21 - d[2] * u[2] * (u[2] / (K[2]*hsa(t,2)) )  
+  du[3] = tr43      - tr32 - d[3] * u[3] * (u[3] / (K[3]*hsa(t,3)) ) 
+  du[4] = tr54      - tr43 - d[4] * u[4] * (u[4] / (K[4]*hsa(t,4)) ) 
+  du[5] = b[1] * FP - tr54 - d[5] * u[5] * (u[5] / (K[5]*hsa(t,5)) )  
+  du[6] = b[2] * FP        - d[6] * u[6] * (u[6] / (K[6]*hsa(t,6)) )   # fem mat simple logistic with lag tau and density dep on present numbers
 end
 
 
@@ -225,7 +224,7 @@ eps = 1.0e-9
 
 # convert to number .. 0.56 is ave mean weight
 kmu = Kmu[au] * 1000 *1000 / 0.56 * 0.9
-# kmu = 1.25 * 1000 *1000 / 0.56
+# kmu = 1.5 * 1000 *1000 / 0.56
 
 # "survey index"
 statevars = [
@@ -240,7 +239,10 @@ S = Matrix(Y[:, statevars ])
 
 (nT, nS) = size(S)
 
+
+
 dt = 0.1
+dt = 1/52
 yrs = 1999:2021
 
 # spin up time of 10 years prior to start of dymamics and project 5 years into the future
@@ -275,7 +277,12 @@ function affect_fishing!(integrator)
   integrator.u[1] -=  removed[ i[1] ] 
 end
 
-cb =  PresetTimeCallback( fish_time, affect_fishing! )
+# cb = CallbackSet( 
+#   PresetTimeCallback( fish_time, affect_fishing! ), 
+#   PositiveDomain()
+# );
+
+cb = PresetTimeCallback( fish_time, affect_fishing! ) 
 
 # history function 0.5 default
 # h(p,t) = ones( nS ) .* 0.5  #values of u before t0
@@ -284,8 +291,11 @@ h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS) .* kmu
 tau = 1  # delay
 lags = [tau]
 
-solver = MethodOfSteps(Tsit5())  # solver; BS3() and Vern6() also RK4()
-
+# stiff solvers: Rodas4()  ; Rosenbrock23()
+# solver = MethodOfSteps(Rosenbrock23()) # slow  
+# solver = MethodOfSteps(Rodas4())  
+solver = MethodOfSteps(Tsit5())  
+# other solvers: BS3() and Vern6() also RK4()
 
 # these are dummy initial values .. just to get things started
 
@@ -298,10 +308,12 @@ tau=1.0;
 
 p = ( b, K, d, v, tau, hsa )   
 
+
+## test
 plot(0)
 
 prob = DDEProblem( size_structured!, u0, h, tspan, p; constant_lags=lags )
-msol2 =  solve( prob,  solver, saveat=dt )
+msol2 =  solve( prob,  solver, callback=cb, saveat=dt ) # , isoutofdomain=(y,p,t)->any(x->x<0,y) )# to force positive
 plot!( msol2, label="dde, with hsa, no fishing" )
 
 # plot!(; legend=false, xlim=(1999,2021) )
@@ -310,12 +322,10 @@ plot!( msol2, label="dde, with hsa, no fishing" )
 # ---------------
 
 
-@model function fishery_model_turing_dde( S, kmu, tspan, prob )
+@model function fishery_model_turing_dde( S, kmu, tspan, prob, nT, nS, solver=MethodOfSteps(Tsit5()), force_positive=true )
     
     # biomass process model: dn/dt = r n (1-n/K) - removed ; b, removed are not normalized by K  
     # priors
-    nT, nS = size(S);
-
     K ~ filldist( TruncatedNormal( kmu, kmu*0.1, kmu/5.0, kmu*5.0), nS )  
     
     # consider more diffuse Cauchy prior for k .. slow mixing
@@ -348,7 +358,13 @@ plot!( msol2, label="dde, with hsa, no fishing" )
 
     # process model
     prob = remake( prob; u0=u0, h=h, tspan=tspan, p=p )
-    msol = solve( prob, solver, callback=cb, saveat=dt )
+    
+    if force_positive 
+      msol = solve( prob, solver, callback=cb, saveat=dt, isoutofdomain=(u,p,t)->any(x->x<0, u) ) 
+    else
+      msol = solve( prob, solver, callback=cb, saveat=dt )   
+    end
+
     if msol.retcode != :Success
       Turing.@addlogprob! -Inf
       return nothing
@@ -377,8 +393,14 @@ end
 # ---------------
 
 
+# stiff solvers: Rodas4()  ; Rosenbrock23()
+# solver = MethodOfSteps(Rosenbrock23()) # slow  
+solver = MethodOfSteps(Rodas4())  
+# solver = MethodOfSteps(Tsit5())  
+# other solvers: BS3() and Vern6() also RK4()
+
 prob = DDEProblem( size_structured!, u0, h, tspan, p, constant_lags=lags )
-fmod = fishery_model_turing_dde( S, kmu, tspan, prob )
+fmod = fishery_model_turing_dde( S, kmu, tspan, prob, nT, nS, solver  )
 # fmod = fishery_model_turing_incremental_dde( S, kmu,  tspan, prob )
 
 
@@ -386,9 +408,10 @@ fmod = fishery_model_turing_dde( S, kmu, tspan, prob )
 n_samples = 3
 n_adapts = 3
 n_chains = 1
-sampler = Turing.MH()
-sampler = Turing.HMC(0.05,10)
-# sampler = Turing.NUTS(n_adapts, 0.65)
+# sampler = Turing.MH()
+# sampler = Turing.HMC(0.05,10)
+sampler = Turing.NUTS(n_adapts, 0.65; max_depth=10, init_ϵ=0.025)
+
 res  =  sample( fmod, sampler, n_samples  )
 
 
@@ -396,8 +419,8 @@ res  =  sample( fmod, sampler, n_samples  )
 n_samples = 500
 n_adapts = 500
 n_chains = Threads.nthreads()
-sampler = Turing.NUTS(n_adapts, 0.65)
-
+# sampler = Turing.HMC(0.05,10)
+sampler = Turing.NUTS(n_adapts, 0.65; max_depth=10, init_ϵ=0.025)  ;# stepsize based upon previous experience
 
 res  =  sample( fmod, sampler, MCMCThreads(), n_samples, n_chains )
 # if on windows o threads not working:
@@ -459,14 +482,14 @@ v = [ mean( res[:,"v[1]",:] ), mean( res[:,"v[2]",:] ),
 
 pm = ( b, K, d, v, tau, hsa ) 
 
-msol = solve( remake( prob, u0=u0, h=h, tspan=tspan, p=pm ), solver, callback=cb, saveat=dt )  
+msol = solve( remake( prob, u0=u0, h=h, tspan=tspan, p=pm ), solver, callback=cb, saveat=dt )   # # isoutofdomain=(y,p,t)->any(x->x<0,y)  # to force positive 
 plot!(msol, label="dde-mean-field-fishing")
 v = 1
 plot!( msol.t, reduce(hcat, msol.u)'[:,v], color=[1 v] , alpha=0.5, lw=5 ) 
 plot!(; legend=false, xlim=(1997,2023) )
 
 prob2 = DDEProblem( size_structured!, u0, h, tspan, pm, saveat=dt )
-msol = solve( prob2,  solver, saveat=dt ) #  effective nullify callbacks
+msol = solve( prob2,  solver, saveat=dt ) #  effective nullify callbacks; # isoutofdomain=(y,p,t)->any(x->x<0,y)  # to force positive 
 plot!(msol, label="dde-mean-field-nofishing")
 v = 1
 plot!( msol.t, reduce(hcat, msol.u)'[:,v], color=[5 5] , alpha=0.75, lw=5 ) 
@@ -633,10 +656,10 @@ end
 using Flux, DiffEqFlux
 params = Flux.params(p)
 
-msol =  solve( prob,  solver, callback=cb, saveat=dt)  
+msol =  solve( prob,  solver, callback=cb, saveat=dt)    # isoutofdomain=(y,p,t)->any(x->x<0,y)  # to force positive 
 
 function predict_rd() # Our 1-layer "neural network"
-  solve(prob, solver,p=p,saveat=dt)[1] # override with new parameters
+  solve(prob, solver,p=p,saveat=dt)[1] # override with new parameters  # isoutofdomain=(y,p,t)->any(x->x<0,y)  # to force positive 
 end
 
 loss_rd() = sum(abs2,x-1 for x in predict_rd()) # loss function (squared absolute) x-1
