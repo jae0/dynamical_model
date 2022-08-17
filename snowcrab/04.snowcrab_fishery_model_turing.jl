@@ -11,14 +11,14 @@
 
 # Base.active_project()  # to make sure it's the package you meant to activate, print the path to console so you get a visual confirmation it's the package you meant to use
 
-pkgs = [ 
-  "Revise", "RData", "MKL",  "LazyArrays", "Flux", "StatsBase", "StaticArrays", "ForwardDiff", "DiffResults",
-  "Turing", "Zygote", "Memoization", "ModelingToolkit", "Distributions",
-  "Catalyst", "DifferentialEquations", "LinearAlgebra",  
-  "Plots", "StatsPlots", "MultivariateStats"
-]
+# pkgs = [ 
+#   "Revise", "RData", "MKL",  "LazyArrays", "Flux", "StatsBase", "StaticArrays", "ForwardDiff", "DiffResults",
+#   "Turing", "Zygote", "Memoization", "ModelingToolkit", "Distributions",
+#   "Catalyst", "DifferentialEquations", "LinearAlgebra",  
+#   "Plots", "StatsPlots", "MultivariateStats"
+# ]
  
-for pk in pkgs; @eval using $(Symbol(pk)); end
+# for pk in pkgs; @eval using $(Symbol(pk)); end
 
 #  Pkg.add( pkgs ) # add required packages
 
@@ -28,60 +28,397 @@ for pk in pkgs; @eval using $(Symbol(pk)); end
 # NOTE::: require 03.snowcrab_carstm.r to be completed 
 # (i.e.,spatiotemporal model and assimilate_numbers_and_size to have been completed 
 
-get_data_with_RCall = false
+# get_data_with_RCall = false
 
-if get_data_with_RCall
+# if get_data_with_RCall
 
-    using RCall
+#     using RCall
 
-    # typing <$> in Julia's  command prompt starts an R session.  
+#     # typing <$> in Julia's  command prompt starts an R session.  
     
-    $
+#     $
       
-    {
-        # this is R-code that creates local RData file with required data
-        source( file.path( code_root, "bio_startup.R" )  )
-        require(bio.snowcrab)   # loadfunctions("bio.snowcrab")
-        fishery_model_data_inputs( year.assessment=2021, type="biomass_dynamics" ) 
-        fishery_model_data_inputs( year.assessment=2021, type="numerical_dynamics" )
-        fishery_model_data_inputs( year.assessment=2021, type="size_structured_numerical_dynamics" )
-        # type <backspace> to escape back to julia
-    }
+#     {
+#         # this is R-code that creates local RData file with required data
+#         source( file.path( code_root, "bio_startup.R" )  )
+#         require(bio.snowcrab)   # loadfunctions("bio.snowcrab")
+#         fishery_model_data_inputs( year.assessment=2021, type="biomass_dynamics" ) 
+#         fishery_model_data_inputs( year.assessment=2021, type="numerical_dynamics" )
+#         fishery_model_data_inputs( year.assessment=2021, type="size_structured_numerical_dynamics" )
+#         # type <backspace> to escape back to julia
+#     }
 
-    # now back in Julia, fetch data into julia's workspace (replace fndat with the  filenane printed above )
-    @rget Y  
-    @rget Kmu 
-    @rget Ksd 
-    @rget removals 
-    @rget ty
+#     # now back in Julia, fetch data into julia's workspace (replace fndat with the  filenane printed above )
+#     @rget Y  
+#     @rget Kmu 
+#     @rget Ksd 
+#     @rget removals 
+#     @rget ty
     
-    # mechanism to run the rest if self contained
-    include("/home/jae/bio/bio.snowcrab/inst/julia/fishery_model_turing_ode.jl")
+#     # mechanism to run the rest if self contained
+#     # include("/home/jae/bio/bio.snowcrab/inst/julia/fishery_model_turing_ode.jl")
+
+# else
+
+#     # using CodecBzip2, CodecXz, RData  
+#     # fndat = "/home/jae/bio.data/bio.snowcrab/modelled/1999_present_fb/fishery_model_results/turing1/biodyn_biomass.RData"
+#     # fndat = "/home/jae/bio.data/bio.snowcrab/modelled/1999_present_fb/fishery_model_results/turing1/biodyn_number.RData"
+#     # fndat = "/home/jae/bio.data/bio.snowcrab/modelled/1999_present_fb/fishery_model_results/turing1/biodyn_number_size_struct.RData"
+#     # o = load( fndat, convert=true)
+#     # Y = o["Y"]
+#     # Ksd = o["Ksd"]
+#     # Kmu = o["Kmu"]
+#     # removals = o["L"]
+
+# end
+
+
+
+# ------------------------------
+# DDE size structured
+
+# Delay Differentail EQs size structured
+
+# https://diffeq.sciml.ai/stable/tutorials/dde_example/
+
+# NOTE::: require 03.snowcrab_carstm.r to be completed 
+
+
+# ------------------------------
+# load libs and check settings
+pkgs = [ 
+  "Revise", "MKL", "StatsBase", "Distributions", "LinearAlgebra",  "Interpolations", 
+  "Plots", "StatsPlots", "MultivariateStats", "RData",
+  "Turing",  "ModelingToolkit", "DifferentialEquations",  
+  "StaticArrays", "LazyArrays", 
+  "ForwardDiff"
+  # "DiffResults", "Memoization", "DynamicPPL", "AbstractPPL", "AdvancedHMC", "MCMCChains", "SciMLSensitivity",
+   #"Tracker" #, "ReverseDiff", "Zygote", "ForwardDiff", "Diffractor", "Memoization",
+]
+  
+for pk in pkgs; @eval using $(Symbol(pk)); end
+
+# Pkg.add( pkgs ) # add required packages
+
+# add Turing@v0.21.9   # 21.10 error?
+
+# Turing.setprogress!(false);
+# Turing.setrdcache(true)
+
+Turing.setadbackend(:forwarddiff)  # only AD that works right now
+# rev diff having issues 
+# Turing.setadbackend(:zygote) # 6.2 hrs, 
+# Turing.setadbackend(:forwarddiff)  # CFA 4X: 6.2 hrs 
+# Turing.setadbackend(:tracker)  # 5.7 hrs, but some stability issues?
+# Turing.setadbackend(:reversediff)  # 5.8 hrs 
+ 
+
+
+# ------------------------------
+# choose a region of interest"
+
+au = 1  # cfa index
+aulab ="cfanorth"
+
+au = 2  # cfa index
+aulab ="cfasouth"
+
+au = 3  # cfa index
+aulab ="cfa4x"
+
+yrs = 1999:2021
+ 
+dt = 1/12 # time resolution of solutions
+
+eps = 1.0e-6 # floating point value sufficient to assume 0 valued
+
+
+# ------------------------------
+# dynamical model
+include( "size_structured!.jl" )
+
+  if false
+    # test dynamical model, generic parameters, can skip
+    include( joinpath( project_directory, "size_structured_test.jl" ))
+  end
+
+
+# ------------------------------
+# turing model
+include( "fishery_model_turing_dde.jl" )
+
+
+
+# -------------------------
+#  prepare dta for diffeq/turing model
+include( "fishery_model_turing_size_struct_dde_data.jl" )
+
+  if false
+    ## test, can ignore
+    prob = DDEProblem( size_structured!, u0, h, tspan, p; constant_lags=lags )
+    msol2 =  solve( prob,  solver, callback=cb, saveat=dt, isoutofdomain=(y,p,t)->any(x->x<0,y) )# to force positive
+    plot(0)
+    plot!( msol2, label="dde, with hsa, no fishing" )
+    plot!(; legend=false, xlim=(1999,2021) )
+  end
+
+# ---------------
+
+
+ 
+# ---------------
+# run model estimations
+ 
+# stiff solvers: Rodas4()  ; Rosenbrock23()
+# solver = MethodOfSteps(Tsit5())  
+solver = MethodOfSteps(Rodas5())  
+
+# solver = MethodOfSteps(Tsit5())  # 10 - 41.43 .. sometimes errors out
+# solver = MethodOfSteps(Rodas5())   # 20.94  - 71.73
+# solver = MethodOfSteps(BS3())   # 56.1, sometimes errors out
+# solver = MethodOfSteps(Rodas4()) #   24.86- 82.79
+# solver = MethodOfSteps(Rosenbrock23()) #  71.48
+# solver = MethodOfSteps(Vern6())  # 73.98
+# solver = MethodOfSteps(RK4())   # 76.28
+# solver = MethodOfSteps(TRBDF2())  # 92.16
+# solver = MethodOfSteps(QNDF())  # 110.79
+# solver = MethodOfSteps(Vern7())  #  111.7
+# solver = MethodOfSteps(KenCarp4())  # 139.88
+
+ 
+prob = DDEProblem( size_structured!, u0, h, tspan, p, constant_lags=lags )
+fmod = fishery_model_turing_dde( S, kmu, tspan, prob, nT, nS, solver  )
+
+testing = false
+if testing
+  # testing
+  n_samples = 3
+  n_adapts = 3
+  n_chains = 1
+  # sampler = Turing.MH()
+  # sampler = Turing.HMC(0.05,10)
+  sampler = Turing.NUTS(n_adapts, 0.65; max_depth=10, init_ϵ=0.025)
+  res  =  sample( fmod, sampler, n_samples  )
 
 else
 
-    using CodecBzip2, CodecXz, RData  
-    fndat = "/home/jae/bio.data/bio.snowcrab/modelled/1999_present_fb/fishery_model_results/turing1/biodyn_biomass.RData"
-    fndat = "/home/jae/bio.data/bio.snowcrab/modelled/1999_present_fb/fishery_model_results/turing1/biodyn_number.RData"
-    fndat = "/home/jae/bio.data/bio.snowcrab/modelled/1999_present_fb/fishery_model_results/turing1/biodyn_number_size_struct.RData"
-    o = load( fndat, convert=true)
-    Y = o["Y"]
-    Ksd = o["Ksd"]
-    Kmu = o["Kmu"]
-    removals = o["L"]
+  # production .. ~ 5 hrs 
+  n_samples = 1000
+  n_adapts = 500
+  n_chains = Threads.nthreads()
+  # sampler = Turing.HMC(0.05,10)
+  sampler = Turing.NUTS(n_adapts, 0.65; max_depth=10, init_ϵ=0.025)  ;# stepsize based upon previous experience
+
+  res  =  sample( fmod, sampler, MCMCThreads(), n_samples, n_chains )
+    # if on windows and threads are not working, use single processor mode:
+    # res = mapreduce(c -> sample(fmod, sampler, n_samples), chainscat, 1:n_chains)
 
 end
 
 
+show(stdout, "text/plain", summarize(res))
 
-Turing.setprogress!(false);
-Turing.setadbackend(:zygote)
-# Turing.setadbackend(:forwarddiff)
-# Turing.setadbackend(:reversediff)
-# Turing.setadbackend(:tracker)
+
+# ------------------------------
+# save results as a hdf5
+using JLD2  # using HDF5
+fn = joinpath( project_directory, string("data_size_struct_dde", "_", aulab, ".hdf5" ) )
+@save fn res
+@load fn res
+# can read back in R as:  
+# h5read( paste("/home/jae/julia/snowcrab/data_size_struct_dde", "_", aulab, ".hdf5"), "res")
+
+# or save as native julaia dat format
+fn = joinpath( project_directory, string("data_size_struct_dde", "_", aulab, ".jd" ) )
+write(fn, res)
+read(fn)
  
+ 
+# ------------------------------
+# process outputs
+show(stdout, "text/plain", summarize(res))
+
+density(res[:"b[1]"])
+density(res[:"b[2]"])
+density(res[:"K[1]"])
+density(res[:"v[1]"])
+
+
+
+# -------------------------
+# plot timeseries of mean fields
+include( "plot_dde.jl" )
+plot(0)
+plot_dde( selection="S K predictions predictionmeans", s=[1] ) 
+
+
+
+
+# ------------------------------
+# misc computed quantities
+
+# params need to be named  .. return only that which is specified by "return()", below
+pm = ( b=b, K=K, d=d, v=v, tau=tau, hsa=hsa ) 
+
+@model function fm_test( S1, S2, S3, S4, S5, S6, kmu, tspan, prob, nT=length(S1), ::Type{T}=Float64 ) where {T}  
   
+  # deterministic computations: do from similations:
+  M=3
+  er=0.2
+
+  F = zeros(nT+M)
+  B = zeros(nT+M)
+  C = zeros(nT+M)
+
+  C[1:nT] = removed ./ K
+  C[(nT+1):(M+nT)] = er .* bm[(nT):(M+nT-1)]
+  C = 1.0 .- C / bm
+
+  F =  -log( max.(C, eps) )  ;
+  
+  # parameter estimates for output
+  MSY    = r* exp(K) / 4 ; # maximum height of of the latent productivity (yield)
+  BMSY   = exp(K)/2 ; # biomass at MSY
+  FMSY   = 2.0 * MSY / exp(K) ; # fishing mortality at MSY
  
+  # recaled estimates
+  B = bm .* K  
+ 
+  # recaled estimates
+  B[1:nT] = bm[1:nT] *. K - L[1:nT] ;
+  B[(nT+1):(M+nT)] = (bm[(nT+1):(M+nT)] - C[(nT):(M+nT-1)]) *. K ;
+ 
+  return( test=r+1, )
+end
+
+fmod2 = fm_test(S1, S2, S3, S4, S5, S6, kmu, tspan, prob )
+
+gq = generated_quantities(fmod2, pm)
+
+# gq = generated_quantities(res, values(p), keys(p))
+# m = vec(getindex.( gq, 1))
+# density!(m, lab="generated quantity (VI)")
+# vline!([0], lab="true value")
+
+ 
+
+# look at predictions:
+M0_pred = Vector{Union{Missing, Float64}}(undef, length(S1))
+fmod_pred = fmod( M0_pred, kmu,  tspan, prob  ) 
+ 
+predictions = predict(fmod_pred, res)
+y_pred = vec(mean(Array(group(predictions, :S1)); dims = 1));
+
+plot( S1, y_pred )
+sum(abs2, S1 - y_pred) ≤ 0.1
+
+
+ 
+ 
+# rng = MersenneTwister(26)
+# resp = predict(rng, textmodel_marginal_pred(data), res)
+# @df resp ecdfplot(:"b[1]"; label="birth rate 1")
+
+
+ 
+do_variational_inference = false
+if do_variational_inference
+  # to do Variational Inference (an sd term goes less than 0 .. not sure of the cause ):
+   
+  res_vi =  vi(fmod, Turing.ADVI( 10, 1000));
+ 
+     # Run sampler, collect results. @doc(Variational.ADVI) : 
+     # samples_per_step::Int64
+     # Number of samples used to estimate the ELBO in each optimization step.
+     # max_iters::Int64
+     # Maximum number of gradient steps.
+  
+  res_vi_samples = rand( res_vi, 1000)  # sample via simulation
+  
+  p1 = histogram(res_vi_samples[1, :]; bins=100, normed=true, alpha=0.2, color=:blue, label="")
+  density!(res_vi_samples[1, :]; label="s (ADVI)", color=:blue, linewidth=2)
+  density!(res, :s; label="s (NUTS)", color=:green, linewidth=2)
+  vline!([var(x)]; label="s (data)", color=:black)
+  vline!([mean(res_vi_samples[1, :])]; color=:blue, label="")
+  
+  p2 = histogram(res_vi_samples[2, :]; bins=100, normed=true, alpha=0.2, color=:blue, label="")
+  density!(res_vi_samples[2, :]; label="m (ADVI)", color=:blue, linewidth=2)
+  density!(res, :m; label="m (NUTS)", color=:green, linewidth=2)
+  vline!([mean(x)]; color=:black, label="m (data)")
+  vline!([mean(res_vi_samples[2, :])]; color=:blue, label="")
+  
+  plot(p1, p2; layout=(2, 1), size=(900, 500))
+  
+  
+  do_maximum_likelihood = false
+  if do_maximum_likelihood
+    res_mle = Turing.optimize(fmod, MLE())
+    res_mle = Turing.optimize(fmod, MLE())
+    res_mle = Turing.optimize(fmod, MLE(), NelderMead())
+    res_mle = Turing.optimize(fmod, MLE(), SimulatedAnnealing())
+    res_mle = Turing.optimize(fmod, MLE(), ParticleSwarm())
+    res_mle = Turing.optimize(fmod, MLE(), Newton())
+    res_mle = Turing.optimize(fmod, MLE(), AcceleratedGradientDescent())
+    res_mle = Turing.optimize(fmod, MLE(), Newton(), Optim.Options(iterations=10_000, allow_f_increases=true))
+
+    using StatsBase
+    coeftable(res_mle)
+end
+
+
+do_maximum_aposteriori = false
+if do_maximum_aposteriori
+  res_map = Turing.optimize(fmod, MAP())
+end
+
+
+   
+
+
+
+ 
+using Flux, DiffEqFlux
+params = Flux.params(p)
+
+msol =  solve( prob,  solver, callback=cb, saveat=dt)    # isoutofdomain=(y,p,t)->any(x->x<0,y)  # to force positive 
+
+function predict_rd() # Our 1-layer "neural network"
+  solve(prob, solver,p=p,saveat=dt)[1] # override with new parameters  # isoutofdomain=(y,p,t)->any(x->x<0,y)  # to force positive 
+end
+
+loss_rd() = sum(abs2,x-1 for x in predict_rd()) # loss function (squared absolute) x-1
+
+data = Iterators.repeated((), 100)
+opt = ADAM(0.1)
+cbflux = function () #callback
+  # function to observe training
+  display(loss_rd())
+  # using `remake` to re-create our `prob` with current parameters `p`
+  display(plot(solve(remake(prob,p=p), solver,saveat=dt), ylim=(0,kmu*2)))
+end
+
+# Display the ODE with the initial parameter values.
+cb()
+
+Flux.train!(loss_rd, params, data, opt, cb = cbflux)
+
+m = Chain(
+  Conv((2,2), 1=>16, relu),
+  x -> maxpool(x, (2,2)),
+  Conv((2,2), 16=>8, relu),
+  x -> maxpool(x, (2,2)),
+  x -> reshape(x, :, size(x, 4)),
+  x -> solve(prob, solver,u0=x,saveat=0.1)[1,:],
+  Dense(288, 10), softmax) |> gpu
+
+
+
+  
+  ----------__--
+
+
+
+
 if false
   # should the models be stored in files, running this way is one option  
   # discrete version
@@ -90,6 +427,7 @@ if false
   # ode version
   include("/home/jae/bio/bio.snowcrab/inst/julia/fishery_model_turing_ode.jl")
 end
+
 
 
 # more inits

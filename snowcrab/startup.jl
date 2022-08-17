@@ -10,3 +10,6 @@ Pkg.activate(project_directory)  # so now you activate the package
 
 Base.active_project()  # to make sure it's the package you meant to activate, print the path to console so you get a visual confirmation it's the package you meant to use
 
+cd( project_directory )
+
+print( project_directory )
