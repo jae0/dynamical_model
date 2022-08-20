@@ -1,8 +1,8 @@
 
 
-function plot_dde( ; selection="withfishing withoutfishing S K predictions predictionmeans", s=[1] )
+function plot_dde( ; selection="withfishing withoutfishing S K predictions predictionmeans", si=[1], scale_factor=1.0, mw=nothing )
 
-    if occursin( r"withfishing", selection )  
+    if occursin( r"withfishing", selection ) | occursin( r"withoutfishing", selection )  
         # mean field dynamics:
         u0 = [ 
         mean( res[:,"K[1]",:] ),
@@ -22,8 +22,8 @@ function plot_dde( ; selection="withfishing withoutfishing S K predictions predi
 
         b = [ mean( res[:,"b[1]",:] ), mean( res[:,"b[2]",:] ) ]
         K = [ mean( res[:,"K[1]",:] ), mean( res[:,"K[2]",:] ), 
-            mean( res[:,"K[2]",:] ), mean( res[:,"K[2]",:] ),
-            mean( res[:,"K[2]",:] ), mean( res[:,"K[2]",:] ) ]  ; 
+              mean( res[:,"K[2]",:] ), mean( res[:,"K[2]",:] ),
+              mean( res[:,"K[2]",:] ), mean( res[:,"K[2]",:] ) ]   ; 
         d = [ mean( res[:,"d[1]",:] ), mean( res[:,"d[2]",:] ), 
             mean( res[:,"d[3]",:] ), mean( res[:,"d[4]",:] ),
             mean( res[:,"d[5]",:] ), mean( res[:,"d[6]",:] ) ]   
@@ -31,61 +31,104 @@ function plot_dde( ; selection="withfishing withoutfishing S K predictions predi
             mean( res[:,"v[3]",:] ), mean( res[:,"v[4]",:] ) ]
 
         pm = ( b, K, d, v, tau, hsa ) 
+        
+        if occursin( r"withfishing", selection )
 
-        msol = solve( 
-            remake( prob, u0=u0, h=h, tspan=tspan, p=pm ), 
-            solver, 
-            callback=cb, 
-            saveat=dt, 
-            isoutofdomain=(y,p,t)->any(x->x<0,y) 
-        )
-        plot!( msol.t, reduce(hcat, msol.u)'[:,s], alpha=0.5, lw=5 ) 
-        plot!(; legend=false )
+            msol = solve( 
+                remake( prob, u0=u0, h=h, tspan=tspan, p=pm; constant_lags=lags ), 
+                solver, 
+                callback=cb, 
+                saveat=dt, 
+                isoutofdomain=(y,p,t)->any(x->x<0,y) 
+            )
+            yval = reduce(hcat, msol.u)'[:,si]
+
+            if nameof(typeof(mw)) == :ScaledInterpolation
+                yval = yval .* mw(msol.t) ./ 1000.0  ./ 1000.0 
+            else
+                yval = yval .* scale_factor
+            end
+
+            plot!( msol.t, yval, alpha=0.85, lw=4, color=:steelblue ) 
+            plot!(; xlim=(minimum(yrs)-0.5, maximum(yrs)+1.5  ) )
+            plot!(; ylim=(0, maximum(yval)*1.1 ) )
+            plot!(; legend=false )
+        end
+
+    
+        if occursin( r"withoutfishing", selection )  
+            prob2 = DDEProblem( size_structured!, u0, h, tspan, pm; saveat=dt, constant_lags=lags )
+            msol = solve( 
+                prob2,  
+                solver, 
+                saveat=dt, 
+                isoutofdomain=(y,p,t)->any(x->x<0,y) 
+            )
+            yval = reduce(hcat, msol.u)'[:,si]
+
+            if nameof(typeof(mw)) == :ScaledInterpolation
+                yval = yval .* mw(msol.t) ./ 1000.0  ./ 1000.0 
+            else
+                yval = yval .* scale_factor
+            end
+
+            plot!( msol.t, yval, alpha=0.85, lw=4, color=:teal ) 
+            plot!(; xlim=(minimum(yrs)-0.5, maximum(yrs)+1.5  ) )
+            plot!(; ylim=(0, maximum(yval)*1.1 ) )
+            plot!(; legend=false )
+        end
     end
-
-    if occursin( r"withoutfishing", selection )  
-        prob2 = DDEProblem( size_structured!, u0, h, tspan, pm, saveat=dt )
-        msol = solve( 
-            prob2,  
-            solver, 
-            saveat=dt, 
-            isoutofdomain=(y,p,t)->any(x->x<0,y) 
-        )
-        plot!( msol.t, reduce(hcat, msol.u)'[:,s], alpha=0.75, lw=5 ) 
-        plot!(; legend=false )
-    end
-
  
-    if occursin( r"S", selection )  
-        # back transform S to normal scale 
-        s1 = 1
-        yhat = ( S[:,s1] .* mean(res[:,Symbol("q[$s1]"),:]) .- mean(res[:,Symbol("qc[$s1]"),:] ) ) .* mean(res[:,Symbol("K[$s1]"),:] ) 
-        scatter!(survey_time, yhat, markersize=4)
-        plot!(survey_time, yhat )
-        plot!(; legend=false )
-    end
-
     if occursin( r"K", selection )  
         # sample and plot posterior K
-        s1 = 1  # state variable index
-        for i in 1:length(res)  
-            w = res[i,Symbol("K[$s1]"),1]
-            hline!([w];  alpha=0.1 )
+        si1 = si[1]
+
+        if nameof(typeof(mw)) == :ScaledInterpolation
+            sf = mean(mw(yrs)) ./ 1000.0  ./ 1000.0 
+            for i in 1:length(res)  
+                w = res[i,Symbol("K[$si1]"),1]  .* sf
+                hline!([w];  alpha=0.05, color=:limegreen )
+            end
+            o = vec( reduce(hcat, res[:,Symbol("K[$si1]"),:]) ) .* sf
+        else
+            for i in 1:length(res)  
+                w = res[i,Symbol("K[$si1]"),1]  .* scale_factor
+                hline!([w];  alpha=0.05, color=:limegreen )
+            end
+            o = vec( reduce(hcat, res[:,Symbol("K[$si1]"),:]) ) .* scale_factor
+
         end
+        
+        hline!([mean(o)];  alpha=0.6, color=:chartreuse4, lw=5 )
+        hline!([quantile(o, 0.975)];  alpha=0.5, color=:chartreuse4, lw=2, line=:dash )
+        hline!([quantile(o, 0.025)];  alpha=0.5, color=:chartreuse4, lw=2, line=:dash )
+
+        plot!(; xlim=(minimum(yrs)-0.5, maximum(yrs)+1.5  ) )
+        plot!(; ylim=(0, maximum(o)*1.1 ) )
+
         plot!(; legend=false )
     end
 
 
     if occursin( r"predictions", selection )  
         # sample and plot posterior means from model (posterior post-fishery abundance)
-        for k in s
-            w = zeros(nT)
+
+        for k in si
+            # for l in 1:size(res)[3]
+            l = 1
             for i in 1:length(res)  
+                w = zeros(nT)
                 for j in 1:nT
-                    w[j] = res[i, Symbol("K[$k]"),1] * res[i, Symbol("m[$j,$k]"),1]
+                    w[j] = res[i, Symbol("K[$k]"),l] * res[i, Symbol("m[$j,$k]"),l] 
                 end
-                plot!(prediction_time, w;  alpha=0.1)
+                if nameof(typeof(mw)) == :ScaledInterpolation
+                    w = w .* mw(yrs) ./ 1000.0  ./ 1000.0 
+                else
+                    w = w .* scale_factor
+                end
+                plot!(prediction_time, w;  alpha=0.01, color=:orange)
             end
+            # end
         end
         plot!(; legend=false )
     end
@@ -93,15 +136,41 @@ function plot_dde( ; selection="withfishing withoutfishing S K predictions predi
     
     if occursin( r"predictionmeans", selection )  
         # mean post-fishery abundance
-        for k in s
+        for k in si
             u = zeros(nT)
             v = zeros(nT)
             for  j in 1:nT
-                u[j] = mean( res[:,Symbol("m[$j,$k]"),:] .* res[:,Symbol("K[$k]"),:] ) 
-                v[j] = std(  res[:,Symbol("m[$j,$k]"),:] .* res[:,Symbol("K[$k]"),:] ) 
+                u[j] = mean( res[:,Symbol("m[$j,$k]"),:] .* res[:,Symbol("K[$k]"),:] )   
+                v[j] = std(  res[:,Symbol("m[$j,$k]"),:] .* res[:,Symbol("K[$k]"),:] )  
             end
-            scatter!(prediction_time, u, markersize=2 )
+            if nameof(typeof(mw)) == :ScaledInterpolation
+                u = u .* mw(yrs) ./ 1000.0  ./ 1000.0 
+                v = v .* mw(yrs) ./ 1000.0  ./ 1000.0 
+            else
+                u = u .* scale_factor
+                v = v .* scale_factor
+            end
+            plot!(prediction_time, u, lw=2, color=:orangered )
+            scatter!(prediction_time, u, markersize=4, color=:goldenrod1 )
         end
-        plot!(; xlim=(minimum(yrs), maximum(yrs)  ) )
     end
+
+
+    if occursin( r"S", selection )  
+        # back transform S to normal scale 
+        si1 = si[1]
+        yhat = ( S[:,si1] .* mean(res[:,Symbol("q[$si1]"),:]) .- mean(res[:,Symbol("qc[$si1]"),:] ) ) .* mean(res[:,Symbol("K[$si1]"),:]  ) 
+        if nameof(typeof(mw)) == :ScaledInterpolation
+            yhat = yhat .* mw(yrs) ./ 1000.0  ./ 1000.0 
+        else
+            yhat = yhat .* scale_factor
+        end
+        plot!(survey_time, yhat, color=:purple2, lw=2 )
+        scatter!(survey_time, yhat, markersize=4, color=:purple4)
+        plot!(; legend=false )
+    end
+
+    plot!(; xlim=(minimum(yrs)-0.5, maximum(yrs)+1.5  ) )
+
 end
+

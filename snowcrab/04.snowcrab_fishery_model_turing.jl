@@ -1,3 +1,4 @@
+
 # ----------------
 # example template calling julia 
 # project_directory = string(expanduser("~/projects/dynamical_model/"), "snowcrab")
@@ -10,18 +11,7 @@
 # # Pkg.activate(@__DIR__()) #  same folder as the file itself.
 
 # Base.active_project()  # to make sure it's the package you meant to activate, print the path to console so you get a visual confirmation it's the package you meant to use
-
-# pkgs = [ 
-#   "Revise", "RData", "MKL",  "LazyArrays", "Flux", "StatsBase", "StaticArrays", "ForwardDiff", "DiffResults",
-#   "Turing", "Zygote", "Memoization", "ModelingToolkit", "Distributions",
-#   "Catalyst", "DifferentialEquations", "LinearAlgebra",  
-#   "Plots", "StatsPlots", "MultivariateStats"
-# ]
  
-# for pk in pkgs; @eval using $(Symbol(pk)); end
-
-#  Pkg.add( pkgs ) # add required packages
-
 
 # Part 1 -- construct basic parameter list defining the main characteristics of the study
 
@@ -87,7 +77,7 @@
 # ------------------------------
 # load libs and check settings
 pkgs = [ 
-  "Revise", "MKL", "StatsBase", "Distributions", "LinearAlgebra",  "Interpolations", 
+  "Revise", "MKL", "StatsBase", "Statistics",  "Distributions", "LinearAlgebra",  "Interpolations", 
   "Plots", "StatsPlots", "MultivariateStats", "RData",
   "Turing",  "ModelingToolkit", "DifferentialEquations",  
   "StaticArrays", "LazyArrays", 
@@ -102,7 +92,7 @@ for pk in pkgs; @eval using $(Symbol(pk)); end
 
 # add Turing@v0.21.9   # 21.10 error?
 
-# Turing.setprogress!(false);
+Turing.setprogress!(false);
 # Turing.setrdcache(true)
 
 Turing.setadbackend(:forwarddiff)  # only AD that works right now
@@ -136,30 +126,24 @@ eps = 1.0e-6 # floating point value sufficient to assume 0 valued
 # ------------------------------
 # dynamical model
 include( "size_structured!.jl" )
-
   if false
-    # test dynamical model, generic parameters, can skip
-    include( joinpath( project_directory, "size_structured_test.jl" ))
+    include( joinpath( project_directory, "size_structured_test.jl" )) # test dynamical model with generic parameters, can skip
   end
 
 
 # ------------------------------
-# turing model
+# turing model 
 include( "fishery_model_turing_dde.jl" )
 
 
-
 # -------------------------
-#  prepare dta for diffeq/turing model
+#  prepare data for diffeq/turing model and set default parameters
 include( "fishery_model_turing_size_struct_dde_data.jl" )
-
   if false
     ## test, can ignore
     prob = DDEProblem( size_structured!, u0, h, tspan, p; constant_lags=lags )
     msol2 =  solve( prob,  solver, callback=cb, saveat=dt, isoutofdomain=(y,p,t)->any(x->x<0,y) )# to force positive
-    plot(0)
-    plot!( msol2, label="dde, with hsa, no fishing" )
-    plot!(; legend=false, xlim=(1999,2021) )
+    plot( msol2, ; legend=false, xlim=(1999,2021), label="dde, with hsa, no fishing" )
   end
 
 # ---------------
@@ -167,15 +151,17 @@ include( "fishery_model_turing_size_struct_dde_data.jl" )
 
  
 # ---------------
-# run model estimations
- 
-# stiff solvers: Rodas4()  ; Rosenbrock23()
-# solver = MethodOfSteps(Tsit5())  
-solver = MethodOfSteps(Rodas5())  
+# run model estimations / overrides
 
-# solver = MethodOfSteps(Tsit5())  # 10 - 41.43 .. sometimes errors out
+Turing.setprogress!(false);
+
+solver = MethodOfSteps(Tsit5())  
+# solver = MethodOfSteps(Rodas5())  
+
+# relative timings:
+# solver = MethodOfSteps(Tsit5())  # 10 - 41.43 
 # solver = MethodOfSteps(Rodas5())   # 20.94  - 71.73
-# solver = MethodOfSteps(BS3())   # 56.1, sometimes errors out
+# solver = MethodOfSteps(BS3())   # 56.1
 # solver = MethodOfSteps(Rodas4()) #   24.86- 82.79
 # solver = MethodOfSteps(Rosenbrock23()) #  71.48
 # solver = MethodOfSteps(Vern6())  # 73.98
@@ -188,34 +174,31 @@ solver = MethodOfSteps(Rodas5())
  
 prob = DDEProblem( size_structured!, u0, h, tspan, p, constant_lags=lags )
 fmod = fishery_model_turing_dde( S, kmu, tspan, prob, nT, nS, solver  )
+ 
+  if false
+    # for testing and timings
+    n_samples = 3
+    n_adapts = 3
+    n_chains = 1
+    # sampler = Turing.MH()
+    # sampler = Turing.HMC(0.05,10)
+    sampler = Turing.NUTS(n_adapts, 0.8; max_depth=12, init_ϵ=0.05)
+    res  =  sample( fmod, sampler, n_samples  )
+  end
 
-testing = false
-if testing
-  # testing
-  n_samples = 3
-  n_adapts = 3
-  n_chains = 1
-  # sampler = Turing.MH()
-  # sampler = Turing.HMC(0.05,10)
-  sampler = Turing.NUTS(n_adapts, 0.65; max_depth=10, init_ϵ=0.025)
-  res  =  sample( fmod, sampler, n_samples  )
+# production  
+n_samples = 500  # 1000 -> 18 hrs (Tsit5);  500 -> 6 hrs
+n_adapts = 500
+n_chains = Threads.nthreads()
+# sampler = Turing.HMC(0.05,10)
+sampler = Turing.NUTS(n_adapts, 0.8; max_depth=12, init_ϵ=0.05)  ;# stepsize based upon previous experience
 
-else
+res  =  sample( fmod, sampler, MCMCThreads(), n_samples, n_chains )
+# if on windows and threads are not working, use single processor mode:
+# res = mapreduce(c -> sample(fmod, sampler, n_samples), chainscat, 1:n_chains)
 
-  # production .. ~ 5 hrs 
-  n_samples = 1000
-  n_adapts = 500
-  n_chains = Threads.nthreads()
-  # sampler = Turing.HMC(0.05,10)
-  sampler = Turing.NUTS(n_adapts, 0.65; max_depth=10, init_ϵ=0.025)  ;# stepsize based upon previous experience
-
-  res  =  sample( fmod, sampler, MCMCThreads(), n_samples, n_chains )
-    # if on windows and threads are not working, use single processor mode:
-    # res = mapreduce(c -> sample(fmod, sampler, n_samples), chainscat, 1:n_chains)
-
-end
-
-
+ 
+# display all estimates
 show(stdout, "text/plain", summarize(res))
 
 
@@ -224,16 +207,14 @@ show(stdout, "text/plain", summarize(res))
 using JLD2  # using HDF5
 fn = joinpath( project_directory, string("data_size_struct_dde", "_", aulab, ".hdf5" ) )
 @save fn res
-@load fn res
+# @load fn res
 # can read back in R as:  
 # h5read( paste("/home/jae/julia/snowcrab/data_size_struct_dde", "_", aulab, ".hdf5"), "res")
 
-# or save as native julaia dat format
-fn = joinpath( project_directory, string("data_size_struct_dde", "_", aulab, ".jd" ) )
-write(fn, res)
-read(fn)
- 
- 
+fnk = joinpath( project_directory, string("data_size_struct_dde", "_", aulab, "_K_", ".hdf5" ) )
+tt =res[:,Symbol("K[1]"),:]
+@save fnk tt
+
 # ------------------------------
 # process outputs
 show(stdout, "text/plain", summarize(res))
@@ -248,31 +229,59 @@ density(res[:"v[1]"])
 # -------------------------
 # plot timeseries of mean fields
 include( "plot_dde.jl" )
-plot(0)
-plot_dde( selection="S K predictions predictionmeans", s=[1] ) 
 
+plot(0)
+plots_sim = plot_dde( selection="S K predictions predictionmeans", si=[1], mw=mw ) 
+gui(plots_sim)
+savefig(plots_sim, string("plots_sim_", aulab, ".pdf") )
+savefig(plots_sim, string("plots_sim_", aulab, ".svg") )
+savefig(plots_sim, string("plots_sim_", aulab, ".png") )
+
+
+plot(0)
+plots_fishing = plot_dde( selection="K withfishing withoutfishing predictionmeans", si=[1], mw=mw)
+gui(plots_fishing)
+savefig(plots_fishing, string("plots_fishing_", aulab, ".pdf") ) 
+savefig(plots_fishing, string("plots_fishing_", aulab, ".svg") ) 
+savefig(plots_fishing, string("plots_fishing_", aulab, ".png") ) 
 
 
 
 # ------------------------------
 # misc computed quantities
 
-# params need to be named  .. return only that which is specified by "return()", below
+# in R
+install.packages("BiocManager")
+
+BiocManager::install("rhdf5filters")
+BiocManager::install("rhdf5")
+
+# Call the R HDF5 Library
+library("rhdf5")
+
+aulab = "cfa4x"
+fn = paste("/home/jae/projects/dynamical_model/snowcrab/data_size_struct_dde", "_", aulab, ".hdf5", sep="")
+res = h5read( fn, "res")
+
+fnk = paste("/home/jae/projects/dynamical_model/snowcrab/data_size_struct_dde", "_", aulab, "_K_", ".hdf5", sep="")
+tt = h5read( fnk, "tt")
+
+
+
 pm = ( b=b, K=K, d=d, v=v, tau=tau, hsa=hsa ) 
 
-@model function fm_test( S1, S2, S3, S4, S5, S6, kmu, tspan, prob, nT=length(S1), ::Type{T}=Float64 ) where {T}  
+@model function fm_test( S1, S2, S3, S4, S5, S6, kmu, tspan, prob; nT=length(S1), M=5, er=0.2, ::Type{T}=Float64 ) where {T}  
   
+  # params need to be named  .. return only that which is specified by "return()", below
   # deterministic computations: do from similations:
-  M=3
-  er=0.2
+ 
+  FM = zeros(nT+M)
+  BM = zeros(nT+M)
+  CA = zeros(nT+M)
 
-  F = zeros(nT+M)
-  B = zeros(nT+M)
-  C = zeros(nT+M)
-
-  C[1:nT] = removed ./ K
-  C[(nT+1):(M+nT)] = er .* bm[(nT):(M+nT-1)]
-  C = 1.0 .- C / bm
+  CA[1:nT] = removed ./ K
+  CA[(nT+1):(M+nT)] = er .* bm[(nT):(M+nT-1)]
+  CA = 1.0 .- CA / bm
 
   F =  -log( max.(C, eps) )  ;
   

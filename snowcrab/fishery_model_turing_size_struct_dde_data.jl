@@ -1,6 +1,5 @@
 # perpare dat for dde run of fishery model
-using DifferentialEquations
-using  RData
+using DifferentialEquations, Interpolations, RData
 
 
 fndat = "/home/jae/bio.data/bio.snowcrab/modelled/1999_present_fb/fishery_model_results/turing1/biodyn_number_size_struct.RData"
@@ -8,7 +7,8 @@ o = load( fndat, convert=true)
 Y = o["Y"]
 Kmu = o["Kmu"]
 removals = o["L"]
-
+MW = o["M0_W"]
+ 
 
     if false
         # alternatively, if running manually:
@@ -55,8 +55,6 @@ removals = o["L"]
 
 eps = 1.0e-9
 
-# convert to number .. 0.56 is ave mean weight
-kmu = Kmu[au] * 1000 *1000 / 0.56 
 
 
 # "survey index"
@@ -67,11 +65,20 @@ statevars = [
   Symbol("$aulab","_M3"),
   Symbol("$aulab","_M4"),
   Symbol("$aulab","_f_mat")
-]
-S = Matrix(Y[:, statevars ])
+  ]
+  S = Matrix(Y[:, statevars ])
+  
+  (nT, nS) = size(S)
+  
+  # interpolating function for mean weight
+  mwspline = extrapolate( interpolate( MW[:,Symbol("mw_", "$aulab") ], (BSpline(Linear()) ) ),  Interpolations.Flat() )
+  mw = Interpolations.scale(mwspline, yrs )
+  
+  scale_factor = mw(yrs) / (1000 *1000 ) # convert numbers to kt biomass
 
-(nT, nS) = size(S)
 
+  # convert to (biomass kt to number) 
+kmu = Kmu[au] / mean(scale_factor)
 
 
 # spin up time of 10 years prior to start of dymamics and project 5 years into the future
@@ -125,7 +132,7 @@ lags = [tau]
 # stiff solvers: Rodas4()  ; Rosenbrock23()
 # solver = MethodOfSteps(Rosenbrock23()) # slow  
 # solver = MethodOfSteps(Rodas4())  
-solver = MethodOfSteps(Tsit5())  
+solver = MethodOfSteps(Rodas5())  # safer 
 # other solvers: BS3() and Vern6() also RK4()
 
 # these are dummy initial values .. just to get things started
