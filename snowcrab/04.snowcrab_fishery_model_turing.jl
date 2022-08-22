@@ -80,12 +80,14 @@ pkgs = [
   "Revise", "MKL", "StatsBase", "Statistics",  "Distributions", "LinearAlgebra",  "Interpolations", 
   "Plots", "StatsPlots", "MultivariateStats", "RData",
   "Turing",  "ModelingToolkit", "DifferentialEquations",  
-  "StaticArrays", "LazyArrays", 
-  "ForwardDiff"
+  "StaticArrays", "LazyArrays", "FillArrays",
+  "ForwardDiff", "DynamicHMC"
   # "DiffResults", "Memoization", "DynamicPPL", "AbstractPPL", "AdvancedHMC", "MCMCChains", "SciMLSensitivity",
    #"Tracker" #, "ReverseDiff", "Zygote", "ForwardDiff", "Diffractor", "Memoization",
 ]
   
+
+
 for pk in pkgs; @eval using $(Symbol(pk)); end
 
 # Pkg.add( pkgs ) # add required packages
@@ -177,13 +179,18 @@ fmod = fishery_model_turing_dde( S, kmu, tspan, prob, nT, nS, solver  )
  
   if false
     # for testing and timings
+    # include( "fishery_model_turing_dde.jl" )
     n_samples = 3
     n_adapts = 3
     n_chains = 1
     # sampler = Turing.MH()
     # sampler = Turing.HMC(0.05,10)
     sampler = Turing.NUTS(n_adapts, 0.8; max_depth=12, init_ϵ=0.05)
+    # sampler = DynamicNUTS()
+   
+ 
     res  =  sample( fmod, sampler, n_samples  )
+ 
   end
 
 # production  
