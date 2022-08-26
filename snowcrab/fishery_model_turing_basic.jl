@@ -46,7 +46,7 @@ if get_data_with_RCall
         # type <backspace> to escape back to julia
         source( file.path( code_root, "bio_startup.R" )  )
         require(bio.snowcrab)   # loadfunctions("bio.snowcrab")
-        fishery_model_data_inputs( year.assessment=2021, type="biomass_dynamics" )
+        fishery_model_data_inputs( year.assessment=2021, type="biomass_dynamics", for_julia=TRUE   )
     }
 
     # now back in Julia, fetch data into julia's workspace (replace fndat with the  filenane printed above )
