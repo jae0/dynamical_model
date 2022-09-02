@@ -91,7 +91,7 @@ survey_time = round.( round.( Y[:,:yrs] ./ dt; digits=0 ) .* dt; digits=no_digit
 # speed is the issue 
 
 
-prediction_time = floor.(vcat( survey_time, collect(1:nypred) .+ maximum(survey_time) ) ) .+ round( round( 9.0/12.0 /dt; digits=0 ) *dt; digits=no_digits)
+prediction_time = floor.(vcat( survey_time, collect(1:nP) .+ maximum(survey_time) ) ) .+ round( round( 9.0/12.0 /dt; digits=0 ) *dt; digits=no_digits)
 
 #  sa to fraction
 

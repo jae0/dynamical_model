@@ -48,7 +48,8 @@ function size_structured_dde_turing_plot( ; selection="withfishing withoutfishin
             else
                 yval = yval .* scale_factor
             end
-
+            yval = vec(yval)
+            
             plot!( msol.t, yval, alpha=0.85, lw=4, color=:steelblue ) 
             plot!(; xlim=(minimum(yrs)-0.5, maximum(yrs)+1.5  ) )
             plot!(; ylim=(0, maximum(yval)*1.1 ) )
@@ -57,7 +58,7 @@ function size_structured_dde_turing_plot( ; selection="withfishing withoutfishin
 
     
         if occursin( r"withoutfishing", selection )  
-            prob2 = DDEProblem( size_structured!, u0, h, tspan, pm; saveat=dt, constant_lags=lags )
+            prob2 = DDEProblem( size_structured_dde!, u0, h, tspan, pm; saveat=dt, constant_lags=lags )
             msol = solve( 
                 prob2,  
                 solver, 
@@ -71,6 +72,7 @@ function size_structured_dde_turing_plot( ; selection="withfishing withoutfishin
             else
                 yval = yval .* scale_factor
             end
+            yval = vec(yval)
 
             plot!( msol.t, yval, alpha=0.85, lw=4, color=:teal ) 
             plot!(; xlim=(minimum(yrs)-0.5, maximum(yrs)+1.5  ) )
@@ -112,13 +114,13 @@ function size_structured_dde_turing_plot( ; selection="withfishing withoutfishin
 
     if occursin( r"predictions", selection )  
         # sample and plot posterior means from model (posterior post-fishery abundance)
-
+        nM = nT +nP
         for k in si
             for l in 1:size(res)[3]
             # l = 1
             for i in 1:length(res)  
-                w = zeros(nT)
-                for j in 1:nT
+                w = zeros(nM)
+                for j in 1:nM
                     w[j] = res[i, Symbol("K[$k]"),l] * res[i, Symbol("m[$j,$k]"),l] 
                 end
                 if nameof(typeof(mw)) == :ScaledInterpolation
@@ -136,10 +138,12 @@ function size_structured_dde_turing_plot( ; selection="withfishing withoutfishin
     
     if occursin( r"predictionmeans", selection )  
         # mean post-fishery abundance
+        nM = nT +nP
+        
         for k in si
-            u = zeros(nT)
-            v = zeros(nT)
-            for  j in 1:nT
+            u = zeros(nM)
+            v = zeros(nM)
+            for  j in 1:nM
                 u[j] = mean( res[:,Symbol("m[$j,$k]"),:] .* res[:,Symbol("K[$k]"),:] )   
                 v[j] = std(  res[:,Symbol("m[$j,$k]"),:] .* res[:,Symbol("K[$k]"),:] )  
             end

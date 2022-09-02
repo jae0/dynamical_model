@@ -26,22 +26,7 @@ pkgs = [
    #"Tracker" #, "ReverseDiff", "Zygote", "ForwardDiff", "Diffractor", "Memoization",
 ]
   
-
-
-for pk in pkgs; @eval using $(Symbol(pk)); end
-
-# Pkg.add( pkgs ) # add required packages
- 
-
-Turing.setprogress!(false);
-# Turing.setrdcache(true)
-
-Turing.setadbackend(:forwarddiff)  # only AD that works right now
-# rev diff having issues 
-# Turing.setadbackend(:zygote) # 6.2 hrs, 
-# Turing.setadbackend(:forwarddiff)  # CFA 4X: 6.2 hrs 
-# Turing.setadbackend(:tracker)  # 5.7 hrs, but some stability issues?
-# Turing.setadbackend(:reversediff)  # 5.8 hrs 
+for pk in pkgs; @eval using $(Symbol(pk)); end   # Pkg.add( pkgs ) # add required packages
  
 
 
@@ -58,7 +43,7 @@ au = 3  # cfa index
 aulab ="cfa4x"
 
 yrs = 1999:2021
-nypred = 5
+nP = 5  # no years to project into future 
 
 dt = 1/12 # time resolution of solutions
 no_digits = 3  # time floating point rounding 
@@ -88,15 +73,21 @@ include( "size_structured_dde_turing_data.jl" )
     msol2 =  solve( prob,  solver, callback=cb, saveat=dt, isoutofdomain=(y,p,t)->any(x->x<0,y) )# to force positive
     plot( msol2, ; legend=false, xlim=(1999,2021), label="dde, with hsa, no fishing" )
   end
-
-# ---------------
-
+ 
 
  
 # ---------------
 # run model estimations / overrides
-
+ 
 Turing.setprogress!(false);
+# Turing.setrdcache(true)
+
+Turing.setadbackend(:forwarddiff)  # only AD that works right now
+# rev diff having issues 
+# Turing.setadbackend(:zygote) # 6.2 hrs, 
+# Turing.setadbackend(:forwarddiff)  # CFA 4X: 6.2 hrs 
+# Turing.setadbackend(:tracker)  # 5.7 hrs, but some stability issues?
+# Turing.setadbackend(:reversediff)  # 5.8 hrs 
 
 solver = MethodOfSteps(Tsit5())  
 # solver = MethodOfSteps(Rodas5())  
@@ -116,7 +107,7 @@ solver = MethodOfSteps(Tsit5())
 
  
 prob = DDEProblem( size_structured_dde!, u0, h, tspan, p, constant_lags=lags )
-fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, solver  )
+fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nP, solver  )
  
   if false
     # for testing and timings
@@ -126,7 +117,7 @@ fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, solver  )
     n_chains = 1
     # sampler = Turing.MH()
     # sampler = Turing.HMC(0.05,10)
-    sampler = Turing.NUTS(n_adapts, 0.65; max_depth=10, init_ϵ=0.05)
+    sampler = Turing.NUTS(n_adapts, 0.65)
     # sampler = DynamicNUTS()
    
  
@@ -135,11 +126,11 @@ fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, solver  )
   end
 
 # production  
-n_samples = 500  # 1000 -> ? hrs (Tsit5);  500 -> ( 15, xx, 17 ) hrs
-n_adapts = 500
+n_samples = 1000  # 1000 -> ? hrs (Tsit5);  500 -> 6 hrs
+n_adapts = 1000
 n_chains = Threads.nthreads()
 # sampler = Turing.HMC(0.05,10)
-sampler = Turing.NUTS(n_adapts, 0.65; max_depth=10, init_ϵ=0.05)  ;# stepsize based upon previous experience
+sampler = Turing.NUTS(n_adapts, 0.65 ) # ; max_depth=10, init_ϵ=0.00625)  ;# stepsize based upon previous experience
 
 res  =  sample( fmod, sampler, MCMCThreads(), n_samples, n_chains )
 # if on windows and threads are not working, use single processor mode:

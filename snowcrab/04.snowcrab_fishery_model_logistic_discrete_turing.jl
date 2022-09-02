@@ -34,16 +34,6 @@ for pk in pkgs; @eval using $(Symbol(pk)); end
 #  Pkg.add( pkgs ) # add required packages
 
  
-Turing.setprogress!(false);
-# Turing.setrdcache(true)
-
-Turing.setadbackend(:forwarddiff)   
-  # Turing.setadbackend(:forwarddiff)  #  
-  # Turing.setadbackend(:zygote) #  
-  # Turing.setadbackend(:tracker)  #  
-  # Turing.setadbackend(:reversediff)  #  
-  
-
 
 # ------------------------------
 # choose a region of interest"
@@ -79,7 +69,16 @@ include( "logistic_discrete_turing_data.jl" )
 # ---------------
 # run model estimations / overrides
 Turing.setprogress!(false);
- 
+
+# Turing.setrdcache(true)
+
+Turing.setadbackend(:forwarddiff)   
+  # Turing.setadbackend(:forwarddiff)  #  
+  # Turing.setadbackend(:zygote) #  
+  # Turing.setadbackend(:tracker)  #  
+  # Turing.setadbackend(:reversediff)  #  
+  
+
 
 
 # ------------------------------
