@@ -1,6 +1,8 @@
 
+using Plots, StatsPlots
 
 function size_structured_dde_turing_plot( ; selection="withfishing withoutfishing S K predictions predictionmeans", si=[1], scale_factor=1.0, mw=nothing )
+
 
     if occursin( r"withfishing", selection ) | occursin( r"withoutfishing", selection )  
         # mean field dynamics:
@@ -114,7 +116,7 @@ function size_structured_dde_turing_plot( ; selection="withfishing withoutfishin
 
     if occursin( r"predictions", selection )  
         # sample and plot posterior means from model (posterior post-fishery abundance)
-        nM = nT +nP
+        
         for k in si
             for l in 1:size(res)[3]
             # l = 1
@@ -124,7 +126,7 @@ function size_structured_dde_turing_plot( ; selection="withfishing withoutfishin
                     w[j] = res[i, Symbol("K[$k]"),l] * res[i, Symbol("m[$j,$k]"),l] 
                 end
                 if nameof(typeof(mw)) == :ScaledInterpolation
-                    w = w .* mw(yrs) ./ 1000.0  ./ 1000.0 
+                    w = w .* mw(prediction_time) ./ 1000.0  ./ 1000.0 
                 else
                     w = w .* scale_factor
                 end
@@ -138,7 +140,7 @@ function size_structured_dde_turing_plot( ; selection="withfishing withoutfishin
     
     if occursin( r"predictionmeans", selection )  
         # mean post-fishery abundance
-        nM = nT +nP
+        
         
         for k in si
             u = zeros(nM)
@@ -148,8 +150,8 @@ function size_structured_dde_turing_plot( ; selection="withfishing withoutfishin
                 v[j] = std(  res[:,Symbol("m[$j,$k]"),:] .* res[:,Symbol("K[$k]"),:] )  
             end
             if nameof(typeof(mw)) == :ScaledInterpolation
-                u = u .* mw(yrs) ./ 1000.0  ./ 1000.0 
-                v = v .* mw(yrs) ./ 1000.0  ./ 1000.0 
+                u = u .* mw(prediction_time) ./ 1000.0  ./ 1000.0 
+                v = v .* mw(prediction_time) ./ 1000.0  ./ 1000.0 
             else
                 u = u .* scale_factor
                 v = v .* scale_factor
@@ -163,7 +165,7 @@ function size_structured_dde_turing_plot( ; selection="withfishing withoutfishin
     if occursin( r"S", selection )  
         # back transform S to normal scale 
         si1 = si[1]
-        yhat = ( S[:,si1] .* mean(res[:,Symbol("q[$si1]"),:]) .- mean(res[:,Symbol("qc[$si1]"),:] ) ) .* mean(res[:,Symbol("K[$si1]"),:]  ) 
+        yhat = ( S[:,si1] ./ mean(res[:,Symbol("q[$si1]"),:]) .- mean(res[:,Symbol("qc[$si1]"),:] ) ) .* mean(res[:,Symbol("K[$si1]"),:]  ) 
         if nameof(typeof(mw)) == :ScaledInterpolation
             yhat = yhat .* mw(yrs) ./ 1000.0  ./ 1000.0 
         else

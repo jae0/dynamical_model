@@ -5,7 +5,6 @@
 # NOTE::: require 03.snowcrab_carstm.r to be completed 
 
 
-
 if false
   # if doing manual startup
   project_directory = @__DIR__() #  same folder as the file
@@ -18,22 +17,43 @@ end
 # load libs and check settings
  
 pkgs = [ 
-  "Revise", "MKL", "StatsBase", "Statistics",  "Distributions", "LinearAlgebra",  "Interpolations", 
-  "Plots", "StatsPlots", "MultivariateStats", "RData",
-  "Turing",  "ModelingToolkit", "DifferentialEquations",  
-  "StaticArrays", "LazyArrays", "FillArrays",
-  "ForwardDiff", "DynamicHMC",
-  "JLD2", "HDF5"
-  # "DiffResults", "Memoization", "DynamicPPL", "AbstractPPL", "AdvancedHMC", "MCMCChains", "SciMLSensitivity",
-   #"Tracker" #, "ReverseDiff", "Zygote", "ForwardDiff", "Diffractor", "Memoization",
+  "Revise", "MKL", "Logging",
+  "Turing", "ModelingToolkit", "Interpolations" 
 ]
 
-
 for pk in pkgs; @eval using $(Symbol(pk)); end
+
+# "ForwardDiff"
+# , "StatsBase", "Statistics",  "Distributions", "LinearAlgebra",   
+# , "DifferentialEquations",  
+# , "DynamicHMC", "AdvancedHMC",
+# "Plots", "StatsPlots", "MultivariateStats", "RData",
+# "DiffResults", "Memoization", "DynamicPPL", "AbstractPPL", "AdvancedHMC", "MCMCChains", "SciMLSensitivity",
+# "Tracker" #, "ReverseDiff", "Zygote", "ForwardDiff", "Diffractor", "Memoization",
+# "StaticArrays", "LazyArrays", "FillArrays",
+# "JLD2",
 
 #  Pkg.add( pkgs ) # add required packages
 
  
+
+
+
+# ------------------------------
+# prepare data for diffeq/turing model and set default parameters
+
+# run-level options
+
+yrs = 1999:2021  # <<<<<<<<-- change
+nT = length(yrs)
+nP = 5  # number of predictions into future (with no fishing)
+nM = nP + nT  # total number of prediction years
+
+dt = 1  # time resolution of solutions .. discrete annual so 1 year
+
+nS = 1 # no state variables, not used 
+
+
 
 # ------------------------------
 # choose a region of interest"
@@ -47,24 +67,34 @@ aulab ="cfasouth"
 au = 3  # cfa index
 aulab ="cfa4x"
 
-yrs = 1999:2021  # <<<<<<<<-- change
-nP = 5  # number of predictions into future (with no fishing)
 
-dt = 1  # time resolution of solutions
-no_digits = 3  # time floating point rounding 
+# choose one:    
+model_variation = "Model_1"
 
-eps = 1.0e-9 # floating point value sufficient to assume 0 valued
-
- 
-# ------------------------------
-# turing model -- dynamics embedded
-include( "logistic_discrete_turing.jl" )
+model_variation = "Model_2"
 
 
 # -------------------------
 #  prepare data for turing model and set default parameters
 include( "logistic_discrete_turing_data.jl" )
+
  
+
+# ------------------------------
+# turing model -- dynamics embedded
+include( "logistic_discrete_turing.jl" )
+
+
+# ------------------------------
+# initial values for Logistic!
+# almost working but solution decay to negative numbers though it is supposed to be bounded ..  
+
+if model_variation == "Model_1"
+  fmod = logistic_discrete_turing_basic( S, kmu, nT, nM, removed  )  # q only
+else 
+  fmod = logistic_discrete_turing( S, kmu, nT, nM, removed  ) # q, qc
+end
+
 
 # ---------------
 # run model estimations / overrides
@@ -78,22 +108,10 @@ Turing.setadbackend(:forwarddiff)
   # Turing.setadbackend(:tracker)  #  
   # Turing.setadbackend(:reversediff)  #  
   
-
-
-
-# ------------------------------
-# initial values for Logistic!
-# almost working but solution decay to negative numbers though it is supposed to be bounded ..  
-
-# choose one:    
-model_variation = "Model_1"
-fmod = logistic_discrete_turing_basic( S, kmu, nT, nP, removed  )  # q only
-
-model_variation = "Model_2"
-fmod = logistic_discrete_turing( S, kmu, nT, nP, removed  ) # q, qc
-
-  if false 
-    # Prior predictive check: 
+ 
+if false
+ 
+  # Prior predictive check: 
     prior_res = sample(   fmod, Prior(), 100, nwarmup = 100, nchains = 3 );
 
     missing_data = Vector{Missing}(missing, nT)
@@ -101,8 +119,10 @@ fmod = logistic_discrete_turing( S, kmu, nT, nP, removed  ) # q, qc
     prior_check = predict( mod_preds, prior_res )
     summarystats( prior_check )
     plot(prior_check)
+ 
   end
 
+  
 # Posterior sampling
   if false
     # for testing and timings
@@ -110,29 +130,38 @@ fmod = logistic_discrete_turing( S, kmu, nT, nP, removed  ) # q, qc
     n_samples = 3
     n_adapts = 3
     n_chains = 1
-    # sampler = Turing.MH()
-    # sampler = Turing.HMC(0.05,10)
-    sampler = Turing.NUTS(n_adapts, 0.65; max_depth=10, init_ϵ=0.05)
-    # sampler = DynamicNUTS()
+    # turing_sampler = Turing.MH()
+    # turing_sampler = Turing.HMC(0.05,10)
+    turing_sampler = Turing.NUTS(n_adapts, 0.65)
+    # turing_sampler = Turing.NUTS(n_adapts, 0.65; max_depth=10, init_ϵ=0.025)
+    # turing_sampler = DynamicNUTS()
 
-    res  =  sample( fmod, sampler, n_samples  )
+    res  =  sample( fmod, turing_sampler, n_samples  )
   end
 
+
 # production  
+# turing_sampler needs to be a bit more extreme as the discerte model is a bit more unstable 
+import Logging
+Logging.disable_logging(Logging.Warn) # or e.g. Logging.Info
+
 n_samples = 2000
 n_adapts = 1000
-n_chains = Threads.nthreads()
-# sampler = Turing.HMC(0.05,10)
-sampler = Turing.NUTS(n_adapts, 0.95; max_depth=12, init_ϵ=0.05)  ;# stepsize based upon previous experience
+n_chains = 4
 
-res  =  sample( fmod, sampler, MCMCThreads(), n_samples, n_chains )  # < 1 min
+turing_sampler = Turing.NUTS(n_adapts, 0.8; max_depth=9, init_ϵ=0.025)  ;# stepsize based upon previous experience
+# turing_sampler = Turing.NUTS(n_adapts, 0.65)
+
+res  =  sample( fmod, turing_sampler, MCMCThreads(), n_samples, n_chains )  # < 1 min
+
 # if on windows and threads are not working, use single processor mode:
-# res = mapreduce(c -> sample(fmod, sampler, n_samples), chainscat, 1:n_chains)
+# res = mapreduce(c -> sample(fmod, turing_sampler, n_samples), chainscat, 1:n_chains)
 
 
 
 # ------------------------------
 # save results as a hdf5
+using JLD2
 
 fn = joinpath( project_directory, string("logistic_discrete_turing_data", "_", model_variation, "_", aulab, ".hdf5" ) )
 @save fn res
@@ -150,28 +179,28 @@ fn = joinpath( project_directory, string("logistic_discrete_turing_data", "_", m
 show(stdout, "text/plain", summarize(res))
 
 
+using Plots, StatsPlots
+
 density(res[:"q"])
 density(res[:"qc"])
 density(res[:"K"])
 density(res[:"r"])
-
-
-  show(stdout, "text/plain", summarize(res))
-
-  histogram(res[:"r"])
-  histogram(res[:"K"])
-  histogram(res[:"q"])
-  histogram(res[:"qc"])
-  histogram(res[:"bosd"])
-  histogram(res[:"bpsd"])
+density(res[:"bosd"])
+density(res[:"bpsd"])
 
  
+
 # -------------------------
 # plot timeseries of mean fields
+
 include( "logistic_discrete_turing_plot.jl" )
 
 plot(0)
-plots_sim = logistic_discrete_turing_plot( selection="S K predictions predictionmeans"  ) 
+
+selection = "S K predictions predictionmeans"
+plots_sim = logistic_discrete_turing_plot( selection=selection  ) 
+# plot!(; ylim=(0, 2 ) )
+
 # gui(plots_sim)
 savefig(plots_sim, string("logistic_discrete_turing_plots_sim", "_", model_variation, "_", aulab, ".pdf") )
 savefig(plots_sim, string("logistic_discrete_turing_plots_sim", "_", model_variation, "_", aulab, ".svg") )
@@ -179,47 +208,50 @@ savefig(plots_sim, string("logistic_discrete_turing_plots_sim", "_", model_varia
 
 
 plot(0)
-plots_fishing = logistic_discrete_turing_plot( selection="K predictionmeans" )
+selection = "K predictions predictionmeans"
+plots_fishing = logistic_discrete_turing_plot( selection=selection )
+# plot!(; ylim=(0, 65 ) )
+
 # gui(plots_fishing)
 savefig(plots_fishing, string("logistic_discrete_turing_plots_fishing", "_", model_variation, "_", aulab, ".pdf") ) 
 savefig(plots_fishing, string("logistic_discrete_turing_plots_fishing", "_", model_variation, "_", aulab, ".svg") ) 
 savefig(plots_fishing, string("logistic_discrete_turing_plots_fishing", "_", model_variation, "_", aulab, ".png") ) 
 
 
-    
-  using MCMCChains, AdvancedHMC
-
-  summarystats(res)
-
-  density( res[:,:r,:])
-  density( res[:,:K,:])
-  density( res[:,:q,:])
-  density( res[:,:qc,:])
   
+using MCMCChains, AdvancedHMC
 
-  group( res, :m0)  ##== res(:, 5:20, :) == res[[:m0]]
-  
-  corner(res)
+summarystats(res)
 
-  plot( res[[:m0]] )
-
-  plot(
-    traceplot(res),
-    meanplot(res),
-    density(res),
-    histogram(res),
-    mixeddensity(res),
-    autocorplot(res),
-    dpi=300, size=(840,600)
-  )
-
-  plot(res, seriestype=(:meanplot, :autocorplot), dpi=300)
+density( res[:,:r,:])
+density( res[:,:K,:])
+density( res[:,:q,:])
+density( res[:,:qc,:])
 
 
-  plot(res[:,[Symbol("m0[$i]") for i in 1:10],:])
+group( res, :m0)  ##== res(:, 5:20, :) == res[[:m0]]
 
-  using ArviZ
-  using PyPlot
+corner(res)
+
+plot( res[[:m0]] )
+
+plot(
+  traceplot(res),
+  meanplot(res),
+  density(res),
+  histogram(res),
+  mixeddensity(res),
+  autocorplot(res),
+  dpi=300, size=(840,600)
+)
+
+plot(res, seriestype=(:meanplot, :autocorplot), dpi=300)
+
+
+plot(res[:,[Symbol("m0[$i]") for i in 1:10],:])
+
+using ArviZ
+using PyPlot
 
 
 
@@ -237,7 +269,6 @@ Plots.plot!( survey_time , S )
 
 
 Plots.plot( survey_time , summarystats(idata.posterior; var_names=["ys"]).mean )
-
 
 
 oo = Array(res, (size(res)[1], size(res)[2]) )
@@ -283,7 +314,7 @@ end
   C[(nT+1):(M+nT)] = er .* bm[(nT):(M+nT-1)]
   C = 1.0 .- C / bm
 
-  F =  -log( max.(C, eps) )  ;
+  F =  -log( max.(C, smallnumber) )  ;
   
   # parameter estimates for output
   MSY    = r* exp(K) / 4 ; # maximum height of of the latent productivity (yield)
@@ -298,14 +329,14 @@ end
 
 bm = tzeros(Real, nT+M, U)
   
-bm[1] ~ TruncatedNormal( b0, bpsd, eps, 1.0)  ;
+bm[1] ~ TruncatedNormal( b0, bpsd, smallnumber, 1.0)  ;
 for i in 2:nT 
   o = r * ( 1.0 - bm[i-1] ) ; 
-  bm[i] ~ TruncatedNormal(   bm[i-1] * ( 1.0 + o ) - L[i-1]/K, bpsd, eps, 1.0)  ;
+  bm[i] ~ TruncatedNormal(   bm[i-1] * ( 1.0 + o ) - L[i-1]/K, bpsd, smallnumber, 1.0)  ;
 end
 for i in (nT+1):(M+nT) 
   o = r * ( 1.0 - bm[i-1] ) ; 
-  bm[i] ~ TruncatedNormal(   bm[i-1] * ( 1.0 + o ) - er*bm[(i-1)], bpsd, eps, 1.0)  ;
+  bm[i] ~ TruncatedNormal(   bm[i-1] * ( 1.0 + o ) - er*bm[(i-1)], bpsd, smallnumber, 1.0)  ;
 end
 
 # -------------------
@@ -329,19 +360,19 @@ end
 if j in 1:2 {
   # spring surveys
   ys = ( Y[1, j] / q ) +  qc
-  ys ~ TruncatedNormal( bm[1,j] - L[1,j]/K , bosd, eps, 1.0) ;
+  ys ~ TruncatedNormal( bm[1,j] - L[1,j]/K , bosd, smallnumber, 1.0) ;
   for i in 2:(ty-1) 
     ys = ( Y[i, j] / q ) +  qc
-    ys  ~ TruncatedNormal( bm[i,j] - L[i-1,j]/K , bosd, eps, 1.0)  ;
+    ys  ~ TruncatedNormal( bm[i,j] - L[i-1,j]/K , bosd, smallnumber, 1.0)  ;
   end
   #  transition year (ty)
   ys = ( Y[ty,j] / q ) +  qc
-  ys  ~ TruncatedNormal(  bm[ty,j]  - (L[ty-1,j]/K  + L[ty,j]/K ) / 2.0  , bosd, eps, 1.0)  ; #NENS and SENS
+  ys  ~ TruncatedNormal(  bm[ty,j]  - (L[ty-1,j]/K  + L[ty,j]/K ) / 2.0  , bosd, smallnumber, 1.0)  ; #NENS and SENS
   # fall surveys
   for j in 1:U 
     for i in (ty+1):nT 
       ys = ( Y[i,j] / q ) +  qc
-      ys ~ TruncatedNormal(  bm[i,j] - L[i,j]/K, bosd, eps, 1.0)  ; #   fall surveys
+      ys ~ TruncatedNormal(  bm[i,j] - L[i,j]/K, bosd, smallnumber, 1.0)  ; #   fall surveys
     end
   end
 
@@ -352,16 +383,16 @@ if j ==3
   # spring surveys
   for i in 1:(ty-1)  
     ys = ( Y[i, 3] / q[3] ) +  qc[3]
-    ys  ~ TruncatedNormal( bm[i,3] - L[i,3]/K[3], bosd[3], eps, 1.0)  ;
+    ys  ~ TruncatedNormal( bm[i,3] - L[i,3]/K[3], bosd[3], smallnumber, 1.0)  ;
   end
   #  transition year (ty)
   ys = ( Y[ty,3] / q[3] ) +  qc[3]
-  ys  ~ TruncatedNormal(  bm[ty,3]  - L[ty,3]/K[3] , bosd[3], eps, 1.0)  ; #SENS
+  ys  ~ TruncatedNormal(  bm[ty,3]  - L[ty,3]/K[3] , bosd[3], smallnumber, 1.0)  ; #SENS
   # fall surveys
   for j in 1:U 
     for i in (ty+1):nT 
       ys = ( Y[i,j] / q ) +  qc
-      ys ~ TruncatedNormal(  bm[i,j] - L[i,j]/K, bosd, eps, 1.0)  ; #   fall surveys
+      ys ~ TruncatedNormal(  bm[i,j] - L[i,j]/K, bosd, smallnumber, 1.0)  ; #   fall surveys
     end
   end
 
@@ -376,7 +407,7 @@ C[1:nT] = L[1:nT] ./ K
 C[(nT+1):(M+nT)] = er .* bm[(nT):(M+nT-1)]
 C = 1.0 -. C / bm
 
-F =  -log( max.(C, eps) )  ;
+F =  -log( max.(C, smallnumber) )  ;
 
    
 # -------------------

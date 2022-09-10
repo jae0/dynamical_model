@@ -53,8 +53,11 @@ MW = o["M0_W"]
     end
 
 
-eps = 1.0e-9
+    
+no_digits = 3  # time floating point rounding 
 
+smallnumber = 1.0e-9 # floating point value sufficient to assume 0 valued
+    
 
 
 # "survey index"
@@ -68,7 +71,6 @@ statevars = [
   ]
   S = Matrix(Y[:, statevars ])
   
-  (nT, nS) = size(S)
   
   # interpolating function for mean weight
   mwspline = extrapolate( interpolate( MW[:,Symbol("mw_", "$aulab") ], (BSpline(Linear()) ) ),  Interpolations.Flat() )
@@ -82,16 +84,16 @@ kmu = Kmu[au] / mean(scale_factor)
 
 
 # spin up time of 10 years prior to start of dymamics and project 5 years into the future
-tspan = (minimum(yrs)-8.0, maximum(yrs)+5.0)  
+tspan = (minimum(yrs) - 8.0, maximum(yrs) + nP + 1.0 )  
 
-survey_time = round.( round.( Y[:,:yrs] ./ dt; digits=0 ) .* dt; digits=no_digits)   # time of observations for survey
+survey_time =   round.( Y[:,:yrs] ./ dt; digits=0 ) .* dt    # time of observations for survey
 
 
 # this only adds habitat space  ... predation is also a useful one .. 
 # speed is the issue 
 
 
-prediction_time = floor.(vcat( survey_time, collect(1:nP) .+ maximum(survey_time) ) ) .+ round( round( 9.0/12.0 /dt; digits=0 ) *dt; digits=no_digits)
+prediction_time = floor.(vcat( survey_time, collect(1:nP) .+ maximum(survey_time) ) ) .+   round( 9.0/12.0 /dt; digits=0 ) *dt 
 
 #  sa to fraction
 
@@ -108,7 +110,7 @@ external_forcing =  reshape( [
 efc = extrapolate( interpolate( external_forcing, (BSpline(Linear()), NoInterp()) ), Interpolations.Flat() )
 hsa = Interpolations.scale(efc, yrs, 1:nS )
 
-fish_time = round.( round.( removals[:,:ts] ./ dt; digits=0 ) .* dt; digits=no_digits)   # time of observations for survey
+fish_time =  round.( removals[:,:ts] ./ dt; digits=0 ) .* dt    # time of observations for survey
 
 removed = removals[:,Symbol("$aulab")]
 
@@ -128,7 +130,7 @@ cb = PresetTimeCallback( fish_time, affect_fishing! )
 # h(p,t) = ones( nS ) .* 0.5  #values of u before t0
 h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS) .* kmu
  
-tau = 1  # delay
+tau = 1  # delay resolution
 lags = [tau]
 
 # stiff solvers: Rodas4()  ; Rosenbrock23()
@@ -147,3 +149,11 @@ v=[0.8, 1.0, 1.0, 1.0];
 tau=1.0; 
 
 p = ( b, K, d, v, tau, hsa )    # dummy values needs to start the turing initialization
+
+if false
+  ## test, can ignore
+  prob = DDEProblem( size_structured_dde!, u0, h, tspan, p; constant_lags=lags )
+  msol2 =  solve( prob,  solver, callback=cb, saveat=dt )# to force positive
+  plot( msol2, ; legend=false, xlim=(1999,2021), label="dde, with hsa, no fishing" )
+end
+

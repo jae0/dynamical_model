@@ -1,6 +1,7 @@
 [deps]
 AbstractPPL = "7a57a42e-76ec-4ea3-a279-07e840d6d9cf"
 AdvancedHMC = "0bf59076-c3b1-5ca4-86bd-e02cd72cde3d"
+AdvancedMH = "5b7e9947-ddc0-4b3f-9b55-0d8042f74170"
 Arpack = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"
 Catalyst = "479239e8-5488-4da2-87a7-35f2df7eef83"
 ChainRules = "082447d4-558c-5d27-93f4-14fc19e9eca2"

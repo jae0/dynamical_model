@@ -35,19 +35,20 @@ removals = o["L"]
     end
 
 
+no_digits = 3  # time floating point rounding 
+
+smallnumber = 1.0e-9 # floating point value sufficient to assume 0 valued
+    
 # "survey index"
 S = Y[:,Symbol("$aulab"  )]
-
-nT = length(S)
-# nP = 1 # no year to project into future
 
 # convert to (biomass kt to number) 
 kmu = Kmu[au]  
 ksd = Ksd[au]
 
 survey_time = Y[:,:yrs]   # time of observations for survey
-prediction_time = floor.(vcat( survey_time, collect(1:nP) .+ maximum(survey_time) ) ) .+ round( round( 9.0/12.0 /dt; digits=0 ) *dt; digits=no_digits)
-fish_time = round.( round.( removals[:,:ts] ./ dt; digits=0 ) .* dt; digits=no_digits)   # time of observations for survey
+prediction_time = floor.(vcat( survey_time, collect(1:nP) .+ maximum(survey_time) ) )     
+fish_time = round.( round.( removals[:,:ts] ./ dt; digits=0 ) .* dt; digits=no_digits)   # time of observations for landings
 
 removed = removals[:,Symbol("$aulab")]
  

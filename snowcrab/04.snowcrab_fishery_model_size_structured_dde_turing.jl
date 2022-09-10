@@ -4,7 +4,14 @@
 # https://diffeq.sciml.ai/stable/tutorials/dde_example/
 
 # NOTE::: require 03.snowcrab_carstm.r to be completed 
+{
+  # R-code to prep data 
+  source( file.path( code_root, "bio_startup.R" )  )
+  loadfunctions("bio.snowcrab")
+  fishery_model_data_inputs( year.assessment=2021, type="size_structured_numerical_dynamics",  for_julia=TRUE, time_resolution=1/12)
 
+}
+        
 
 if false
   # if doing manual startup
@@ -15,19 +22,42 @@ end
 
 # ------------------------------
 # load libs and check settings
-pkgs = [ 
-  "Revise", "MKL", "StatsBase", "Statistics",  "Distributions", "LinearAlgebra",  "Interpolations", 
-  "Plots", "StatsPlots", "MultivariateStats", "RData",
-  "Turing",  "ModelingToolkit", "DifferentialEquations",  
-  "StaticArrays", "LazyArrays", "FillArrays",
-  "ForwardDiff", "DynamicHMC", 
-  "JLD2", "HDF5"
-  # "DiffResults", "Memoization", "DynamicPPL", "AbstractPPL", "AdvancedHMC", "MCMCChains", "SciMLSensitivity",
-   #"Tracker" #, "ReverseDiff", "Zygote", "ForwardDiff", "Diffractor", "Memoization",
-]
-  
-for pk in pkgs; @eval using $(Symbol(pk)); end   # Pkg.add( pkgs ) # add required packages
+
+# add Turing@v0.21.10
  
+pkgs = [ 
+  "Revise", "MKL", "Logging",
+  "Turing", "ModelingToolkit", "Interpolations" 
+]
+
+for pk in pkgs; @eval using $(Symbol(pk)); end   # Pkg.add( pkgs ) # add required packages
+  
+  # "DifferentialEquations",  
+  # "StatsBase", "Statistics", "Distributions", 
+  # "LinearAlgebra",  
+  # "Plots", "StatsPlots", "MultivariateStats", 
+  # "StaticArrays", "LazyArrays", "FillArrays",
+  # "ForwardDiff", # "DynamicHMC", "AdvancedHMC",  "AdvancedMH", 
+  # "DynamicPPL",  "AbstractPPL",  "Memoization", 
+  # "DiffResults", "Memoization", "DynamicPPL", "AbstractPPL", "AdvancedHMC", 
+  # "MCMCChains", "SciMLSensitivity",
+  # "Tracker" #, "ReverseDiff", "Zygote", "ForwardDiff", "Diffractor", "Memoization",
+  
+ 
+
+
+# ------------------------------
+# load models:
+
+# dynamical core model
+include( "size_structured_dde!.jl" )
+
+  # to test dynamical model with generic parameters:
+  # include( joinpath( project_directory, "size_structured_dde_test.jl" )) 
+ 
+
+# turing estimation model 
+include( "size_structured_dde_turing.jl" )
 
 
 # ------------------------------
@@ -36,49 +66,36 @@ for pk in pkgs; @eval using $(Symbol(pk)); end   # Pkg.add( pkgs ) # add require
 au = 1  # cfa index
 aulab ="cfanorth"
 
-au = 2  # cfa index
+au = 2  # cfa index  11 hrs @ 6 x 500 
 aulab ="cfasouth"
 
 au = 3  # cfa index
 aulab ="cfa4x"
 
-yrs = 1999:2021
-nP = 5  # no years to project into future 
-
-dt = 1/12 # time resolution of solutions
-no_digits = 3  # time floating point rounding 
-
-eps = 1.0e-9 # floating point value sufficient to assume 0 valued
-
 
 # ------------------------------
-# dynamical model
-include( "size_structured_dde!.jl" )
-  if false
-    include( joinpath( project_directory, "size_structured_dde_test.jl" )) # test dynamical model with generic parameters, can skip
-  end
+# prepare data for diffeq/turing model and set default parameters
 
+# run-level options
 
-# ------------------------------
-# turing model dde model
-include( "size_structured_dde_turing.jl" )
+nS = 6  # no. state variables
 
+yrs = 1999:2021  # <<<<<<<<-- change
+nT = length(yrs)
+nP = 5  # number of predictions into future (with no fishing)
+nM = nP + nT  # total number of prediction years
 
-# -------------------------
-#  prepare data for diffeq/turing model and set default parameters
+dt = 1/12 # time resolution of solutions  (monthly is a good basis)
+ 
+
 include( "size_structured_dde_turing_data.jl" )
-  if false
-    ## test, can ignore
-    prob = DDEProblem( size_structured_dde!, u0, h, tspan, p; constant_lags=lags )
-    msol2 =  solve( prob,  solver, callback=cb, saveat=dt, isoutofdomain=(y,p,t)->any(x->x<0,y) )# to force positive
-    plot( msol2, ; legend=false, xlim=(1999,2021), label="dde, with hsa, no fishing" )
-  end
- 
 
- 
+
+
+
 # ---------------
-# run model estimations / overrides
- 
+# run model settings / options / overrides
+
 Turing.setprogress!(false);
 # Turing.setrdcache(true)
 
@@ -105,40 +122,44 @@ solver = MethodOfSteps(Tsit5())
 # solver = MethodOfSteps(Vern7())  #  111.7
 # solver = MethodOfSteps(KenCarp4())  # 139.88
 
- 
 prob = DDEProblem( size_structured_dde!, u0, h, tspan, p, constant_lags=lags )
-fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nP, solver  )
- 
+fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM, solver  )
+
   if false
     # for testing and timings
     # include( "size_structured_dde_turing.jl" )
     n_samples = 3
     n_adapts = 3
     n_chains = 1
-    # sampler = Turing.MH()
-    # sampler = Turing.HMC(0.05,10)
-    sampler = Turing.NUTS(n_adapts, 0.65)
-    # sampler = DynamicNUTS()
-   
- 
-    res  =  sample( fmod, sampler, n_samples  )
+    # turing_sampler = Turing.MH()
+    # turing_sampler = Turing.HMC(0.05,10)
+    # turing_sampler = Turing.NUTS(n_adapts, 0.65)
+    # turing_sampler = DynamicNUTS()
+    
+    res  =  sample( fmod, turing_sampler, n_samples  )
  
   end
 
+
 # production  
+
+Logging.disable_logging(Logging.Warn) # or e.g. Logging.Info
+
 n_samples = 1000  # 1000 -> ? hrs (Tsit5);  500 -> 6 hrs
 n_adapts = 1000
-n_chains = Threads.nthreads()
-# sampler = Turing.HMC(0.05,10)
-sampler = Turing.NUTS(n_adapts, 0.65 ) # ; max_depth=10, init_ϵ=0.00625)  ;# stepsize based upon previous experience
+n_chains = 3
+# n_chains = Threads.nthreads() - 1
+# turing_sampler = Turing.HMC(0.05,10)
+turing_sampler = Turing.NUTS(n_adapts, 0.65 ; max_depth=10, init_ϵ=0.00625)  ;# stepsize based upon previous experience
 
-res  =  sample( fmod, sampler, MCMCThreads(), n_samples, n_chains )
+res  =  sample( fmod, turing_sampler, MCMCThreads(), n_samples, n_chains )
 # if on windows and threads are not working, use single processor mode:
-# res = mapreduce(c -> sample(fmod, sampler, n_samples), chainscat, 1:n_chains)
+# res = mapreduce(c -> sample(fmod, turing_sampler, n_samples), chainscat, 1:n_chains)
 
 
 # ------------------------------
 # save results as a hdf5
+using JLD2
 
 fn = joinpath( project_directory, string("size_structured_dde_turing_data", "_", aulab, ".hdf5" ) )
 @save fn res
@@ -155,6 +176,11 @@ fn = joinpath( project_directory, string("size_structured_dde_turing_data", "_",
 # display all estimates
 show(stdout, "text/plain", summarize(res))
 
+# "StatsBase", "Statistics", "Distributions", 
+  # "LinearAlgebra",  
+  # "Plots", "StatsPlots", "MultivariateStats", 
+
+using Plots, StatsPlots
 
 density(res[:"b[1]"])
 density(res[:"b[2]"])
@@ -202,7 +228,7 @@ pm = ( b=b, K=K, d=d, v=v, tau=tau, hsa=hsa )
   # CA[(nT+1):(M+nT)] = er .* bm[(nT):(M+nT-1)]
   # CA = 1.0 .- CA / bm
 
-  F =  -log( max.(C, eps) )  ;
+  F =  -log( max.(C, smallnumber) )  ;
   
   # parameter estimates for output
   MSY    = r * exp(K) / 4 ; # maximum height of of the latent productivity (yield)
@@ -248,7 +274,7 @@ if do_variational_inference
    
   res_vi =  vi(fmod, Turing.ADVI( 10, 1000));
  
-     # Run sampler, collect results. @doc(Variational.ADVI) : 
+     # Run turing_sampler, collect results. @doc(Variational.ADVI) : 
      # samples_per_step::Int64
      # Number of samples used to estimate the ELBO in each optimization step.
      # max_iters::Int64
@@ -366,7 +392,7 @@ if do_variational_inference
   using Flux, Turing
   res_vi =  vi(fishery_model_turing( Y, Kmu, Ksd, removals ), Turing.ADVI(10, 1000));
 
-     # Run sampler, collect results. @doc(Variational.ADVI) : 
+     # Run turing_sampler, collect results. @doc(Variational.ADVI) : 
      # samples_per_step::Int64
      # Number of samples used to estimate the ELBO in each optimization step.
      # max_iters::Int64
@@ -436,7 +462,7 @@ if do_mcmc
     # SMC: number of particles.
     # PG: number of particles, number of iterations.
     # HMC: leapfrog step size, leapfrog step numbers.
-    # Gibbs: component sampler 1, component sampler 2, ...
+    # Gibbs: component turing_sampler 1, component turing_sampler 2, ...
     # HMCDA: total leapfrog length, target accept ratio.
     # NUTS: number of adaptation steps (optional), target accept ratio.
 
