@@ -1,7 +1,8 @@
 
 using Turing 
 
-@model function logistic_discrete_turing( S, kmu, nT, nM, removed, solver=MethodOfSteps(Tsit5()) ) 
+@model function logistic_discrete_turing( S, kmu, nT, nM, removed, iok=findall( !ismissing, S )
+, solver=MethodOfSteps(Tsit5()) ) 
     # biomass process model: dn/dt = r n (1-n/K) - removed ; b, removed are not normalized by K  
     # priors 
 
@@ -31,7 +32,6 @@ using Turing
     end
 
     #  check positivity of back transform
-    iok = findall( !ismissing, S )
 
     yhat = S[iok] .*  q  .-  qc   
     if any( x -> x < 0.0, yhat )

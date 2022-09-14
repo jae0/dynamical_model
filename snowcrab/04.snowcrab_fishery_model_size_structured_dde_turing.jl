@@ -26,7 +26,7 @@ end
 # add Turing@v0.21.10
  
 pkgs = [ 
-  "Revise", "MKL", "Logging",
+  "Revise", "MKL", "Logging", "Distributions", 
   "Turing", "ModelingToolkit", "Interpolations" 
 ]
 
@@ -45,21 +45,6 @@ for pk in pkgs; @eval using $(Symbol(pk)); end   # Pkg.add( pkgs ) # add require
   
  
 
-
-# ------------------------------
-# load models:
-
-# dynamical core model
-include( "size_structured_dde!.jl" )
-
-  # to test dynamical model with generic parameters:
-  # include( joinpath( project_directory, "size_structured_dde_test.jl" )) 
- 
-
-# turing estimation model 
-include( "size_structured_dde_turing.jl" )
-
-
 # ------------------------------
 # choose a region of interest"
 
@@ -71,6 +56,10 @@ aulab ="cfasouth"
 
 au = 3  # cfa index
 aulab ="cfa4x"
+
+   
+import Random
+Random.seed!(1234)
 
 
 # ------------------------------
@@ -92,6 +81,19 @@ include( "size_structured_dde_turing_data.jl" )
 
 
 
+# ------------------------------
+# load models:
+
+# dynamical core model
+include( "size_structured_dde!.jl" )
+
+  # to test dynamical model with generic parameters:
+  # include( joinpath( project_directory, "size_structured_dde_test.jl" )) 
+ 
+
+# turing estimation model 
+include( "size_structured_dde_turing.jl" )
+
 
 # ---------------
 # run model settings / options / overrides
@@ -109,23 +111,13 @@ Turing.setadbackend(:forwarddiff)  # only AD that works right now
 solver = MethodOfSteps(Tsit5())  
 # solver = MethodOfSteps(Rodas5())  
 
-# relative timings:
-# solver = MethodOfSteps(Tsit5())  # 10 - 41.43 
-# solver = MethodOfSteps(Rodas5())   # 20.94  - 71.73
-# solver = MethodOfSteps(BS3())   # 56.1
-# solver = MethodOfSteps(Rodas4()) #   24.86- 82.79
-# solver = MethodOfSteps(Rosenbrock23()) #  71.48
-# solver = MethodOfSteps(Vern6())  # 73.98
-# solver = MethodOfSteps(RK4())   # 76.28
-# solver = MethodOfSteps(TRBDF2())  # 92.16
-# solver = MethodOfSteps(QNDF())  # 110.79
-# solver = MethodOfSteps(Vern7())  #  111.7
-# solver = MethodOfSteps(KenCarp4())  # 139.88
+jok = ismissing.(S)
 
 prob = DDEProblem( size_structured_dde!, u0, h, tspan, p, constant_lags=lags )
-fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM, solver  )
+fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM, jok, solver  )
 
-  if false
+
+if false
     # for testing and timings
     # include( "size_structured_dde_turing.jl" )
     n_samples = 3
@@ -133,24 +125,24 @@ fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM, solver  )
     n_chains = 1
     # turing_sampler = Turing.MH()
     # turing_sampler = Turing.HMC(0.05,10)
-    # turing_sampler = Turing.NUTS(n_adapts, 0.65)
+    turing_sampler = Turing.NUTS(n_adapts, 0.65; init_ϵ=0.025)
     # turing_sampler = DynamicNUTS()
-    
+ 
     res  =  sample( fmod, turing_sampler, n_samples  )
  
-  end
+end
 
 
 # production  
 
 Logging.disable_logging(Logging.Warn) # or e.g. Logging.Info
 
-n_samples = 1000  # 1000 -> ? hrs (Tsit5);  500 -> 6 hrs
-n_adapts = 1000
-n_chains = 3
+n_samples = 500  # 1000 -> ? hrs (Tsit5);  500 -> 6 hrs
+n_adapts = 500
+n_chains = 5
 # n_chains = Threads.nthreads() - 1
 # turing_sampler = Turing.HMC(0.05,10)
-turing_sampler = Turing.NUTS(n_adapts, 0.65 ; max_depth=10, init_ϵ=0.00625)  ;# stepsize based upon previous experience
+turing_sampler = Turing.NUTS(n_adapts, 0.65; max_depth=10, init_ϵ=0.025)  ;# stepsize based upon previous experience
 
 res  =  sample( fmod, turing_sampler, MCMCThreads(), n_samples, n_chains )
 # if on windows and threads are not working, use single processor mode:

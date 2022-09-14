@@ -27,5 +27,8 @@ Manifest.toml
 *.jld2
 *.jd
 *.hdf5
+*.pdf
+*.svg
+*.png
 
 ignore/*

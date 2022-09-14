@@ -136,8 +136,24 @@ lags = [tau]
 # stiff solvers: Rodas4()  ; Rosenbrock23()
 # solver = MethodOfSteps(Rosenbrock23()) # slow  
 # solver = MethodOfSteps(Rodas4())  
-solver = MethodOfSteps(Rodas5())  # safer 
+# solver = MethodOfSteps(Rodas5())  # safer 
 # other solvers: BS3() and Vern6() also RK4()
+
+# relative timings:
+# solver = MethodOfSteps(Tsit5())  # 10 - 41.43 
+# solver = MethodOfSteps(Rodas5())   # 20.94  - 71.73
+# solver = MethodOfSteps(BS3())   # 56.1
+# solver = MethodOfSteps(Rodas4()) #   24.86- 82.79
+# solver = MethodOfSteps(Rosenbrock23()) #  71.48
+# solver = MethodOfSteps(Vern6())  # 73.98
+# solver = MethodOfSteps(RK4())   # 76.28
+# solver = MethodOfSteps(TRBDF2())  # 92.16
+# solver = MethodOfSteps(QNDF())  # 110.79
+# solver = MethodOfSteps(Vern7())  #  111.7
+# solver = MethodOfSteps(KenCarp4())  # 139.88
+
+
+solver = MethodOfSteps(Tsit5())  
 
 # these are dummy initial values .. just to get things started
 

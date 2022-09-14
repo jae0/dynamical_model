@@ -70,7 +70,6 @@ aulab ="cfa4x"
 
 # choose one:    
 model_variation = "Model_1"
-
 model_variation = "Model_2"
 
 
@@ -89,10 +88,12 @@ include( "logistic_discrete_turing.jl" )
 # initial values for Logistic!
 # almost working but solution decay to negative numbers though it is supposed to be bounded ..  
 
+iok = findall( !ismissing, S )
+
 if model_variation == "Model_1"
-  fmod = logistic_discrete_turing_basic( S, kmu, nT, nM, removed  )  # q only
+  fmod = logistic_discrete_turing_basic( S, kmu, nT, nM, removed, iok )  # q only
 else 
-  fmod = logistic_discrete_turing( S, kmu, nT, nM, removed  ) # q, qc
+  fmod = logistic_discrete_turing( S, kmu, nT, nM, removed, iok  ) # q, qc
 end
 
 
