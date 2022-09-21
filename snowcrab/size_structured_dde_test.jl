@@ -5,9 +5,9 @@
   
   ks = 100
   u0 = [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ] .* ks
-  b=[ 1.0, 0.8 ]
+  b=[ 100.0, 100.8 ]
   K=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0] .* ks;
-  d=[0.5, 0.5, 0.5, 0.5, 0.5, 0.5];
+  d=[0.1, 0.1, 0.1, 0.1, 0.1, 0.1];
   v=[0.9, 0.9, 0.9, 0.9];  
   tau=1.0 
 
@@ -30,23 +30,24 @@
   solver = MethodOfSteps(Tsit5())  # solver; BS3() and Vern6() also RK4()
   prob = DDEProblem( size_structured_dde! , u0, h, tspan, p; constant_lags=lags )
   res =  solve( prob,  solver, saveat=0.1 )
+  
+  plot(0)
   plot!( res ; legend=true)
   
   # ---------------
   #test runs
   ks = 1.0e10
-  u0 = [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ] .* ks
+  u0 = [ 0.9, 0.5, 0.3, 0.2, 0.1, 0.9 ] .* ks 
   b=[1.0, 0.8]
-  K=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0] .* ks; 
-  d=[0.5, 0.5, 0.5, 0.5, 0.5, 0.5];
-  v=[0.9, 0.9, 0.9, 0.9];  
+  K=[0.1, 0.2, 0.3, 0.4, 0.5, 1.0] .* ks; 
+  d=[0.4, 0.4, 0.4, 0.4, 0.4, 0.6];
+  v=[0.8, 0.8, 0.8, 0.8];  
   tau=1.0 
   tspan = (1990.0, 2025.0)
  
   dt = 0.1
   nS = length(u0)  # n components
-
-
+ 
   external_forcing = ones(length(survey_time),6)  # turns it off
   efc1 = extrapolate( interpolate( external_forcing, (BSpline(Linear()), NoInterp()) ), Interpolations.Flat() )
   hsa = Interpolations.scale(efc1, 1999:2021, 1:6 )
@@ -54,13 +55,15 @@
 
   prob = DDEProblem( size_structured_dde!, u0, h, tspan, p; constant_lags=lags )
   msol =  solve( prob,  solver, saveat=dt )
-  i = 1; plot( msol.t, reduce(hcat, msol.u)'[:,i], color=[1 1] , alpha=0.75, lw=5 ) 
 
-  plot!( msol, label="dde, no hsa, no fishing", legend=:left )
-   
+  plot(0)
+  i = 1; plot!( msol.t, reduce(hcat, msol.u)'[:,i], color=[1 1] , alpha=0.75, lw=5 ) 
+  i = 6; plot!( msol.t, reduce(hcat, msol.u)'[:,i], color=[1 1] , alpha=0.75, lw=5 ) 
 
+  plot!( msol ; legend=false ) 
+  
   external_forcing = rand(length(survey_time),6) # random
-  efc2 = extrapolate( interpolate( external_forcing, (Spline(Linear()), NoInterp()) ), Interpolations.Flat() )
+  efc2 = extrapolate( interpolate( external_forcing, (BSpline(Linear()), NoInterp()) ), Interpolations.Flat() )
   hsa = Interpolations.scale(efc2, 1999:2021, 1:6 )
   p = ( b, K, d, v, tau, hsa )   
 
@@ -72,4 +75,6 @@
  
   plot!( msol2, label="dde, with hsa, no fishing" )
 
-  plot!(; legend=true, xlim=(1999,2021) )
+  plot!(; legend=false, xlim=(1990,2021) )
+  plot!(;  ylim=(0, 100) )
+  

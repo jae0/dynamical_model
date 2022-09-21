@@ -68,32 +68,49 @@ statevars = [
   Symbol("$aulab","_M3"),
   Symbol("$aulab","_M4"),
   Symbol("$aulab","_f_mat")
-  ]
-  S = Matrix(Y[:, statevars ])
+]
+
+S = Matrix(Y[:, statevars ])
   
   
-  # interpolating function for mean weight
-  mwspline = extrapolate( interpolate( MW[:,Symbol("mw_", "$aulab") ], (BSpline(Linear()) ) ),  Interpolations.Flat() )
-  mw = Interpolations.scale(mwspline, yrs )
-  
-  scale_factor = mw(yrs) / (1000 *1000 ) # convert numbers to kt biomass
+# interpolating function for mean weight
+mwspline = extrapolate( interpolate( MW[:,Symbol("mw_", "$aulab") ], (BSpline(Linear()) ) ),  Interpolations.Flat() )
+mw = Interpolations.scale(mwspline, yrs )
+
+scale_factor = mw(yrs) / (1000 *1000 ) # convert numbers to kt biomass , also used in plots 
 
 
-  # convert to (biomass kt to number) 
-kmu = Kmu[au] / mean(scale_factor)
+# convert to (biomass kt to number) 
+
+if aulab=="cfanorth" 
+  kmu = Kmu[1] 
+  stepsize = 0.02
+elseif aulab=="cfasouth"
+  kmu = Kmu[2] 
+  stepsize = 0.025
+elseif aulab=="cfa4x"
+  kmu = Kmu[3] 
+  stepsize = 0.02
+end
+
+kmu  = kmu / mean(scale_factor)
 
 
-# spin up time of 10 years prior to start of dymamics and project 5 years into the future
-tspan = (minimum(yrs) - 8.0, maximum(yrs) + nP + 1.0 )  
+# spin up time of ~ 1 cycle prior to start of dymamics and project 5 years into the future
+tspan = (minimum(yrs) - 10.0, maximum(yrs) + nP + 1.1 )  
 
-survey_time =   round.( Y[:,:yrs] ./ dt; digits=0 ) .* dt    # time of observations for survey
+dt = 0.01 # time resolution of differ eq model solutions
 
+survey_time =  round.( round.( Y[:,:yrs] ./ dt; digits=0 ) .* dt ; digits=no_digits)    # time of observations for survey
+# survey_time = Y[:,:yrs]
 
 # this only adds habitat space  ... predation is also a useful one .. 
 # speed is the issue 
 
 
-prediction_time = floor.(vcat( survey_time, collect(1:nP) .+ maximum(survey_time) ) ) .+   round( 9.0/12.0 /dt; digits=0 ) *dt 
+prediction_time = 
+  floor.( vcat( collect(minimum(yrs) : (maximum(yrs)+nP) ) )  ) .+  #yrs
+  round(round( 9.0/12.0 /dt; digits=0 ) *dt; digits=no_digits)   # sept
 
 #  sa to fraction
 
@@ -110,7 +127,9 @@ external_forcing =  reshape( [
 efc = extrapolate( interpolate( external_forcing, (BSpline(Linear()), NoInterp()) ), Interpolations.Flat() )
 hsa = Interpolations.scale(efc, yrs, 1:nS )
 
-fish_time =  round.( removals[:,:ts] ./ dt; digits=0 ) .* dt    # time of observations for survey
+fish_time =  round.( round.( removals[:,:ts] ./ dt; digits=0 ) .* dt; digits=no_digits)    # time of observations for survey
+# fish_time =  removals[:,:ts]     # time of observations for survey
+
 
 removed = removals[:,Symbol("$aulab")]
 
@@ -132,6 +151,8 @@ h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS) .* kmu
  
 tau = 1  # delay resolution
 lags = [tau]
+
+allsavetimes = unique( vcat( collect(tspan[1]:dt:tspan[2]), survey_time, prediction_time, fish_time ) )
 
 # stiff solvers: Rodas4()  ; Rosenbrock23()
 # solver = MethodOfSteps(Rosenbrock23()) # slow  
@@ -155,6 +176,9 @@ lags = [tau]
 
 solver = MethodOfSteps(Tsit5())  
 
+Turing.setadbackend(:forwarddiff)  # only AD that works right now
+Turing.setrdcache(true)
+
 # these are dummy initial values .. just to get things started
 
 u0 = [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ] .* kmu
@@ -169,7 +193,9 @@ p = ( b, K, d, v, tau, hsa )    # dummy values needs to start the turing initial
 if false
   ## test, can ignore
   prob = DDEProblem( size_structured_dde!, u0, h, tspan, p; constant_lags=lags )
-  msol2 =  solve( prob,  solver, callback=cb, saveat=dt )# to force positive
+  msol2 =  solve( prob,  solver, callback=cb, saveat=dt )  
   plot( msol2, ; legend=false, xlim=(1999,2021), label="dde, with hsa, no fishing" )
 end
+
+
 

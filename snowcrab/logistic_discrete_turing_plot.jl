@@ -58,14 +58,19 @@ function logistic_discrete_turing_plot( ; selection="S K predictions predictionm
 
     if occursin( r"S", selection )  
         # back transform S to normal scale 
-        if model_variation == "Model_2" 
-            # observation model: S[Y] ~ m[X] --> Y = q X + qc ; 
-            # inverse operation: X = (Y - qc) / q
-            yhat = ( S[:] .- mean(res[:,Symbol("qc"),:] ) ) ./ mean(res[:,Symbol("q"),:]) .* mean(res[:,Symbol("K"),:]  ) 
-        else
+        if model_variation == "Logistic_q"
             # observation model: Y = q X  ; 
             # inverse operation: X = (Y ) / q
             yhat = ( S[:] ./ mean(res[:,Symbol("q"),:]) ) .* mean(res[:,Symbol("K"),:]  ) 
+        elseif  model_variation == "Logistic_q_qc"
+            # observation model: S[Y] ~ m[X] --> Y = q X + qc ; 
+            # inverse operation: X = (Y - qc) / q
+            yhat = ( S[:] .- mean(res[:,Symbol("qc"),:] ) ) ./ mean(res[:,Symbol("q"),:]) .* mean(res[:,Symbol("K"),:]  ) 
+        elseif model_variation == "Logistic_Map"
+            # observation model: Y = q X  ; 
+            # inverse operation: X = (Y ) / q
+            yhat = ( S[:] ./ mean(res[:,Symbol("q"),:]) ) ./ mean(res[:,Symbol("q"),:]) .* mean(res[:,Symbol("K"),:]  ) 
+
         end
 
         plot!(survey_time, yhat, color=:purple2, lw=2 )

@@ -69,9 +69,9 @@ aulab ="cfa4x"
 
 
 # choose one:    
-model_variation = "Model_1"
-model_variation = "Model_2"
-
+model_variation = "Logistic_q"
+model_variation = "Logistic_q_qc"
+model_variation = "Logistic_Map"
 
 # -------------------------
 #  prepare data for turing model and set default parameters
@@ -90,11 +90,8 @@ include( "logistic_discrete_turing.jl" )
 
 iok = findall( !ismissing, S )
 
-if model_variation == "Model_1"
-  fmod = logistic_discrete_turing_basic( S, kmu, nT, nM, removed, iok )  # q only
-else 
-  fmod = logistic_discrete_turing( S, kmu, nT, nM, removed, iok  ) # q, qc
-end
+fmod = logistic_discrete_turing( S, kmu, nT, nM, removed, iok )  # q only
+
 
 
 # ---------------

@@ -115,7 +115,7 @@ function size_structured_dde_turing_plot( ; selection="withfishing withoutfishin
 
 
     if occursin( r"predictions", selection )  
-        # sample and plot posterior means from model (posterior post-fishery abundance)
+        # sample and plot posterior means from model (posterior abundance   at sept )
         
         for k in si
             for l in 1:size(res)[3]
