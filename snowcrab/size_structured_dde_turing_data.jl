@@ -83,21 +83,21 @@ scale_factor = mw(yrs) / (1000 *1000 ) # convert numbers to kt biomass , also us
 # convert to (biomass kt to number) 
 
 if aulab=="cfanorth" 
-  kmu = Kmu[1] 
-  stepsize = 0.02
+   ki = 1
+
 elseif aulab=="cfasouth"
-  kmu = Kmu[2] 
-  stepsize = 0.025
+   ki = 2
+
 elseif aulab=="cfa4x"
-  kmu = Kmu[3] 
-  stepsize = 0.02
+   ki = 3
+
 end
 
-kmu  = kmu / mean(scale_factor)
+kmu  = kmu = Kmu[ki] / mean(scale_factor)
 
 
 # spin up time of ~ 1 cycle prior to start of dymamics and project 5 years into the future
-tspan = (minimum(yrs) - 10.0, maximum(yrs) + nP + 1.1 )  
+tspan = (minimum(yrs) - 5.0, maximum(yrs) + nP + 1.1 )  
 
 dt = 0.01 # time resolution of differ eq model solutions
 
@@ -152,13 +152,13 @@ h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS) .* kmu
 tau = 1  # delay resolution
 lags = [tau]
 
-allsavetimes = unique( vcat( collect(tspan[1]:dt:tspan[2]), survey_time, prediction_time, fish_time ) )
+# allsavetimes = unique( vcat( survey_time, prediction_time  ) )
 
 # stiff solvers: Rodas4()  ; Rosenbrock23()
 # solver = MethodOfSteps(Rosenbrock23()) # slow  
 # solver = MethodOfSteps(Rodas4())  
-# solver = MethodOfSteps(Rodas5())  # safer 
 # other solvers: BS3() and Vern6() also RK4()
+# solver = MethodOfSteps(Rodas5())  # safer 
 
 # relative timings:
 # solver = MethodOfSteps(Tsit5())  # 10 - 41.43 
@@ -174,7 +174,8 @@ allsavetimes = unique( vcat( collect(tspan[1]:dt:tspan[2]), survey_time, predict
 # solver = MethodOfSteps(KenCarp4())  # 139.88
 
 
-solver = MethodOfSteps(Tsit5())  
+# solver = MethodOfSteps(Tsit5())  
+solver = MethodOfSteps(Rodas5())  # safer 
 
 Turing.setadbackend(:forwarddiff)  # only AD that works right now
 Turing.setrdcache(true)

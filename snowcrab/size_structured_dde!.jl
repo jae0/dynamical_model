@@ -19,15 +19,12 @@ if false
     du[6] = b[2] * FP        - d[6] * uu[6] * ( uu[6] / hsa(t,6) )   # fem mat simple logistic with lag tau and density dep on present numbers
   end
 
+ 
 end
 
 
 function size_structured_dde!( du, u, h, p, t)
     (b, K, d, v, tau, hsa)  = p
-    # tr21 = v[1] * h(p, t-1)[2]    # transition 2 -> 1   
-    # tr32 = v[2] * h(p, t-1)[3]    # transition 3 -> 2
-    # tr43 = v[3] * h(p, t-1)[4]    # transition 4 -> 3
-    # tr54 = v[4] * h(p, t-1)[5]    # transition 5 -> 4
     tr  = v .* h(p, t-1)[2:5]
     bu8 = b .* h(p, t-8)[6]      # no mature fem 8  yrs ago
     duh = d .* u ./ hsa(t,1:6)

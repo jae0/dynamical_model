@@ -26,7 +26,7 @@ end
 # add Turing@v0.21.10
  
 pkgs = [ 
-  "Revise", "MKL", "Logging", "Distributions",  "ForwardDiff", "Random",
+  "Revise", "MKL", "Logging", "Distributions",  "ForwardDiff", "Random",  
   "Turing", "ModelingToolkit", "DifferentialEquations", "Interpolations" 
 ]
 
@@ -87,16 +87,16 @@ include( "size_structured_dde_turing.jl" )
 # ---------------
 # run model settings / options / overrides
  
-# solver = MethodOfSteps(Tsit5())  
+solver = MethodOfSteps(Tsit5())  
 # solver = MethodOfSteps(Rodas5())  
 
 
 prob = DDEProblem( size_structured_dde!, u0, h, tspan, p, constant_lags=lags  )
 fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM; 
-   jok=ismissing.(S), solver=solver, saveat=allsavetimes  
+   jok=ismissing.(S), solver=solver, dt=dt  
 )
 
-
+ 
 if false
     # for testing and timings
     # include( "size_structured_dde_turing.jl" )
@@ -105,8 +105,8 @@ if false
     n_chains = 1
     # turing_sampler = Turing.MH()
     # turing_sampler = Turing.HMC(0.05,10)
-    turing_sampler = Turing.NUTS(n_adapts, 0.65 )
-    # turing_sampler = Turing.NUTS(n_adapts, 0.65, init_ϵ=0.05 )
+    # turing_sampler = Turing.NUTS(n_adapts, 0.65 )
+    turing_sampler = Turing.NUTS(n_adapts, 0.65, init_ϵ=0.01 )
     
     # turing_sampler = DynamicNUTS()
  
@@ -129,7 +129,7 @@ n_chains = 5
 # n_chains = Threads.nthreads() - 1
 # turing_sampler = Turing.HMC(0.05,10)
 
-turing_sampler = Turing.NUTS(n_adapts, 0.65; max_depth=10, init_ϵ=stepsize)  ;# stepsize based upon previous experience
+turing_sampler = Turing.NUTS(n_adapts, 0.65; max_depth=10, init_ϵ=0.01)  ;# stepsize based upon previous experience
 
 res  =  sample( fmod, turing_sampler, MCMCThreads(), n_samples, n_chains )
 # if on windows and threads are not working, use single processor mode:
