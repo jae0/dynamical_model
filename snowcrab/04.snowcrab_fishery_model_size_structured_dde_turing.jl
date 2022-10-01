@@ -89,8 +89,8 @@ fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM, solver, dt )
 if false
     # for testing and timings
     # include( "size_structured_dde_turing.jl" )
-    n_samples = 5
-    n_adapts = 5
+    n_samples = 10
+    n_adapts = 10
     n_chains = 1
     
     # turing_sampler = Turing.MH()
