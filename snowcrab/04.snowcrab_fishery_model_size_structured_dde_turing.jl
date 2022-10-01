@@ -3,12 +3,38 @@
 # DDE size structured (Delay Differentail EQs size structured)
 # https://diffeq.sciml.ai/stable/tutorials/dde_example/
 
-# NOTE::: require 03.snowcrab_carstm.r to be completed 
+
+# ------------------------------
+# run-level options
+
+  nS = 6  # no. state variables
+
+  yrs = 1999:2021  # <<<<<<<<-- change
+
+  nT = length(yrs)
+  nP = 5  # number of predictions into future (with no fishing)
+  nM = nP + nT  # total number of prediction years
+
+  dt = 0.01 # time resolution of diff eq model solutions
+
+    
+  # choose a region of interest"
+
+  aulab ="cfanorth"
+
+  aulab ="cfasouth"
+
+  aulab ="cfa4x"
+      
+
 {
-  # R-code to prep data 
+  # ==== R-code to prep data ======
+  
+  # NOTE::: require 03.snowcrab_carstm.r to be completed 
+ 
   source( file.path( code_root, "bio_startup.R" )  )
   loadfunctions("bio.snowcrab")
-  fishery_model_data_inputs( year.assessment=2021, type="size_structured_numerical_dynamics",  for_julia=TRUE, time_resolution=1/12)
+  fishery_model_data_inputs( year.assessment=2021, type="size_structured_numerical_dynamics",  for_julia=TRUE, time_resolution=1/52)
 
 }
         
@@ -26,93 +52,59 @@ end
 # add Turing@v0.21.10
  
 pkgs = [ 
-  "Revise", "MKL", "Logging", "Distributions",  "ForwardDiff", "Random",  
-  "Turing", "ModelingToolkit", "DifferentialEquations", "Interpolations" 
+  "Revise", "MKL", "Logging", "StatsBase", "Statistics", "Distributions", "Random",   
+  "DynamicHMC", "AdvancedHMC",  "AdvancedMH",  "DynamicPPL",  "AbstractPPL",  "Memoization", 
+  "ForwardDiff",
+  "Plots", "StatsPlots", "MultivariateStats", "StaticArrays", "LazyArrays", "FillArrays",
+  "Turing", "ModelingToolkit", "DifferentialEquations", "Interpolations", "LinearAlgebra" 
 ]
 
 for pk in pkgs; @eval using $(Symbol(pk)); end   # Pkg.add( pkgs ) # add required packages
-  
-  # "DifferentialEquations",  
-  # "StatsBase", "Statistics", "Distributions", 
-  # "LinearAlgebra",  
-  # "Plots", "StatsPlots", "MultivariateStats", 
-  # "StaticArrays", "LazyArrays", "FillArrays",
-  # "ForwardDiff", # "DynamicHMC", "AdvancedHMC",  "AdvancedMH", 
-  # "DynamicPPL",  "AbstractPPL",  "Memoization", 
-  # "DiffResults", "Memoization", "DynamicPPL", "AbstractPPL", "AdvancedHMC", 
-  # "MCMCChains", "SciMLSensitivity",
-  # "Tracker" #, "ReverseDiff", "Zygote", "ForwardDiff", "Diffractor", "Memoization",
-  
+     
+
  
-
-# ------------------------------
-# choose a region of interest"
-
-aulab ="cfanorth"
-aulab ="cfasouth"
-aulab ="cfa4x"
-
-    
-
-# ------------------------------
 # prepare data for diffeq/turing model and set default parameters
-
-# run-level options
-
-nS = 6  # no. state variables
-
-yrs = 1999:2021  # <<<<<<<<-- change
-
-nT = length(yrs)
-nP = 5  # number of predictions into future (with no fishing)
-nM = nP + nT  # total number of prediction years
-
 include( "size_structured_dde_turing_data.jl" )
-
-
-# ------------------------------
-# load models:
-
-# dynamical core model
-include( "size_structured_dde!.jl" )
-
-  # to test dynamical model with generic parameters:
-  # include( joinpath( project_directory, "size_structured_dde_test.jl" )) 
  
+# load dynamical core model
+include( "size_structured_dde!.jl" ) 
+
+# to test dynamical model with generic parameters:
+# include( joinpath( project_directory, "size_structured_dde_test.jl" ))    
 
 # turing estimation model 
-include( "size_structured_dde_turing.jl" )
+include( "size_structured_dde_turing.jl" ) 
 
 
 # ---------------
 # run model settings / options / overrides
- 
+  
 solver = MethodOfSteps(Tsit5())  
-# solver = MethodOfSteps(Rodas5())  
-
+  # solver = MethodOfSteps(Rodas5())   # default
 
 prob = DDEProblem( size_structured_dde!, u0, h, tspan, p, constant_lags=lags  )
-fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM; 
-   jok=ismissing.(S), solver=solver, dt=dt  
-)
+fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM, solver, dt )
 
  
 if false
     # for testing and timings
     # include( "size_structured_dde_turing.jl" )
-    n_samples = 10
+    n_samples = 5
     n_adapts = 5
     n_chains = 1
+    
     # turing_sampler = Turing.MH()
     # turing_sampler = Turing.HMC(0.05,10)
     # turing_sampler = Turing.NUTS(n_adapts, 0.65 )
-    turing_sampler = Turing.NUTS(n_adapts, 0.65, init_ϵ=0.01 )
+    # turing_sampler = Turing.NUTS(n_adapts, 0.65, init_ϵ=6.103515625e-6, max_depth=8 )
     
     # turing_sampler = DynamicNUTS()
  
-    Random.seed!(1234)
+    Random.seed!(1)
     
-    res  =  sample( fmod, turing_sampler, n_samples  )
+    # res  =  sample( fmod, turing_sampler, n_samples  )
+    
+    res  =  sample( fmod, turing_sampler, n_samples; n_adapts=n_adapts  )    
     
     show(stdout, "text/plain", summarize(res)) # display all estimates
 
@@ -123,13 +115,12 @@ end
 
 Logging.disable_logging(Logging.Warn) # or e.g. Logging.Info
 
-n_samples = 500  # 1000 -> ? hrs (Tsit5);  500 -> 6 hrs;; 29hrs 100/100 cfasouth
-n_adapts = 500
-n_chains = 5
-# n_chains = Threads.nthreads() - 1
-# turing_sampler = Turing.HMC(0.05,10)
-
-turing_sampler = Turing.NUTS(n_adapts, 0.65; max_depth=10, init_ϵ=0.01)  ;# stepsize based upon previous experience
+n_samples = 200  # 1000 -> ? hrs (Tsit5);  500 -> 6 hrs;; 29hrs 100/100 cfasouth
+n_adapts = 400
+# n_chains = 5
+n_chains = Threads.nthreads() 
+ 
+turing_sampler = Turing.NUTS(n_adapts, 0.65; max_depth=10, init_ϵ=0.05)  ;# stepsize based upon previous experience
 
 res  =  sample( fmod, turing_sampler, MCMCThreads(), n_samples, n_chains )
 # if on windows and threads are not working, use single processor mode:
@@ -142,6 +133,7 @@ using JLD2
 
 fn = joinpath( project_directory, string("size_structured_dde_turing_data", "_", aulab, ".hdf5" ) )
 @save fn res
+
 # @load fn res
 # can read back in R as:  
 # h5read( paste("/home/jae/julia/snowcrab/size_structured_dde_turing_data", "_", aulab, ".hdf5"), "res")
@@ -155,42 +147,43 @@ fn = joinpath( project_directory, string("size_structured_dde_turing_data", "_",
 # display all estimates
 show(stdout, "text/plain", summarize(res))
 
-# "StatsBase", "Statistics", "Distributions", 
-  # "LinearAlgebra",  
-  # "Plots", "StatsPlots", "MultivariateStats", 
-
-using Plots, StatsPlots
-
-density(res[:"b[1]"])
-density(res[:"b[2]"])
-density(res[:"K[1]"])
-density(res[:"v[1]"])
 
 
 
 # -------------------------
 # plot timeseries of mean fields
 include( "size_structured_dde_turing_plot.jl" )
+ 
 
-plot(0)
+plot() 
+ 
+# pdensity = size_structured_dde_turing_plot( selection="posterior_density", vn="b[1]"  )  
+
 plots_sim = size_structured_dde_turing_plot( selection="S K predictions predictionmeans", si=[1], mw=mw ) 
-# gui(plots_sim)
-savefig(plots_sim, string("size_structured_dde_turing_plots_sim_", aulab, ".pdf") )
-savefig(plots_sim, string("size_structured_dde_turing_plots_sim_", aulab, ".svg") )
+plot!(; xlim=(minimum(yrs)-1.5, maximum(yrs)+7.5  ) )
+
+# display(plots_sim)
 savefig(plots_sim, string("size_structured_dde_turing_plots_sim_", aulab, ".png") )
+# savefig(plots_sim, string("size_structured_dde_turing_plots_sim_", aulab, ".pdf") )
+# savefig(plots_sim, string("size_structured_dde_turing_plots_sim_", aulab, ".svg") )
 
 
 plot(0)
 plots_fishing = size_structured_dde_turing_plot( selection="K withfishing withoutfishing predictionmeans", si=[1], mw=mw)
-# gui(plots_fishing)
-savefig(plots_fishing, string("size_structured_dde_turing_plots_fishing_", aulab, ".pdf") ) 
-savefig(plots_fishing, string("size_structured_dde_turing_plots_fishing_", aulab, ".svg") ) 
+# display(plots_fishing)
 savefig(plots_fishing, string("size_structured_dde_turing_plots_fishing_", aulab, ".png") ) 
+# savefig(plots_fishing, string("size_structured_dde_turing_plots_fishing_", aulab, ".pdf") ) 
+# savefig(plots_fishing, string("size_structured_dde_turing_plots_fishing_", aulab, ".svg") ) 
 
 
 
 # ------------------------------
 # misc computed quantities
+
+chains_params = Turing.MCMCChains.get_sections(res, :parameters)
+generated_quantities(fmod2, chains_params)
+
+o = generated_quantities(fmod, res) 
   
 pm = ( b=b, K=K, d=d, v=v, tau=tau, hsa=hsa ) 
 
@@ -219,7 +212,39 @@ end
 
 fmod2 = compute_derived(S1, S2, S3, S4, S5, S6, kmu, tspan, prob )
 
-gq = generated_quantities(fmod2, pm)
+
+@model function deriv( prob, nT, nS, nM, dt = 0.01,  ::Type{T} = Float64) where T
+ 
+    m = Matrix{T}(undef, nM, nS)   # 
+   
+    pm = ( b, K, d, v, tau, hsa ) 
+    # @show a
+
+    # process model
+    msol = solve( 
+        remake( prob; u0=u0 .* K , h=h, tspan=tspan, p=pm ), 
+        solver, 
+        callback=cb, 
+        # isoutofdomain=(y,p,t)->any(x->x<0, y), 
+        saveat=dt
+    ) 
+    
+    # @show msol
+    
+    if msol.retcode != :Success 
+      Turing.@addlogprob! -Inf
+      return nothing
+    end
+   
+    # for i in 1:nM
+    #     ii = findfirst(x->isapprox(prediction_time[i], x), msol.t)[1]
+    #     for k in 1:nS
+    #         m[i,k] ~ TruncatedNormal( msol.u[ii][k], bpsd, 0.01, 0.99 )  
+    #     end
+    # end
+  end
+   
+gq = generated_quantities(fmod2, res)
 
 # gq = generated_quantities(res, values(p), keys(p))
 # m = vec(getindex.( gq, 1))

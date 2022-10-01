@@ -54,10 +54,6 @@ MW = o["M0_W"]
 
 
     
-no_digits = 3  # time floating point rounding 
-
-smallnumber = 1.0e-9 # floating point value sufficient to assume 0 valued
-    
 
 
 # "survey index"
@@ -93,16 +89,17 @@ elseif aulab=="cfa4x"
 
 end
 
-kmu  = kmu = Kmu[ki] / mean(scale_factor)
+kmu  =  Kmu[ki] / mean(scale_factor)
 
+smallnumber = 1.0 / kmu / 10.0  # floating point value of sufficient to assume 0 valued
+    
+no_digits = 3  # time floating point rounding 
 
-# spin up time of ~ 1 cycle prior to start of dymamics and project 5 years into the future
-tspan = (minimum(yrs) - 5.0, maximum(yrs) + nP + 1.1 )  
-
-dt = 0.01 # time resolution of differ eq model solutions
+# spin up time of ~ 1 cycle prior to start of dymamics and project nP years into the future
+tspan = (minimum(yrs) - 10.1, maximum(yrs) + nP + 1.1 )  
 
 survey_time =  round.( round.( Y[:,:yrs] ./ dt; digits=0 ) .* dt ; digits=no_digits)    # time of observations for survey
-# survey_time = Y[:,:yrs]
+ 
 
 # this only adds habitat space  ... predation is also a useful one .. 
 # speed is the issue 
@@ -125,7 +122,7 @@ external_forcing =  reshape( [
 
 
 efc = extrapolate( interpolate( external_forcing, (BSpline(Linear()), NoInterp()) ), Interpolations.Flat() )
-hsa = Interpolations.scale(efc, yrs, 1:nS )
+hsa = Interpolations.scale(efc, yrs .+ 0.75, 1:nS )
 
 fish_time =  round.( round.( removals[:,:ts] ./ dt; digits=0 ) .* dt; digits=no_digits)    # time of observations for survey
 # fish_time =  removals[:,:ts]     # time of observations for survey
@@ -134,8 +131,8 @@ fish_time =  round.( round.( removals[:,:ts] ./ dt; digits=0 ) .* dt; digits=no_
 removed = removals[:,Symbol("$aulab")]
 
 function affect_fishing!(integrator)
-  i = findall(t -> t == integrator.t, fish_time)
-  integrator.u[1] -=  removed[ i[1] ] 
+  i = findfirst(t -> t == integrator.t, fish_time)[1]
+  integrator.u[1] -=  removed[ i ] # / integrator.p[2][1]  # p[2] ==K divide by K  .. keep unscaled to estimate magnitude of other components
 end
 
 # cb = CallbackSet( 
@@ -145,9 +142,8 @@ end
 
 cb = PresetTimeCallback( fish_time, affect_fishing! ) 
 
-# history function 0.5 default
-# h(p,t) = ones( nS ) .* 0.5  #values of u before t0
-h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS) .* kmu
+# history function  
+h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS) .* kmu .* 0.5
  
 tau = 1  # delay resolution
 lags = [tau]
@@ -178,18 +174,20 @@ lags = [tau]
 solver = MethodOfSteps(Rodas5())  # safer 
 
 Turing.setadbackend(:forwarddiff)  # only AD that works right now
+
 Turing.setrdcache(true)
 
 # these are dummy initial values .. just to get things started
 
-u0 = [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ] .* kmu
+u0 = [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ] .*kmu; 
 b=[1.0, 0.8]
 K=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0] .*kmu; 
 d=[0.2, 0.3, 0.4, 0.5, 0.5, 0.5];
-v=[0.8, 1.0, 1.0, 1.0];  
-tau=1.0; 
+dh=[0.2, 0.3, 0.4, 0.5, 0.5, 0.5];
+v=[0.8, 1.0, 1.0, 1.0];   
+tau=1.0;  
 
-p = ( b, K, d, v, tau, hsa )    # dummy values needs to start the turing initialization
+p = ( b, K, d, dh, v, tau, hsa)    # dummy values needs to start the turing initialization
 
 if false
   ## test, can ignore
