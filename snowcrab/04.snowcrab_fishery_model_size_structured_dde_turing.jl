@@ -53,7 +53,7 @@ end
  
 pkgs = [ 
   "Revise", "MKL", "Logging", "StatsBase", "Statistics", "Distributions", "Random",   
-  "DynamicHMC", "AdvancedHMC",  "AdvancedMH",  "DynamicPPL",  "AbstractPPL",  "Memoization", 
+  # "DynamicHMC", "AdvancedHMC",  "AdvancedMH",  "DynamicPPL",  "AbstractPPL",  "Memoization", 
   "ForwardDiff",
   "Plots", "StatsPlots", "MultivariateStats", "StaticArrays", "LazyArrays", "FillArrays",
   "Turing", "ModelingToolkit", "DifferentialEquations", "Interpolations", "LinearAlgebra" 
@@ -88,24 +88,22 @@ fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM, solver, dt )
  
 if false
     # for testing and timings
-    # include( "size_structured_dde_turing.jl" )
-    n_samples = 10
-    n_adapts = 10
-    n_chains = 1
-    
-    # turing_sampler = Turing.MH()
-    # turing_sampler = Turing.HMC(0.05,10)
-    # turing_sampler = Turing.NUTS(n_adapts, 0.65 )
-    # turing_sampler = Turing.NUTS(n_adapts, 0.65, init_ϵ=6.103515625e-6, max_depth=8 )
-    
-    # turing_sampler = DynamicNUTS()
- 
+    n_samples = 12
+    n_adapts = 12
+
     Random.seed!(1)
     
-    # res  =  sample( fmod, turing_sampler, n_samples  )
+    res  =  sample( fmod, MH(), n_samples  )  #  Metropolis-Hastings 
+    res  =  sample( fmod, DynamicNUTS(), n_samples  )
+ 
+    leapfrog_stepsize = 0.01
+    n_leapfrog_steps = 50 
+    res  =  sample( fmod, Turing.HMC(leapfrog_stepsize, n_leapfrog_steps ), n_samples  )
+ 
+    res  =  sample( fmod, Turing.NUTS(n_adapts, 0.65 ), n_samples  )
     
-    res  =  sample( fmod, turing_sampler, n_samples; n_adapts=n_adapts  )    
-    
+    res  =  sample( fmod, Turing.NUTS(n_adapts, 0.65, init_ϵ=7.50983687005374e-7, max_depth=7), n_samples,  progress=true, drop_warmup=true  )
+     
     show(stdout, "text/plain", summarize(res)) # display all estimates
 
 end
@@ -120,7 +118,7 @@ n_adapts = 400
 # n_chains = 5
 n_chains = Threads.nthreads() 
  
-turing_sampler = Turing.NUTS(n_adapts, 0.65; max_depth=10, init_ϵ=0.05)  ;# stepsize based upon previous experience
+turing_sampler = Turing.NUTS(n_adapts, 0.65; max_depth=12, init_ϵ=0.05)  ;# stepsize based upon previous experience
 
 res  =  sample( fmod, turing_sampler, MCMCThreads(), n_samples, n_chains )
 # if on windows and threads are not working, use single processor mode:

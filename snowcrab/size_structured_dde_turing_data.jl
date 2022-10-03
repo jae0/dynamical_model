@@ -183,11 +183,11 @@ u0 = [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ] .*kmu;
 b=[1.0, 0.8]
 K=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0] .*kmu; 
 d=[0.2, 0.3, 0.4, 0.5, 0.5, 0.5];
-dh=[0.2, 0.3, 0.4, 0.5, 0.5, 0.5];
+
 v=[0.8, 1.0, 1.0, 1.0];   
 tau=1.0;  
 
-p = ( b, K, d, dh, v, tau, hsa)    # dummy values needs to start the turing initialization
+p = ( b, K, d, v, tau, hsa)    # dummy values needs to start the turing initialization
 
 if false
   ## test, can ignore
