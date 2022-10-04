@@ -91,12 +91,12 @@ end
 
 kmu  =  Kmu[ki] / mean(scale_factor)
 
-smallnumber = 1.0 / kmu / 10.0  # floating point value of sufficient to assume 0 valued
+smallnumber = 1.0 / kmu / 100.0  # floating point value of sufficient to assume 0 valued
     
 no_digits = 3  # time floating point rounding 
 
 # spin up time of ~ 1 cycle prior to start of dymamics and project nP years into the future
-tspan = (minimum(yrs) - 10.1, maximum(yrs) + nP + 1.1 )  
+tspan = (minimum(yrs) - nP, maximum(yrs) + nP + 1.1 )  
 
 survey_time =  round.( round.( Y[:,:yrs] ./ dt; digits=0 ) .* dt ; digits=no_digits)    # time of observations for survey
  
@@ -130,9 +130,15 @@ fish_time =  round.( round.( removals[:,:ts] ./ dt; digits=0 ) .* dt; digits=no_
 
 removed = removals[:,Symbol("$aulab")]
 
+i = findall( x-> x>0, removed)
+removed = removed[ i ]
+fish_time = fish_time[i]
+
+
 function affect_fishing!(integrator)
-  i = findfirst(t -> t == integrator.t, fish_time)[1]
-  integrator.u[1] -=  removed[ i ] # / integrator.p[2][1]  # p[2] ==K divide by K  .. keep unscaled to estimate magnitude of other components
+  i = findall(t -> t == integrator.t, fish_time)
+  integrator.u[1] -=  removed[ i[1] ] 
+  # / integrator.p[2][1]  # p[2] ==K divide by K  .. keep unscaled to estimate magnitude of other components
 end
 
 # cb = CallbackSet( 
@@ -142,8 +148,11 @@ end
 
 cb = PresetTimeCallback( fish_time, affect_fishing! ) 
 
-# history function  
-h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS) .* kmu .* 0.5
+# history function 0.5 default
+# h(p,t) = ones( nS ) .* 0.5  #values of u before t0
+h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS) .* kmu
+ 
+
  
 tau = 1  # delay resolution
 lags = [tau]

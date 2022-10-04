@@ -93,7 +93,8 @@ if false
 
     Random.seed!(1)
     
-    res  =  sample( fmod, MH(), n_samples  )  #  Metropolis-Hastings 
+    res  =  sample( fmod, MH(), 100  )  #  Metropolis-Hastings 
+    
     res  =  sample( fmod, DynamicNUTS(), n_samples  )
  
     leapfrog_stepsize = 0.01
@@ -102,7 +103,7 @@ if false
  
     res  =  sample( fmod, Turing.NUTS(n_adapts, 0.65 ), n_samples  )
     
-    res  =  sample( fmod, Turing.NUTS(n_adapts, 0.65, init_ϵ=7.50983687005374e-7, max_depth=7), n_samples,  progress=true, drop_warmup=true  )
+    res  =  sample( fmod, Turing.NUTS(n_adapts, 0.65, init_ϵ=0.025, max_depth=7), n_samples,  progress=true, drop_warmup=true  )
      
     show(stdout, "text/plain", summarize(res)) # display all estimates
 
@@ -113,12 +114,12 @@ end
 
 Logging.disable_logging(Logging.Warn) # or e.g. Logging.Info
 
-n_samples = 200  # 1000 -> ? hrs (Tsit5);  500 -> 6 hrs;; 29hrs 100/100 cfasouth
-n_adapts = 400
-# n_chains = 5
-n_chains = Threads.nthreads() 
+n_samples = 1000  # 1000 -> ? hrs (Tsit5);  500 -> 6 hrs;; 29hrs 100/100 cfasouth
+n_adapts = 1000
+n_chains = 4
+# n_chains = Threads.nthreads() 
  
-turing_sampler = Turing.NUTS(n_adapts, 0.65; max_depth=12, init_ϵ=0.05)  ;# stepsize based upon previous experience
+turing_sampler = Turing.NUTS(n_adapts, 0.65; max_depth=7, init_ϵ=0.05)  ;# stepsize based upon previous experience
 
 res  =  sample( fmod, turing_sampler, MCMCThreads(), n_samples, n_chains )
 # if on windows and threads are not working, use single processor mode:
@@ -167,7 +168,7 @@ savefig(plots_sim, string("size_structured_dde_turing_plots_sim_", aulab, ".png"
 
 
 plot(0)
-plots_fishing = size_structured_dde_turing_plot( selection="K withfishing withoutfishing predictionmeans", si=[1], mw=mw)
+plots_fishing = size_structured_dde_turing_plot( selection="S K withfishing withoutfishing ", si=[1], mw=mw)
 # display(plots_fishing)
 savefig(plots_fishing, string("size_structured_dde_turing_plots_fishing_", aulab, ".png") ) 
 # savefig(plots_fishing, string("size_structured_dde_turing_plots_fishing_", aulab, ".pdf") ) 
@@ -185,8 +186,116 @@ o = generated_quantities(fmod, res)
   
 pm = ( b=b, K=K, d=d, v=v, tau=tau, hsa=hsa ) 
 
-@model function compute_derived( S1, S2, S3, S4, S5, S6, kmu, tspan, prob; nT=length(S1), M=5, er=0.2, ::Type{T}=Float64 ) where {T}  
+
+function fishing_mortality( removed, abundance )
+    -log(  1.0 - (removed  / abundance)  )  ;
+end
+
+function size_structured_predictions( res)
+ 
+  nchains = size(res)[3]
+  nsims = size(res)[1]
   
+  m = zeros(nM, nS, 2, nchains*nsims)
+ 
+  z = 0
+
+  gr() 
+  theme(:default)
+
+  pl =plot()
+  
+  for j in 1:nsims  # nsims 
+  for l in 1:nchains #nchains
+    z += 1
+  #  for k in 1:nS  # nstate vars
+
+        b = [ res[j, Symbol("b[$k]"), l] for k in 1:2]
+        K = [ res[j, Symbol("K[$k]"), l] for k in 1:nS]
+        d = [ res[j, Symbol("d[$k]"), l] for k in 1:nS]
+        v = [ res[j, Symbol("v[$k]"), l] for k in 1:4]
+
+        q =  [ res[j, Symbol("q[$k]"), l] for k in 1:nS]
+        qc = [ res[j, Symbol("qc[$k]"), l] for k in 1:nS]
+
+        u0 = [ res[j, Symbol("u0[$k]"), l] for k in 1:nS]
+
+        pm = ( b, K, d, v, tau, hsa ) 
+        
+        prb = remake( prob; u0=u0 .* K , h=h, tspan=tspan, p=pm ) 
+        
+        msol = solve( prb, solver, callback=cb, saveat=dt ) 
+        msol2 = solve( prb, solver, saveat=dt ) # no call backs
+
+        yval = reduce(hcat, msol.u)'[:,k]
+        yval2 = reduce(hcat, msol2.u)'[:,k]
+
+        if nameof(typeof(mw)) == :ScaledInterpolation
+            yval = yval .* mw(msol.t) ./ 1000.0  ./ 1000.0 
+            yval2 = yval2 .* mw(msol2.t) ./ 1000.0  ./ 1000.0 
+        else
+            yval = yval .* scale_factor
+            yval2 = yval2 .* scale_factor
+        end
+
+        yval = vec(yval)
+        yval2 = vec(yval2)
+
+        pl = plot!( pl, msol.t, yval, alpha=0.1, lw=2, color=:teal ) 
+        pl = plot!( pl, msol2.t, yval2, alpha=0.1, lw=2, color=:lightgreen ) 
+     
+    
+        for i in 1:nM
+            ii = findall(x->x==prediction_time[i], msol.t)[1]
+            jj = findall(x->x==prediction_time[i], msol2.t)[1]
+            m[i,:,1,z] = msol.u[ii]    
+            m[i,:,2,z] = msol2.u[jj]
+        end
+
+    #  end
+             
+
+  end
+  end
+    pl =  plot!(pl; xlim=(minimum(yrs)-0.5, maximum(yrs)+1.5  ) )
+    pl =  plot!(pl; ylim=(0, maximum(yval)*1.1 ) )
+    pl =  plot!(pl; legend=false )
+
+  return(m,pl)
+  
+ end    
+   
+m, pl = size_structured_predictions( res)
+
+        g[:,1,z] = m[:,k,z]
+        g[:,2,z] = m2[:,k,z]
+        
+        if nameof(typeof(mw)) == :ScaledInterpolation
+            g[:,1,z] .*=  mw(prediction_time) ./ 1000.0  ./ 1000.0 
+            g[:,2,z] .*=  mw(prediction_time) ./ 1000.0  ./ 1000.0 
+        else
+            g[:,1,z] .*=  scale_factor
+            g[:,2,z] .*=  scale_factor
+        end
+
+        # plot!(prediction_time, g[:,1,z];  alpha=0.2, color=:orange)
+        # plot!(prediction_time, g[:,2,z];  alpha=0.2, color=:orange)
+
+for i in 1:length(res)  
+    w = zeros(nM)
+    for j in 1:nM
+        w[j] = res[i, Symbol("K[$k]"),l] * res[i, Symbol("m[$j,$k]"),l] 
+    end
+    if nameof(typeof(mw)) == :ScaledInterpolation
+        w = w .* mw(prediction_time) ./ 1000.0  ./ 1000.0 
+    else
+        w = w .* scale_factor
+    end
+    plot!(prediction_time, w;  alpha=0.1, color=:orange)
+end
+
+
+ 
   # params need to be named  .. return only that which is specified by "return()", below
   # deterministic computations: do from similations:
  
@@ -204,14 +313,7 @@ pm = ( b=b, K=K, d=d, v=v, tau=tau, hsa=hsa )
   MSY    = r * exp(K) / 4 ; # maximum height of of the latent productivity (yield)
   BMSY   = exp(K)/2 ; # biomass at MSY
   FMSY   = 2.0 * MSY / exp(K) ; # fishing mortality at MSY
-  
-  return( test=r+1, )
-end
-
-fmod2 = compute_derived(S1, S2, S3, S4, S5, S6, kmu, tspan, prob )
-
-
-@model function deriv( prob, nT, nS, nM, dt = 0.01,  ::Type{T} = Float64) where T
+   
  
     m = Matrix{T}(undef, nM, nS)   # 
    
@@ -516,125 +618,8 @@ if do_mcmc
 end
 
 
-## --- rest are short snippets and notes
-
-
-
-function prediction(x::Matrix, res, threshold)
-
-  ## INCOMPLETE
-
-    # Pull the means from each parameter's sampled values in the res.
-    intercept = mean(res[:intercept])
-    student = mean(res[:student])
-    balance = mean(res[:balance])
-    income = mean(res[:income])
-
-    # Retrieve the number of rows.
-    n, _ = size(x)
-
-    # Generate a vector to store our predictions.
-    v = Vector{Float64}(undef, n)
-
-    # Calculate the logistic function for each element in the test set.
-    for i in 1:n 
-        num = logistic(
-            intercept .+ student * x[i, 1] + balance * x[i, 2] + income * x[i, 3]
-        )
-        if num >= threshold
-            v[i] = 1
-        else
-            v[i] = 0
-        end
-    end
-    return v
-end;
-
-# Set the prediction threshold.
-threshold = 0.07
-
-# Make the predictions.
-predictions = prediction(test, res, threshold)
-
+ 
 # Calculate MSE for our test set.
 loss = sum((predictions - test_label) .^ 2) / length(test_label)
-
-
-    
-
  
-
-#R code that needs to be ported
-# frequency density of key parameters
-fishery_model( DS="plot", vname="K", res=res )
-fishery_model( DS="plot", vname="r", res=res )
-fishery_model( DS="plot", vname="q", res=res, xrange=c(0.5, 2.5))
-fishery_model( DS="plot", vname="qc", res=res, xrange=c(-1, 1))
-fishery_model( DS="plot", vname="FMSY", res=res  )
-
-# timeseries
-fishery_model( DS="plot", type="timeseries", vname="biomass", res=res  )
-fishery_model( DS="plot", type="timeseries", vname="fishingmortality", res=res)
-
-# Harvest control rules
-fishery_model( DS="plot", type="hcr", vname="default", res=res  )
-
-# Summary table of mean values for inclusion in document
-
-( qs = apply(  res$mcmc$K[,], 2, quantile, probs=c(0.025, 0.5, 0.975) ) )  # carrying capactiy
-
-( qs = apply(  res$mcmc$FMSY[,], 2, quantile, probs=c(0.025, 0.5, 0.975) ) ) # FMSY
-
-
-biomass = as.data.table( fit$summary("B") )
-np = year.assessment+c(1:p$fishery_model$fmdata$M)
-biomass$yr = rep( c(p$yrs, np ), 3)
-nt = p$fishery_model$fmdata$N +p$fishery_model$fmdata$M
-biomass$region = c( rep("cfanorth", nt), rep("cfasouth", nt), rep("cfa4x", nt) )
-(biomass)
-
-NN = res$p$fishery_model$fmdata$N
-
-# densities of biomass estimates for the year.assessment
-( qs = apply(  res$mcmc$B[,NN,], 2, quantile, probs=c(0.025, 0.5, 0.975) ) )
-
-# densities of biomass estimates for the previous year
-( qs = apply(  res$mcmc$B[,NN-1,], 2, quantile, probs=c(0.025, 0.5, 0.975) ) )
-
-# densities of F in assessment year
-( qs = apply(  res$mcmc$F[,NN,], 2, quantile, probs=c(0.025, 0.5, 0.975) ) )
-( qs = apply(  res$mcmc$F[,NN,], 2, mean ) )
-
-# densities of F in previous year
-( qs = apply(  res$mcmc$F[,NN-1,], 2, quantile, probs=c(0.025, 0.5, 0.975) ) )
-( qs = apply(  res$mcmc$F[,NN-1,], 2, mean ) )
- 
- 
- 
- # computed quants
- 
-using DynamicPPL, Distributions
- @model function demo(xs)
-             s ~ InverseGamma(2, 3)
-             m_shifted ~ Normal(10, √s)
-             m = m_shifted - 10
-             for i in eachindex(xs)
-                 xs[i] ~ Normal(m, √s)
-             end
-             return (m, )
-         end
-  demo (generic function with 2 methods)
-  
- model = demo(randn(10));
-  
- 
-parameters = (; s = 1.0, m_shifted=10);
-  
-gq = generated_quantities(model, parameters)
-gq = generated_quantities(model, values(parameters), keys(parameters))
-
-
-m = vec(getindex.( gq, 1))
-density!(m, lab="generated quantity (VI)")
-vline!([0], lab="true value")
-
+   
