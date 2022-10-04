@@ -227,8 +227,8 @@ function size_structured_predictions( res)
         msol = solve( prb, solver, callback=cb, saveat=dt ) 
         msol2 = solve( prb, solver, saveat=dt ) # no call backs
 
-        yval = reduce(hcat, msol.u)'[:,k]
-        yval2 = reduce(hcat, msol2.u)'[:,k]
+        yval = reduce(hcat, msol.u)'[:,1]
+        yval2 = reduce(hcat, msol2.u)'[:,1]
 
         if nameof(typeof(mw)) == :ScaledInterpolation
             yval = yval .* mw(msol.t) ./ 1000.0  ./ 1000.0 
@@ -267,19 +267,28 @@ function size_structured_predictions( res)
    
 m, pl = size_structured_predictions( res)
 
-        g[:,1,z] = m[:,k,z]
-        g[:,2,z] = m2[:,k,z]
-        
-        if nameof(typeof(mw)) == :ScaledInterpolation
-            g[:,1,z] .*=  mw(prediction_time) ./ 1000.0  ./ 1000.0 
-            g[:,2,z] .*=  mw(prediction_time) ./ 1000.0  ./ 1000.0 
-        else
-            g[:,1,z] .*=  scale_factor
-            g[:,2,z] .*=  scale_factor
-        end
 
-        # plot!(prediction_time, g[:,1,z];  alpha=0.2, color=:orange)
-        # plot!(prediction_time, g[:,2,z];  alpha=0.2, color=:orange)
+
+
+
+
+g[:,1,z] = m[:,k,z]
+g[:,2,z] = m2[:,k,z]
+
+if nameof(typeof(mw)) == :ScaledInterpolation
+    g[:,1,z] .*=  mw(prediction_time) ./ 1000.0  ./ 1000.0 
+    g[:,2,z] .*=  mw(prediction_time) ./ 1000.0  ./ 1000.0 
+else
+    g[:,1,z] .*=  scale_factor
+    g[:,2,z] .*=  scale_factor
+end
+
+# plot!(prediction_time, g[:,1,z];  alpha=0.2, color=:orange)
+# plot!(prediction_time, g[:,2,z];  alpha=0.2, color=:orange)
+
+
+
+
 
 for i in 1:length(res)  
     w = zeros(nM)
