@@ -32,9 +32,9 @@
   # h(p,t) = ones( nS ) .* 0.5  #values of u before t0
   h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS) .* ks .*0.5
   tau = 1.0  # delay
-  lags = [tau]
+  
   solver = MethodOfSteps(Tsit5())  # solver; BS3() and Vern6() also RK4()
-  prob = DDEProblem( size_structured_dde! , u0, h, tspan, p; constant_lags=lags )
+  prob = DDEProblem( size_structured_dde! , u0, h, tspan, p; constant_lags=[tau] )
   msol =  solve( prob,  solver, saveat=0.001 )
 
   gr()
@@ -73,7 +73,7 @@
   hsa = Interpolations.scale(efc1, 1999:2021, 1:6 )
   p = ( b, K, d, v, tau, hsa )   
 
-  prob = DDEProblem( size_structured_dde!, u0, h, tspan, p; constant_lags=lags )
+  prob = DDEProblem( size_structured_dde!, u0, h, tspan, p; constant_lags=[tau] )
   msol =  solve( prob,  solver, saveat=dt  ) #, isoutofdomain=(y,p,t)->any(x->(x<0)|(x>1), y) )
 
   plot(0)
@@ -89,7 +89,7 @@
  
   p = ( b, K, d, v, tau, hsa)   
 
-  prob2 = DDEProblem( size_structured_dde!, u0, h, tspan, p; constant_lags=lags )
+  prob2 = DDEProblem( size_structured_dde!, u0, h, tspan, p; constant_lags=[tau] )
   # prob2 = remake( prob; u0=u0, h=h, tspan=tspan, p=p )
 
   plot(0)

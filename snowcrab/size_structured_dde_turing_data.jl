@@ -51,9 +51,7 @@ MW = o["M0_W"]
         plot!( Y[:,:yrs] .+3, Y[:,:cfa4x_M3] )
         plot!( Y[:,:yrs] .+4, Y[:,:cfa4x_M4] )
     end
-
-
-    
+ 
 
 
 # "survey index"
@@ -67,8 +65,7 @@ statevars = [
 ]
 
 S = Matrix(Y[:, statevars ])
-  
-  
+   
 # interpolating function for mean weight
 mwspline = extrapolate( interpolate( MW[:,Symbol("mw_", "$aulab") ], (BSpline(Linear()) ) ),  Interpolations.Flat() )
 mw = Interpolations.scale(mwspline, yrs )
@@ -78,16 +75,11 @@ scale_factor = mw(yrs) / (1000 *1000 ) # convert numbers to kt biomass , also us
 
 # convert to (biomass kt to number) 
 
-if aulab=="cfanorth" 
-   ki = 1
-
-elseif aulab=="cfasouth"
-   ki = 2
-
-elseif aulab=="cfa4x"
-   ki = 3
-
-end
+# id index
+ki = aulab=="cfanorth" ? 1 :
+     aulab=="cfasouth" ? 2 :
+     aulab=="cfa4x"    ? 3 :
+     0  # default
 
 kmu  =  Kmu[ki] / mean(scale_factor)
 
@@ -96,21 +88,18 @@ smallnumber = 1.0 / kmu / 100.0  # floating point value of sufficient to assume 
 no_digits = 3  # time floating point rounding 
 
 # spin up time of ~ 1 cycle prior to start of dymamics and project nP years into the future
-tspan = (minimum(yrs) - nP, maximum(yrs) + nP + 1.1 )  
+tspan = (minimum(yrs) - 8.1, maximum(yrs) + nP + 1.1 )  
 
 survey_time =  round.( round.( Y[:,:yrs] ./ dt; digits=0 ) .* dt ; digits=no_digits)    # time of observations for survey
- 
-
+  
 # this only adds habitat space  ... predation is also a useful one .. 
 # speed is the issue 
-
-
+ 
 prediction_time = 
   floor.( vcat( collect(minimum(yrs) : (maximum(yrs)+nP) ) )  ) .+  #yrs
   round(round( 9.0/12.0 /dt; digits=0 ) *dt; digits=no_digits)   # sept
 
 #  sa to fraction
-
 external_forcing =  reshape( [
    Y[:,Symbol("H", "$aulab","_M0")]  / maximum( Y[:,Symbol("H", "$aulab","_M0")] )
    Y[:,Symbol("H", "$aulab","_M1")]  / maximum( Y[:,Symbol("H", "$aulab","_M1")] )
@@ -125,11 +114,9 @@ efc = extrapolate( interpolate( external_forcing, (BSpline(Linear()), NoInterp()
 hsa = Interpolations.scale(efc, yrs .+ 0.75, 1:nS )
 
 fish_time =  round.( round.( removals[:,:ts] ./ dt; digits=0 ) .* dt; digits=no_digits)    # time of observations for survey
-# fish_time =  removals[:,:ts]     # time of observations for survey
-
-
 removed = removals[:,Symbol("$aulab")]
 
+# keep nonzero elements
 i = findall( x-> x>0, removed)
 removed = removed[ i ]
 fish_time = fish_time[i]
@@ -151,41 +138,9 @@ cb = PresetTimeCallback( fish_time, affect_fishing! )
 # history function 0.5 default
 # h(p,t) = ones( nS ) .* 0.5  #values of u before t0
 h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS) .* kmu
+  
+tau = 1.0  # delay resolution
  
-
- 
-tau = 1  # delay resolution
-lags = [tau]
-
-# allsavetimes = unique( vcat( survey_time, prediction_time  ) )
-
-# stiff solvers: Rodas4()  ; Rosenbrock23()
-# solver = MethodOfSteps(Rosenbrock23()) # slow  
-# solver = MethodOfSteps(Rodas4())  
-# other solvers: BS3() and Vern6() also RK4()
-# solver = MethodOfSteps(Rodas5())  # safer 
-
-# relative timings:
-# solver = MethodOfSteps(Tsit5())  # 10 - 41.43 
-# solver = MethodOfSteps(Rodas5())   # 20.94  - 71.73
-# solver = MethodOfSteps(BS3())   # 56.1
-# solver = MethodOfSteps(Rodas4()) #   24.86- 82.79
-# solver = MethodOfSteps(Rosenbrock23()) #  71.48
-# solver = MethodOfSteps(Vern6())  # 73.98
-# solver = MethodOfSteps(RK4())   # 76.28
-# solver = MethodOfSteps(TRBDF2())  # 92.16
-# solver = MethodOfSteps(QNDF())  # 110.79
-# solver = MethodOfSteps(Vern7())  #  111.7
-# solver = MethodOfSteps(KenCarp4())  # 139.88
-
-
-# solver = MethodOfSteps(Tsit5())  
-solver = MethodOfSteps(Rodas5())  # safer 
-
-Turing.setadbackend(:forwarddiff)  # only AD that works right now
-
-Turing.setrdcache(true)
-
 # these are dummy initial values .. just to get things started
 
 u0 = [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ] .*kmu; 
@@ -194,13 +149,14 @@ K=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0] .*kmu;
 d=[0.2, 0.3, 0.4, 0.5, 0.5, 0.5];
 
 v=[0.8, 1.0, 1.0, 1.0];   
-tau=1.0;  
+ 
 
-p = ( b, K, d, v, tau, hsa)    # dummy values needs to start the turing initialization
+# dummy values needed to start the turing initialization (bootstrap it)
+p = ( b, K, d, v, tau, hsa)    
 
 if false
   ## test, can ignore
-  prob = DDEProblem( size_structured_dde!, u0, h, tspan, p; constant_lags=lags )
+  prob = DDEProblem( size_structured_dde!, u0, h, tspan, p; constant_lags=[tau] )
   msol2 =  solve( prob,  solver, callback=cb, saveat=dt )  
   plot( msol2, ; legend=false, xlim=(1999,2021), label="dde, with hsa, no fishing" )
 end
