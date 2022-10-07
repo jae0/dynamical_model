@@ -1,16 +1,16 @@
 
-function size_structured_dde!( du, u, h, p, t)
+function size_structured_dde_reference!( du, u, h, p, t)
   # here u, du are actual numbers .. not normalized by K due to use of callbacks  
-
+  # fastest version:  any tweaks should be tested against this one
   (b, K, d, v, tau, hsa)  = p
 
-  u1 = h(p, t-1.0)    # no in previous years
+  u1 = h(p, t-1.0)[2:5]    # no in previous years
   f8 = h(p, t-8.0)[6]  # no mature fem 8  yrs ago
   vh = hsa(t, 1:6)  
   
   # this break down seems to speed it up a bit ... not sure why
   br =  f8 .* b    
-  tr =  v .* u1[2:5]
+  tr =  v .* u1
   dr =  d .* u .* u ./ K ./ vh 
   
   du[1] = tr[1]            - dr[1]       # note:       
@@ -23,6 +23,30 @@ function size_structured_dde!( du, u, h, p, t)
 end
  
 
+function size_structured_dde!( du, u, h, p, t)
+    # here u, du are actual numbers .. not normalized by K due to use of callbacks  
+  
+    (b, K, d, v, tau, hsa)  = p
+  
+    u1 = h(p, t-1.0)[2:5]    # no in previous years
+    f8 = h(p, t-8.0)[6]  # no mature fem 8  yrs ago
+    vh = hsa(t, 1:6)  
+    
+    # this break down seems to speed it up a bit ... not sure why
+    br =  f8 .* b    
+    tr =  v .* u1
+    dr =  d .* u .* u ./ K ./ vh 
+    
+    du[1] = tr[1]            - dr[1]       # note:       
+    du[2] = tr[2]   - tr[1]  - dr[2]     
+    du[3] = tr[3]   - tr[2]  - dr[3]    
+    du[4] = tr[4]   - tr[3]  - dr[4]    
+    du[5] = br[1]   - tr[4]  - dr[5]     
+    du[6] = br[2]            - dr[6]      # fem mat simple logistic with lag tau and density dep on present numbers
+     
+  end
+   
+  
 
 
 @model function size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM,
@@ -30,7 +54,7 @@ end
 
 # iok= findall(!ismissing, S)
  # biomass process model: 
-  K ~ filldist( TruncatedNormal( kmu, kmu*0.25, kmu/5.0, kmu*5.0), nS )  
+  K ~ filldist( TruncatedNormal( kmu, kmu*0.2, kmu/5.0, kmu*5.0), nS )  
 
   q ~ filldist( TruncatedNormal(  1.0, 0.1,  0.1, 2.0), nS )    
   qc ~ filldist( TruncatedNormal( 0.0, 0.1, -0.5, 0.5), nS )  
@@ -38,10 +62,10 @@ end
   bosd ~  TruncatedNormal( 0.1, 0.1, 0.01, 0.3 )  ;  # slightly informative .. center of mass between (0,1)
 
   # birth rate from F(y - 8 to 10)  and for males m5 and females
-  b ~ filldist( TruncatedNormal(1.0, 0.1, 0.2, 5.0), 2 ) 
+  b ~ filldist( TruncatedNormal(1.0, 0.1, 0.2, 4.0), 2 ) 
   
   # background mortality
-  d ~ filldist( TruncatedNormal(0.2, 0.1, 0.05, 0.8), nS )  
+  d ~ filldist( TruncatedNormal(0.2, 0.1, 0.01, 0.99), nS )  
 
   # transition rates
   v ~ filldist( TruncatedNormal(0.8, 0.1, 0.1, 0.99), 4 ) 

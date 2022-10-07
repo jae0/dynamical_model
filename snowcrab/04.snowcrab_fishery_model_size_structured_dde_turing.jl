@@ -10,7 +10,8 @@ if false
     # NOTE::: this requires 03.snowcrab_carstm.r to be completed 
     source( file.path( code_root, "bio_startup.R" )  )
     loadfunctions("bio.snowcrab")
-    fishery_model_data_inputs( year.assessment=2021, type="size_structured_numerical_dynamics",  for_julia=TRUE, time_resolution=1/52  )  
+    # fishery landings has a weekly time step = 2/52 ~ 0.0385 ~ 0.04  X dt=0.01 seems to work best
+    fishery_model_data_inputs( year.assessment=2021, type="size_structured_numerical_dynamics", for_julia=TRUE, time_resolution=2/52  )  
   # ==== R-code ====
 end
 
@@ -18,20 +19,27 @@ end
 # ---------------
 # run-level options
 
+  # choose a region of interest"
+  aulab ="cfanorth"
+  aulab ="cfasouth"
+  aulab ="cfa4x"
+      
+  # time resolution of diff eq model solution saves (0.02 ~ every week)
+  dt = aulab == "cfanorth" ? 0.01 :
+       aulab == "cfasouth" ? 0.01 :
+       aulab == "cfa4x" ? 0.1     :
+       0.01 
+
+
+       
   yrs = 1999:2021  # <<<<<<<<-- change
 
   nT = length(yrs)
   nP = 5  # number of predictions into future (with no fishing)
   nM = nP + nT  # total number of prediction years
 
-  dt = 0.01 # time resolution of diff eq model solution saves (0.02 ~ every week)
   nS = 6  # no. state variables
 
-  # choose a region of interest"
-  aulab ="cfanorth"
-  aulab ="cfasouth"
-  aulab ="cfa4x"
-      
 
 # load libs and options
   include( "size_structured_dde_environment.jl" )
@@ -47,7 +55,7 @@ end
  
 # run model settings / options / overrides to prep for DifferentialEquations and Turing
   solver = MethodOfSteps(Tsit5())  # usually works well. Alt:  solver = MethodOfSteps(Rodas5())  
-  prob = DDEProblem( size_structured_dde!, u0, h, tspan, p, constant_lags=[tau]  )
+  prob = DDEProblem( size_structured_dde!, u0, h, tspan, p, constant_lags=[1.0, 8.0]  )  # tau=1
   fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM, solver, dt )
   
     if false
@@ -124,23 +132,23 @@ showall(summarize(res ) )  # show(stdout, "text/plain", summarize(res)) # displa
   vn = "K[6]"; density!(res[ Symbol(vn) ])
 
 
-  plots_sim = size_structured_dde_turing_plot( selection="S K predictions predictionmeans", si=[1], mw=mw ) 
-  plot!(; xlim=(minimum(yrs)-1.5, maximum(yrs)+7.5  ) )
+  # plots_sim = size_structured_dde_turing_plot( selection="S K predictions predictionmeans", si=[1], mw=mw ) 
+  # plot!(; xlim=(minimum(yrs)-1.5, maximum(yrs)+7.5  ) )
 
-  # display(plots_sim)
-  savefig(plots_sim, "ignore", string("size_structured_dde_turing_plots_sim_", aulab, ".png") ) 
+  # # display(plots_sim)
+  # savefig(plots_sim, "ignore", string("size_structured_dde_turing_plots_sim_", aulab, ".png") ) 
 
 
-  plot(0)
-  plots_fishing = size_structured_dde_turing_plot( selection="S K withfishing withoutfishing ", si=[1], mw=mw)
-  # display(plots_fishing)
-  savefig(plots_fishing, "ignore",  string("size_structured_dde_turing_plots_fishing_", aulab, ".png") )  
+  # plot(0)
+  # plots_fishing = size_structured_dde_turing_plot( selection="S K withfishing withoutfishing ", si=[1], mw=mw)
+  # # display(plots_fishing)
+  # savefig(plots_fishing, "ignore",  string("size_structured_dde_turing_plots_fishing_", aulab, ".png") )  
  
     
   o = size_structured_predictions( res; n=500, k=1 )  # model traces
     
   # annual snapshots of numerical abundance (relative number) 
-  m = size_structured_predictions_annual(res; prediction_time=prediction_time, n=100)
+  m = size_structured_predictions_annual(res; prediction_time=prediction_time, n=500)
 
   # extract sims (with fishing)
   g = m[:,1,:,1]   # [ yr, statevariable, sim, (with fishing=1; nofishing=2) ] 
