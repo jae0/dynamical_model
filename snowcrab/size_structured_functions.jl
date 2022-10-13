@@ -227,21 +227,17 @@ function fishing_mortality_instantaneous( removed, abundance )
 end
  
 
-function removals_aggregate( removed, fish_time )
-  f = DataFrame( yr=floor.(fish_time), rem = removed );
+function removals_aggregate( removed, fish_year )
+  f = DataFrame( yr=floor.(fish_year), rem = removed );
   out = combine(groupby(f,:yr),[:rem ] .=> sum )
+  g = DataFrame( yr=floor.(survey_time) )
+  out = leftjoin(g, out, on=:yr)
+  sort!(out, :yr)
+  out[ findall(x->ismissing(x), out[:,:rem_sum])[1], :rem_sum ] = 0.0
   return(out)
 end
 
-
-function fishing_mortality( removed, fish_time, biomass  )
-  removed_annual = removals_aggregate( removed, fish_time )
-  Fkt = removed_annual[:,:rem_sum] ./1000.0 ./ 1000.0  # removal in kg -> kt
-  FR =  Fkt ./ ( Fkt .+  biomass )  # relative F
-  FM = -log.(  1.0 .- ( FR ) )  # instantaneous F
-  return ( Fkt, FR, FM )
-end
-
+ 
 
 
 function size_structured_dde_turing_plot( ; selection="withfishing withoutfishing S K predictions predictionmeans", si=[1], scale_factor=1.0, mw=nothing, vn="" )
@@ -280,7 +276,7 @@ function size_structured_dde_turing_plot( ; selection="withfishing withoutfishin
       if occursin( r"withfishing", selection )
 
           msol = solve( 
-              remake( prob, u0=u0, h=h, tspan=tspan, p=pm; constant_lags=[tau] ), 
+              remake( prob, u0=u0, h=h, tspan=tspan, p=pm; constant_lags=tau ), 
               solver, 
               callback=cb, 
               saveat=dt #, 
@@ -303,7 +299,7 @@ function size_structured_dde_turing_plot( ; selection="withfishing withoutfishin
 
   
       if occursin( r"withoutfishing", selection )  
-          prob2 = DDEProblem( size_structured_dde!, u0, h, tspan, pm; saveat=dt, constant_lags=[tau] )
+          prob2 = DDEProblem( size_structured_dde!, u0, h, tspan, pm; saveat=dt, constant_lags=tau )
           msol = solve( 
               prob2,  
               solver, 

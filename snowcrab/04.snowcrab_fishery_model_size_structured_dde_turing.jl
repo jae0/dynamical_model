@@ -16,6 +16,14 @@ if false
 end
 
 
+if false
+  # in REPL< this needs to be loaded first as it skips the startup.jl
+  project_directory = @__DIR__() #  same folder as the current file
+  push!(LOAD_PATH, project_directory)  # add the directory to the load path, so it can be found
+  include( "startup.jl" )    
+end
+
+
 # ---------------
 # run-level options
 
@@ -23,39 +31,44 @@ end
   aulab ="cfanorth"
   aulab ="cfasouth"
   aulab ="cfa4x"
-      
-  # time resolution of diff eq model solution saves (0.02 ~ every week)
-  dt = aulab == "cfanorth" ? 0.01 :
-       aulab == "cfasouth" ? 0.01 :
-       aulab == "cfa4x" ? 0.1     :
-       0.01 
-
-
        
+
   yrs = 1999:2021  # <<<<<<<<-- change
 
-  nT = length(yrs)
-  nP = 5  # number of predictions into future (with no fishing)
-  nM = nP + nT  # total number of prediction years
 
-  nS = 6  # no. state variables
-
-
-# load libs and options
+# load libs and options and prepare data for diffeq/turing model and set default parameters
   include( "size_structured_dde_environment.jl" )
-       
-# prepare data for diffeq/turing model and set default parameters
-  include( "size_structured_dde_turing_data.jl" )
- 
-# load dynamical core model, turing estimation model, etc 
-  include( "size_structured_functions.jl" ) 
 
-# to test dynamical model with generic parameters:
+# to reload dynamical core model, turing estimation model, etc 
+#  include( "size_structured_functions.jl" ) 
+
+# to test dynamical model with generic/random parameters:
 # include(  "size_structured_dde_test.jl" )    
  
+
 # run model settings / options / overrides to prep for DifferentialEquations and Turing
-  solver = MethodOfSteps(Tsit5())  # usually works well. Alt:  solver = MethodOfSteps(Rodas5())  
-  prob = DDEProblem( size_structured_dde!, u0, h, tspan, p, constant_lags=[1.0, 8.0]  )  # tau=1
+
+  # these are dummy initial values .. just to get things started
+  u0 = [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ] .*kmu; 
+  b=[1.0, 0.8]
+  K=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0] .*kmu; 
+  d=[0.2, 0.3, 0.4, 0.5, 0.5, 0.5];
+  v=[0.8, 1.0, 1.0, 1.0];   
+  
+  # dummy values needed to bootstrap DifferentialEquations/Turing initialization 
+  p = ( b, K, d, v, tau, hsa)    
+
+  # solver = MethodOfSteps(Tsit5())  # usually works well. Alt:  solver = MethodOfSteps(Rodas5())  
+
+  if false
+    ## test, can ignore .. hsa, cb, tau, etc. are defined in the *_environment.jl file 
+    msol2 =  solve( prob,  solver, callback=cb, saveat=dt )  
+    plot( msol2, ; legend=false, xlim=(1999,2021), label="test" )
+  end
+
+
+  prob = DDEProblem( size_structured_dde!, u0, h, tspan, p, constant_lags=tau  )  # tau=[1]
+
   fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM, solver, dt )
   
     if false
@@ -71,27 +84,24 @@ end
       leapfrog_stepsize = 0.01
       n_leapfrog_steps = 50 
       res  =  sample( fmod, Turing.HMC(leapfrog_stepsize, n_leapfrog_steps ), n_samples  )
+
       res  =  sample( fmod, Turing.NUTS(n_adapts, 0.65 ), n_samples  )
-      res  =  sample( fmod, Turing.NUTS(n_adapts, 0.65, init_ϵ=0.05, max_depth=7), n_samples,  progress=true, drop_warmup=true  )
+      res  =  sample( fmod, Turing.NUTS(n_adapts, 0.8, init_ϵ=0.05, max_depth=8), n_samples,  progress=true, drop_warmup=true  )
       
       showall(res)  # show(stdout, "text/plain", summarize(res)) # display all estimates
 
     end
 
-# production  
-
+# production  uses Turing.NUTS
 Logging.disable_logging(Logging.Warn) # or e.g. Logging.Info
 
-n_samples = 1000  # 1000 -> ? hrs (Tsit5);  500 -> 6 hrs;; 29hrs 100/100 cfasouth
-n_adapts = 1000
-n_chains = 4  #   # n_chains = Threads.nthreads() 
- 
-turing_sampler = Turing.NUTS(n_adapts, 0.65; max_depth=7, init_ϵ=0.05)  ;# stepsize based upon previous experience
-
+n_samples = 500  # 1000 -> ? hrs (Tsit5);  500 -> 6 hrs;; 29hrs 100/100 cfasouth
+n_adapts = 500
+n_chains = 5  #   # n_chains = Threads.nthreads() 
+turing_sampler = Turing.NUTS(n_adapts, 0.8; max_depth=8, init_ϵ=0.05)  ;# stepsize based upon previous experience
 res  =  sample( fmod, turing_sampler, MCMCThreads(), n_samples, n_chains )
 # if on windows and threads are not working, use single processor mode:
 # res = mapreduce(c -> sample(fmod, turing_sampler, n_samples), chainscat, 1:n_chains)
-
 
 showall(summarize(res ) )  # show(stdout, "text/plain", summarize(res)) # display all estimates
 
@@ -105,8 +115,7 @@ showall(summarize(res ) )  # show(stdout, "text/plain", summarize(res)) # displa
 # can read back in R as:  
 # h5read( paste("/home/jae/julia/snowcrab/ignore/size_structured_dde_turing_data", "_", aulab, ".hdf5"), "res")
 
-
-
+ 
 # ------------------------------
 # plots 
 
@@ -144,7 +153,6 @@ showall(summarize(res ) )  # show(stdout, "text/plain", summarize(res)) # displa
   # # display(plots_fishing)
   # savefig(plots_fishing, "ignore",  string("size_structured_dde_turing_plots_fishing_", aulab, ".png") )  
  
-    
   o = size_structured_predictions( res; n=500, k=1 )  # model traces
     
   # annual snapshots of numerical abundance (relative number) 
@@ -158,21 +166,26 @@ showall(summarize(res ) )  # show(stdout, "text/plain", summarize(res)) # displa
   g .*= nameof(typeof(mw)) == :ScaledInterpolation ?  mw(prediction_time) ./ 1000.0  ./ 1000.0 : scale_factor
 
   # plot biomass
-  gr()
-  plot()
-  plot!( prediction_time, g;  alpha=0.1, color=:lightslateblue)
+  # gr()
+  # plot()
+  plot!( prediction_time, g;  alpha=0.02, color=:lightslateblue)
   plot!( prediction_time, mean(g, dims=2);  alpha=0.8, color=:darkslateblue, lw=4)
   plot!(; legend=false )
   plot!(; ylim=(0, maximum(g)*1.01 ) )
   
 
   # plot fishing mortality
-  Fkt, FR, FM = fishing_mortality(  removed, fish_time, g[1:length(survey_time),:] )
+  removed_annual = removals_aggregate( removed, fish_year )
+ 
+  Fkt = removed_annual[:,:rem_sum] ./1000.0 ./ 1000.0  # removal in kg -> kt
+  FR =  Fkt ./ ( Fkt .+  g[1:length(survey_time),:] )  # relative F
+  FM = -log.(  1.0 .- ( FR ) )  # instantaneous F
+
   plot()
   plot( survey_time, FM ;  alpha=0.1, color=:lightslateblue)
   plot!( survey_time, mean(FM, dims=2) ;  alpha=0.8, color=:slateblue, lw=4)
   plot!( xlim=(minimum(yrs)-0.5, maximum(yrs)+1.5  ) )
-  # pl =  plot!(pl; ylim=(0, maximum(m[:,:,2,z])*1.1 ) )
+  plot!( ylim=(0, maximum(FM)*1.1 ) )
   plot!( ; legend=false )
 
 
