@@ -63,14 +63,14 @@ end
 @model function size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM,
   solver=MethodOfSteps(Tsit5()), dt = 0.01,  ::Type{T} = Float64) where T
 
-# iok= findall(!ismissing, S)
- # biomass process model: 
+  # biomass process model: 
   K ~ filldist( TruncatedNormal( kmu, kmu*0.2, kmu/10.0, kmu*10.0), nS )  
 
   q ~ filldist( TruncatedNormal(  1.0, 0.1,  0.1, 2.0), nS )    
   qc ~ filldist( TruncatedNormal( 0.0, 0.1, -0.5, 0.5), nS )  
 
-  bosd ~  TruncatedNormal( 0.1, 0.1, 0.01, 0.4 )  ;  # slightly informative .. center of mass between (0,1)
+  bosd ~  TruncatedNormal( 0.1, 0.1, 0.01, 0.4 )  
+  bpsd ~  TruncatedNormal( 0.1, 0.1, 0.01, 0.4 )  
 
   # birth rate from F(y - 8 to 10)  and for males m5 and females
   b ~ filldist( TruncatedNormal(0.8, 0.1, 0.01, 10.0), 2 ) 
@@ -83,10 +83,12 @@ end
  
   # initial conditions
   u0 ~ filldist( TruncatedNormal( 0.8, 0.1, 0.1, 0.99), nS )
-
+  
   pm = ( b, K, d, v, tau, hsa ) 
   # @show pm
-
+  
+  m = TArray{T}( nT, nS )
+  
   # process model
   msol = solve( 
       remake( prob; u0=u0, h=h, tspan=tspan, p=pm ), 
@@ -106,9 +108,8 @@ end
   for i in Si
       ii = findall(x->x==survey_time[i], msol.t)[1]
       for k in 1:nS
-          # if !ismissing(S[i,k]) 
-            S[i,k] ~ TruncatedNormal( msol.u[ii][k] * q[k] + qc[k], bosd, 0.0, 1.0)  
-          # end
+          m[i,k] ~ TruncatedNormal( msol.u[ii][k], bpsd, 0.0, 1.0)
+          S[i,k] ~ TruncatedNormal( m[i,k] * q[k] + qc[k], bosd, 0.0, 1.0)  
       end
   end
    
