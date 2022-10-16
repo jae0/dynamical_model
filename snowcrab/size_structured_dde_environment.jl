@@ -77,7 +77,6 @@ Y = o["Y"]
 Kmu = o["Kmu"]
 removals = o["L"]
 MW = o["M0_W"]
- 
 
 
     if false
@@ -174,6 +173,7 @@ tspan = (minimum(yrs) - 10.1, maximum(yrs) + nP + 1.1 )
 
 
 survey_time =  round.( round.( Y[:,:yrs] ./ dt; digits=0 ) .* dt ; digits=no_digits)    # time of observations for survey
+Si = findall( x-> !ismissing(x), vec(sum(S, dims=2)))  # compute data likelihoods only when data exist ... to speed up comps 
   
 # this only adds habitat space  ... predation is also a useful one .. 
 # speed is the issue 
@@ -216,10 +216,16 @@ if length(ikeep) > 0
   fish_year = fish_year[ikeep]
 end
 
-function affect_fishing!(integrator)
+function affect_fishing_reference!(integrator)
   i = findall(t -> t == integrator.t, fish_time)
   integrator.u[1] -=  removed[ i[1] ] 
   # / integrator.p[2][1]  # p[2] ==K divide by K  .. keep unscaled to estimate magnitude of other components
+end
+
+
+function affect_fishing!(integrator)
+  i = findall(t -> t == integrator.t, fish_time)
+  integrator.u[1] -=  removed[ i[1] ] / integrator.p[2][1]  # p[2] ==K divide by K  .. keep unscaled to estimate magnitude of other components
 end
 
 # cb = CallbackSet( 
@@ -231,7 +237,9 @@ cb = PresetTimeCallback( fish_time, affect_fishing! )
 
 # history function  
 # h(p,t) = ones( nS ) .* 0.5  # defaults to values of 0.5*u before t0
-h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS) .* kmu. .* 0.5
+# h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS) .* kmu .* 0.5
+ 
+h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS)  .* 0.5
   
 tau = [1.0]  # delay resolution
   
@@ -239,4 +247,9 @@ tau = [1.0]  # delay resolution
 # to load dynamical core model, turing estimation model, etc 
 include( "size_structured_functions.jl" ) 
 
+
+u0 = [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ]  ; # generics to bootstrap the process
+p = dde_parameters() # dummy values needed to bootstrap DifferentialEquations/Turing initialization 
+prob = DDEProblem( size_structured_dde!, u0, h, tspan, p, constant_lags=tau  )  # tau=[1]
+fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM, solver, dt )
 

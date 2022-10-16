@@ -295,9 +295,7 @@ oo = Array(res, (size(res)[1], size(res)[2]) )
   plot!(bm; color=[1 2], linewidth=1)
   scatter!(bm.t, S'; color=[1 2])
 
-
-end
-
+ 
 
 
   # deterministic computations: do from similations:
@@ -355,7 +353,7 @@ end
 
 
 # north and south
-if j in 1:2 {
+if j in 1:2 
   # spring surveys
   ys = ( Y[1, j] / q ) +  qc
   ys ~ TruncatedNormal( bm[1,j] - L[1,j]/K , bosd, smallnumber, 1.0) ;
@@ -403,7 +401,7 @@ C = zeros(nT+M)
 
 C[1:nT] = L[1:nT] ./ K
 C[(nT+1):(M+nT)] = er .* bm[(nT):(M+nT-1)]
-C = 1.0 -. C / bm
+C = 1.0 .- C ./ bm
 
 F =  -log( max.(C, smallnumber) )  ;
 
@@ -417,8 +415,8 @@ FMSY   = 2.0 * MSY / exp(K) ; # fishing mortality at MSY
 
 # recaled estimates
 
-B[1:nT] = bm[1:nT] *. K - L[1:nT] ;
-B[(nT+1):(M+nT)] = (bm[(nT+1):(M+nT)] - C[(nT):(M+nT-1)]) *. K ;
+B[1:nT] = bm[1:nT] .* K - L[1:nT] ;
+B[(nT+1):(M+nT)] = (bm[(nT+1):(M+nT)] - C[(nT):(M+nT-1)]) .* K ;
 
 
  
