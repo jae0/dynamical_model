@@ -74,7 +74,9 @@ end
 fndat = "/home/jae/bio.data/bio.snowcrab/modelled/1999_present_fb/fishery_model_results/turing1/biodyn_number_size_struct.RData"
 o = load( fndat, convert=true)
 Y = o["Y"]
+
 Kmu = o["Kmu"]
+
 removals = o["L"]
 MW = o["M0_W"]
 
@@ -158,18 +160,18 @@ ki = aulab=="cfanorth" ? 1 :
 
 kmu  =  Kmu[ki] / mean(scale_factor)
 
-smallnumber = 1.0 / kmu / 100.0  # floating point value of sufficient to assume 0 valued
+smallnumber = 1.0 / kmu / 10.0  # floating point value of sufficient to assume 0 valued
 
 no_digits = 3  # time floating point rounding
 
 
-dt =  aulab == "cfanorth" ? 0.01 :
-      aulab == "cfasouth" ? 0.01 :
-      aulab == "cfa4x"    ? 0.1  :
-      0.01   # default
+dt =  aulab == "cfanorth" ? 0.05 :
+      aulab == "cfasouth" ? 0.05 :
+      aulab == "cfa4x"    ? 0.05  :   # long fishing seasons .. aggregate landings more stable
+      0.1   # default
 
 # spin up time of ~ 1 cycle prior to start of dymamics and project nP years into the future
-tspan = (minimum(yrs) - 10.1, maximum(yrs) + nP + 1.1 )
+tspan = (minimum(yrs) - 8.1, maximum(yrs) + nP + 1.1 )
 
 
 survey_time =  round.( round.( Y[:,:yrs] ./ dt; digits=0 ) .* dt ; digits=no_digits)    # time of observations for survey
@@ -178,10 +180,10 @@ nSI = length(Si)
 
 # this only adds habitat space  ... predation is also a useful one ..
 # speed is the issue
-
+predtime =  9.0/12.0
 prediction_time =
   floor.( vcat( collect(minimum(yrs) : (maximum(yrs)+nP) ) )  ) .+  #yrs
-  round(round( 9.0/12.0 /dt; digits=0 ) *dt; digits=no_digits)   # sept
+  round(round( predtime/dt; digits=0 ) *dt; digits=no_digits)   # sept
 
 #  sa to fraction
 external_forcing =  reshape( [
@@ -195,7 +197,7 @@ external_forcing =  reshape( [
 
 
 efc = extrapolate( interpolate( external_forcing, (BSpline(Linear()), NoInterp()) ), Interpolations.Flat() )
-hsa = Interpolations.scale(efc, yrs .+ 0.75, 1:nS )
+hsa = Interpolations.scale(efc, yrs .+ predtime, 1:nS )
 
 fish_time =  round.( round.( removals[:,:ts]  ./ dt; digits=0 ) .* dt; digits=no_digits)    # time of observations for survey
 
@@ -237,7 +239,7 @@ end
 cb = PresetTimeCallback( fish_time, affect_fishing! )
 
 # history function (prior to start)  defaults to values of 0.5*u before t0; note u = (0,1)
-h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS)  .* 0.5
+h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS)  # .* 0.5
 
 tau = [1.0]  # delay resolution
 

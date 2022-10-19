@@ -52,15 +52,15 @@ end
   if false
     ## test DifferentialEquations DDE model -- ignore
     ##  h, hsa, cb, tau, etc. are defined in the *_environment.jl file
-    b=[2.0, 1.0]
+    b=[1.7, 0.5]
     K=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0] .*kmu;
+    a=[1.0, 1.0, 1.0, 1.0, 1.0];
 
-    d=[0.1, 0.2, 0.2, 0.2, 0.2, 0.2];
-    d2=[0.1, 0.2, 0.2, 0.2, 0.2, 0.2];
-    v=[0.8, 0.9, 0.9, 0.9];
-    u0 = [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ]  ;
+    d=[0.15, 0.11, 0.14, 0.17, 0.16, 0.19];
+    v=[0.65, 0.68, 0.61, 0.79];
+    u0 = [ 0.65, 0.6, 0.52, 0.62, 0.58, 0.32 ]  ;
    # u0 = [0.796203667247763, 0.5370253706021624, 0.49999994680822296, 0.4999999261197093, 0.3518981144352651, 0.7221526754207315]
-    params = ( b, K, d, d2, v,  tau, hsa)
+    params = ( b, K, d,  v, a, tau, hsa)
     prob = DDEProblem( size_structured_dde!, u0, h, tspan, params, constant_lags=tau  )  # tau=[1]
     msol2 =  solve( prob,  solver, callback=cb, saveat=dt )
     plot( msol2, ; legend=false, xlim=(1999,2021), label="test" )
@@ -85,7 +85,11 @@ end
     res  =  sample( fmod, Turing.NUTS(n_adapts, 0.65 ), n_samples  )
 
     # include( "size_structured_dde_environment.jl" )
-    res  =  sample( fmod, Turing.NUTS(n_adapts, 0.65, init_ϵ=0.05, max_depth=7), n_samples,  progress=true, drop_warmup=true  )
+
+    Kmu=[ 5.0, 60.0, 1.5 ]
+    kmu  =  Kmu[ki] / mean(scale_factor)
+
+    res  =  sample( fmod, Turing.NUTS(n_adapts, 0.65, init_ϵ=0.01, max_depth=8), n_samples,  progress=true, drop_warmup=true  )
 
     showall(summarize(res ) )  # show(stdout, "text/plain", summarize(res)) # display all estimates
 
@@ -145,7 +149,7 @@ showall(summarize(res ) )  # show(stdout, "text/plain", summarize(res)) # displa
   (trace_nofishing, trace_fishing, pl) = size_structured_predictions( res; ns=500, plot_k=1, alpha=0.1 )  # model traces
   (pl)
 
-  savefig(pl, joinpath( project_directory, "ignore", string("size_structured_dde_turing_plots_sim_", aulab, ".pdf") )  )
+  # savefig(pl, joinpath( project_directory, "ignore", string("size_structured_dde_turing_plots_sim_", aulab, ".pdf") )  )
 
 
   # annual snapshots of numerical abundance (relative number) converted to biomass (kt)
@@ -157,7 +161,7 @@ showall(summarize(res ) )  # show(stdout, "text/plain", summarize(res)) # displa
 
   # plot biomass
   # gr()
-  pl = plot()
+  # pl = plot()
   pl = plot!(pl, prediction_time, g;  alpha=0.02, color=:lightslateblue)
   pl = plot!(pl, prediction_time, mean(g, dims=2);  alpha=0.8, color=:darkslateblue, lw=4)
   pl = plot!(pl; legend=false )
@@ -178,7 +182,7 @@ showall(summarize(res ) )  # show(stdout, "text/plain", summarize(res)) # displa
   pl = scatter!(pl, survey_time, yhat, markersize=4, color=:grey)
   pl = plot!(pl; legend=false )
 
-  savefig(pl, joinpath( project_directory, "ignore", string("size_structured_dde_turing_plots_predictions_", aulab, ".pdf") )  )
+  # savefig(pl, joinpath( project_directory, "ignore", string("size_structured_dde_turing_plots_predictions_", aulab, ".pdf") )  )
 
 
 
@@ -539,5 +543,49 @@ end
 
 # Calculate MSE for our test set.
 loss = sum((predictions - test_label) .^ 2) / length(test_label)
+
+
+
+# ---------
+# abbreviated scipt for testing:
+
+aulab ="cfanorth"
+aulab ="cfasouth"
+aulab ="cfa4x"
+
+yrs = 1999:2021  # <<<<<<<<-- change
+
+include( "size_structured_dde_environment.jl" )
+Kmu=[ 5.0, 60.0, 1.5 ]
+kmu  =  Kmu[ki] / mean(scale_factor)
+Random.seed!(1)
+
+n_samples = 20
+n_adapts = 20
+
+res  =  sample( fmod, Turing.NUTS(n_adapts, 0.65, init_ϵ=0.01, max_depth=7), n_samples,  progress=true, drop_warmup=true  )
+showall(summarize(res ) )  # show(stdout, "text/plain", summarize(res)) # display all estimates
+
+ # plot simulation traces of FB with and without fishing
+  (trace_nofishing, trace_fishing, pl) = size_structured_predictions( res; ns=500, plot_k=1, alpha=0.1 )  # model traces
+  (pl)
+
+  (m, num, bio)  = size_structured_predictions_annual(res; prediction_time=prediction_time, ns=500)
+  g = bio[:,:,1]   # [ yr,  sim, (with fishing=1; nofishing=2) ]
+
+  pl = plot!(pl, prediction_time, g;  alpha=0.02, color=:lightslateblue)
+  pl = plot!(pl, prediction_time, mean(g, dims=2);  alpha=0.8, color=:darkslateblue, lw=4)
+  pl = plot!(pl; legend=false )
+#  pl = plot!(pl; ylim=(0, maximum(g)*1.01 ) )
+  k = 1
+  yhat = ( S[:,k] .- mean(res[:,Symbol("qc[$k]"),:]  ) ) ./ mean(res[:,Symbol("q[$k]"),:]) .* mean(res[:,Symbol("K[$k]"),:]  )
+  if nameof(typeof(mw)) == :ScaledInterpolation
+    yhat = yhat .* mw(yrs) ./ 1000.0  ./ 1000.0
+  else
+    yhat = yhat .* scale_factor
+  end
+  pl = plot!(pl, survey_time, yhat, color=:gray, lw=2 )
+  pl = scatter!(pl, survey_time, yhat, markersize=4, color=:grey)
+  pl = plot!(pl; legend=false )
 
 

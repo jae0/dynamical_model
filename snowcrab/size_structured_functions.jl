@@ -3,7 +3,7 @@
 function size_structured_dde!( du, u, h, p, t)
     # here u, du are actual numbers .. not normalized by K due to use of callbacks
 
-    (b, K, d, d2, v,  tau, hsa)  = p
+    (b, K, d, v, a, tau, hsa)  = p
 
     u1 = h(p, t-1.0)[2:5]    # no in previous years
     f8 = h(p, t-8.0)[6]  # no mature fem 8  yrs ago
@@ -14,13 +14,10 @@ function size_structured_dde!( du, u, h, p, t)
     tr =  v .* u1
     # dr =  d .* ( max.(u,0.0) ./ vh) .^ (2.0)
 
-    uv = u ./ vh  # first order
-    dr =  d .* uv .+ d2 .* uv .* uv  # first and second order
+    uv = u ./ vh
+    dr =  d .* uv .* uv
 
-    # uv = (u ./ vh ) .^ 2.0  # second order
-
-
-    a = K[2:6] ./ K[1:5]
+    # a = K[2:6] ./ K[1:5]
 
     du[1] = tr[1] * a[1]            - dr[1]       # note:
     du[2] = tr[2] * a[2]   - tr[1]  - dr[2]
@@ -34,13 +31,15 @@ end
 
 function dde_parameters()
    # these are dummy initial values .. just to get things started
-   b=[0.3, 0.4]
-   K=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0] .*kmu;
-   d=[0.2, 0.3, 0.4, 0.5, 0.5, 0.5];
-   d2=[0.2, 0.3, 0.4, 0.5, 0.5, 0.5];
-   v=[0.8, 0.9, 0.9, 0.9];
+  b=[1.7, 0.5]
+  K=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0] .*kmu;
+  a=[1.0, 1.0, 1.0, 1.0, 1.0];
 
-   params = ( b, K, d, d2, v,   tau, hsa)
+  d=[0.15, 0.11, 0.14, 0.17, 0.16, 0.19];
+
+  v=[0.65, 0.68, 0.61, 0.79];
+
+   params = ( b, K, d, v, a,  tau, hsa)
    return params
 end
 
@@ -49,28 +48,28 @@ end
   solver=MethodOfSteps(Tsit5()), dt = 0.01,  ::Type{T} = Float64) where T
 
   # biomass process model:
-  K ~ filldist( TruncatedNormal( kmu, kmu*0.2, kmu/10.0, kmu*10.0), nS )
+  K ~ filldist( TruncatedNormal( kmu, kmu*0.2, kmu/10.0, kmu*5.0), nS )  # kmu is max of a multiyear group , serves as upper bound for all
 
+  a ~ MvNormal( K[2:6] ./ K[1:5], 0.5 )
 
   q ~ filldist( TruncatedNormal(  1.0, 0.1,  0.1, 2.0), nS )
   qc ~ filldist( TruncatedNormal( 0.0, 0.1, -0.5, 0.5), nS )
 
-  model_sd ~  TruncatedNormal( 0.1, 0.01, 0.01, 0.4 )
+  model_sd ~  TruncatedNormal( 0.1, 0.1, 0.01, 0.35)
 
   # birth rate from F(y - 8 to 10)  and for males m5 and females
-  b ~ filldist( TruncatedNormal(1.0, 1.0, 0.1, 9.9), 2 )
+  b ~ filldist( TruncatedNormal(1.0, 0.2, 0.01, 100.0), 2 )
 
   # background mortality
-  d ~ filldist( TruncatedNormal(0.2, 0.25, 0.01, 9.9), nS )
-  d2 ~ filldist( TruncatedNormal(0.2, 0.25, 0.01, 9.9), nS )  # second order coefficient
+  d ~ filldist( TruncatedNormal(0.4, 0.1, 0.01, 0.99), nS )
 
   # transition rates
-  v ~ filldist( TruncatedNormal(0.8, 0.25, 0.01, 0.99), 4 )
+  v ~ filldist( TruncatedNormal(0.8, 0.1, 0.01, 0.99), 4 )
 
   # initial conditions
-  u0 ~ filldist( TruncatedNormal( 0.5, 0.25, 0.01, 0.99), nS )
+  u0 ~ filldist( TruncatedNormal(0.5, 0.1, 0.01, 0.99), nS )
 
-  pm = ( b, K, d, d2, v,   tau, hsa )
+  pm = ( b, K, d, v, a, tau, hsa )
   # @show pm
 
   # m = TArray{T}( length(Si), nS )
@@ -81,8 +80,8 @@ end
       solver,
       callback=cb,
       # maxiters=1e6,
-      # isoutofdomain=(y,p,t)->any(x -> (x<0.0 || x>10.0), y) ,
-      isoutofdomain=(y,p,t)->any(x -> (x<0.0), y),
+      isoutofdomain=(y,p,t)->any(x -> (x<0.0 || x>1.0), y) ,
+      #isoutofdomain=(y,p,t)->any(x -> (x<0.0), y),
       saveat=dt
   )
 
@@ -131,9 +130,10 @@ function size_structured_predictions_annual( res; prediction_time=prediction_tim
 
       b = [ res[j, Symbol("b[$k]"), l] for k in 1:2]
       K = [ res[j, Symbol("K[$k]"), l] for k in 1:nS]
+      a = [ res[j, Symbol("a[$k]"), l] for k in 1:(nS-1)]
 
       d = [ res[j, Symbol("d[$k]"), l] for k in 1:nS]
-      d2 = [ res[j, Symbol("d2[$k]"), l] for k in 1:nS]
+
       v = [ res[j, Symbol("v[$k]"), l] for k in 1:4]
 
       q =  [ res[j, Symbol("q[$k]"), l] for k in 1:nS]
@@ -141,7 +141,7 @@ function size_structured_predictions_annual( res; prediction_time=prediction_tim
 
       u0 = [ res[j, Symbol("u0[$k]"), l] for k in 1:nS]
 
-      pm = ( b, K, d, d2, v,  tau, hsa )
+      pm = ( b, K, d, v, a, tau, hsa )
 
       prb = remake( prob; u0=u0 , h=h, tspan=tspan, p=pm )
 
@@ -197,9 +197,9 @@ function size_structured_predictions( res; ns=10, plot_k=1, alpha=0.01 )
 
       b = [ res[j, Symbol("b[$k]"), l] for k in 1:2]
       K = [ res[j, Symbol("K[$k]"), l] for k in 1:nS]
+      a = [ res[j, Symbol("a[$k]"), l] for k in 1:(nS-1)]
 
       d = [ res[j, Symbol("d[$k]"), l] for k in 1:nS]
-      d2 = [ res[j, Symbol("d2[$k]"), l] for k in 1:nS]
 
       v = [ res[j, Symbol("v[$k]"), l] for k in 1:4]
 
@@ -208,7 +208,7 @@ function size_structured_predictions( res; ns=10, plot_k=1, alpha=0.01 )
 
       u0 = [ res[j, Symbol("u0[$k]"), l] for k in 1:nS]
 
-      pm = ( b, K, d, d2, v, tau, hsa )
+      pm = ( b, K, d, v, a, tau, hsa )
 
       prb = remake( prob; u0=u0, h=h, tspan=tspan, p=pm )
 
