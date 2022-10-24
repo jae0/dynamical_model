@@ -2,15 +2,35 @@
 # starting environment for the DDE snow crab model
 
 
+if false
+
+  # if doing manual startup .. this is done automatically on start but in case it fails:
+
+  project_directory = @__DIR__() #  same folder as the current file
+  push!(LOAD_PATH, project_directory)  # add the directory to the load path, so it can be found
+  include( "startup.jl" )
+  # include( joinpath( project_directory, "startup.jl" ))    # alt
+  
+  if model_variation=="size_structured_dde" 
+    fn_env = joinpath( project_directory, "size_structured_dde_environment.jl" )  
+  end
+  
+  include(  fn_env )
+  
+  
+end
+
+
 # load libs and check settings
+
 
 # add Turing@v0.21.10  # to add a particular version
 
 pkgs = [
   "Revise", "MKL", "Logging", "StatsBase", "Statistics", "Distributions", "Random",
   # "DynamicHMC", "AdvancedHMC",  "AdvancedMH",  "DynamicPPL",  "AbstractPPL",  "Memoization",
-  "ForwardDiff", "DataFrames", "FillArrays", "JLD2", "PlotThemes", "Colors", "ColorSchemes", "RData",
-  "Plots", "StatsPlots", "MultivariateStats", "StaticArrays", "LazyArrays", "FillArrays",
+  "ForwardDiff", "DataFrames", "JLD2", "PlotThemes", "Colors", "ColorSchemes", "RData",
+  "Plots", "StatsPlots",  "MultivariateStats", "StaticArrays", "LazyArrays", "FillArrays",
   "Turing", "ModelingToolkit", "DifferentialEquations", "Interpolations", "LinearAlgebra"
 ]
 
@@ -55,17 +75,6 @@ Turing.setadbackend(:forwarddiff)  # only AD that works right now
 
 # Turing.setrdcache(true) # reverse diff not working right Newton
 
-
-if false
-
-    # if doing manual startup .. this is done automatically on start but in case it fails:
-
-    project_directory = @__DIR__() #  same folder as the current file
-    push!(LOAD_PATH, project_directory)  # add the directory to the load path, so it can be found
-    include( "startup.jl" )
-    # include( joinpath( project_directory, "startup.jl" ))    # alt
-
-end
 
 
 
@@ -153,9 +162,9 @@ scale_factor = mw(yrs) / (1000 *1000 ) # convert numbers to kt biomass , also us
 # convert to (biomass kt to number)
 
 # id index
-ki = aulab=="cfanorth" ? 1 :
-     aulab=="cfasouth" ? 2 :
-     aulab=="cfa4x"    ? 3 :
+ki = aulab == "cfanorth" ? 1 :
+     aulab == "cfasouth" ? 2 :
+     aulab == "cfa4x"    ? 3 :
      0  # default
 
 kmu  =  Kmu[ki] / mean(scale_factor)
@@ -218,38 +227,42 @@ if length(ikeep) > 0
   fish_time = fish_time[ikeep]
   fish_year = fish_year[ikeep]
 end
+ 
 
-# function affect_fishing_reference!(integrator)
-#   i = findall(t -> t == integrator.t, fish_time)
-#   integrator.u[1] -=  removed[ i[1] ]
-#   # / integrator.p[2][1]  # p[2] ==K divide by K  .. keep unscaled to estimate magnitude of other components
-# end
-
-
-function affect_fishing!(integrator)
-  i = findall(t -> t == integrator.t, fish_time)[1]
-  integrator.u[1] -=  removed[ i ] / integrator.p[2][1]  # p[2] ==K divide by K[1]  .. keep unscaled to estimate magnitude of other components
-end
+cb = PresetTimeCallback( fish_time, affect_fishing! )
 
 # cb = CallbackSet(
 #   PresetTimeCallback( fish_time, affect_fishing! ),
 #   PositiveDomain()
 # );
 
-cb = PresetTimeCallback( fish_time, affect_fishing! )
-
 # history function (prior to start)  defaults to values of 0.5*u before t0; note u = (0,1)
 h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS)  # .* 0.5
 
 tau = [1.0]  # delay resolution
 
-
-# to load dynamical core model, turing estimation model, etc
-include( "size_structured_functions.jl" )
-
-
 u0 = [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ]  ; # generics to bootstrap the process
-p = dde_parameters() # dummy values needed to bootstrap DifferentialEquations/Turing initialization
-prob = DDEProblem( size_structured_dde!, u0, h, tspan, p, constant_lags=tau  )  # tau=[1]
-fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM, solver, dt )
 
+
+directory_output = joinpath( project_directory, "outputs", model_variation )
+mkpath(directory_output)
+
+
+include( "fishery_model_functions.jl" )  # to load core dynamical model functions
+
+include( "size_structured_dde_functions.jl" )  #specific to model form
+
+n_adapts=5000
+n_samples=1000
+n_chains=4
+max_depth=9
+init_ϵ=0.01
+
+
+if model_variation=="size_structured"
+  p = dde_parameters() # dummy values needed to bootstrap DifferentialEquations/Turing initialization
+  prob = DDEProblem( size_structured_dde!, u0, h, tspan, p, constant_lags=tau  )  # tau=[1]
+  fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM, solver, dt )
+elseif model_variation=="size_structured_other"
+  # add more here
+end

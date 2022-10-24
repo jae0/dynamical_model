@@ -6,6 +6,18 @@
 
 
 if false
+  # ==== R-code ====
+    # prep data
+    # NOTE::: this requires 03.snowcrab_carstm.r to be completed
+    source( file.path( code_root, "bio_startup.R" )  )
+    loadfunctions("bio.snowcrab")
+    # fishery landings has a weekly time step = 2/52 ~ 0.0385 ~ 0.04  X dt=0.01 seems to work best
+    fishery_model_data_inputs( year.assessment=2021, type="biomass_dynamics", for_julia=TRUE   )
+  # ==== R-code ====
+end
+
+
+if false
   # if doing manual startup
   project_directory = @__DIR__() #  same folder as the file
   push!(LOAD_PATH, project_directory)  # add the directory to the load path, so it can be found
@@ -13,118 +25,38 @@ if false
 end
 
 
-# ------------------------------
-# load libs and check settings
- 
-pkgs = [ 
-  "Revise", "MKL", "Logging",
-  "Turing", "ModelingToolkit", "Interpolations" 
-]
 
-for pk in pkgs; @eval using $(Symbol(pk)); end
-
-# "ForwardDiff"
-# , "StatsBase", "Statistics",  "Distributions", "LinearAlgebra",   
-# , "DifferentialEquations",  
-# , "DynamicHMC", "AdvancedHMC",
-# "Plots", "StatsPlots", "MultivariateStats", "RData",
-# "DiffResults", "Memoization", "DynamicPPL", "AbstractPPL", "AdvancedHMC", "MCMCChains", "SciMLSensitivity",
-# "Tracker" #, "ReverseDiff", "Zygote", "ForwardDiff", "Diffractor", "Memoization",
-# "StaticArrays", "LazyArrays", "FillArrays",
-# "JLD2",
-
-#  Pkg.add( pkgs ) # add required packages
-
- 
-
-
-
-# ------------------------------
-# prepare data for diffeq/turing model and set default parameters
-
+# ---------------
 # run-level options
 
-yrs = 1999:2021  # <<<<<<<<-- change
-nT = length(yrs)
-nP = 5  # number of predictions into future (with no fishing)
-nM = nP + nT  # total number of prediction years
-
-dt = 1  # time resolution of solutions .. discrete annual so 1 year
-
-nS = 1 # no state variables, not used 
+  # choose a region of interest"
+  aulab ="cfanorth"
+  aulab ="cfasouth"
+  aulab ="cfa4x"
 
 
+  yrs = 1999:2021  # <<<<<<<<-- change
 
-# ------------------------------
-# choose a region of interest"
-
-au = 1  # cfa index
-aulab ="cfanorth"
-
-au = 2  # cfa index
-aulab ="cfasouth"
-
-au = 3  # cfa index
-aulab ="cfa4x"
-
-
-# choose one:    
-model_variation = "Logistic_q"
-model_variation = "Logistic_q_qc"
-model_variation = "Logistic_Map"
-
-# -------------------------
-#  prepare data for turing model and set default parameters
-include( "logistic_discrete_turing_data.jl" )
-
+  
  
 
-# ------------------------------
-# turing model -- dynamics embedded
-include( "logistic_discrete_turing.jl" )
+# load libs and options and prepare data for  turing model and set default parameters
+include( "logistic_discrete_environment.jl" )
 
+# to reload dynamical core model, turing estimation model, etc
+#  include( "logistic_discrete_functions.jl" )
 
-# ------------------------------
+  
+ 
 # initial values for Logistic!
 # almost working but solution decay to negative numbers though it is supposed to be bounded ..  
 
-iok = findall( !ismissing, S )
-
-fmod = logistic_discrete_turing( S, kmu, nT, nM, removed, iok )  # q only
-
-
-
-# ---------------
-# run model estimations / overrides
-Turing.setprogress!(false);
-
-# Turing.setrdcache(true)
-
-Turing.setadbackend(:forwarddiff)   
-  # Turing.setadbackend(:forwarddiff)  #  
-  # Turing.setadbackend(:zygote) #  
-  # Turing.setadbackend(:tracker)  #  
-  # Turing.setadbackend(:reversediff)  #  
-  
- 
-if false
- 
-  # Prior predictive check: 
-    prior_res = sample(   fmod, Prior(), 100, nwarmup = 100, nchains = 3 );
-
-    missing_data = Vector{Missing}(missing, nT)
-    mod_preds = fmod( missing_data, kmu, nT, removed )
-    prior_check = predict( mod_preds, prior_res )
-    summarystats( prior_check )
-    plot(prior_check)
- 
-  end
 
   
 # Posterior sampling
   if false
     # for testing and timings
-    # include( "logistic_discrete_turing.jl" )
+    # include( "fishery_model.jl" )
     n_samples = 3
     n_adapts = 3
     n_chains = 1
@@ -147,7 +79,7 @@ n_samples = 2000
 n_adapts = 1000
 n_chains = 4
 
-turing_sampler = Turing.NUTS(n_adapts, 0.8; max_depth=9, init_ϵ=0.025)  ;# stepsize based upon previous experience
+turing_sampler = Turing.NUTS(n_adapts, 0.65; max_depth=9, init_ϵ=0.05)  ;# stepsize based upon previous experience
 # turing_sampler = Turing.NUTS(n_adapts, 0.65)
 
 res  =  sample( fmod, turing_sampler, MCMCThreads(), n_samples, n_chains )  # < 1 min
@@ -159,7 +91,7 @@ res  =  sample( fmod, turing_sampler, MCMCThreads(), n_samples, n_chains )  # < 
 
 # ------------------------------
 # save results as a hdf5
-using JLD2
+# using JLD2
 
 fn = joinpath( project_directory, string("logistic_discrete_turing_data", "_", model_variation, "_", aulab, ".hdf5" ) )
 @save fn res
@@ -190,19 +122,17 @@ density(res[:"bpsd"])
 
 # -------------------------
 # plot timeseries of mean fields
-
-include( "logistic_discrete_turing_plot.jl" )
-
-plot(0)
+ 
+plot()
 
 selection = "S K predictions predictionmeans"
 plots_sim = logistic_discrete_turing_plot( selection=selection  ) 
 # plot!(; ylim=(0, 2 ) )
 
 # gui(plots_sim)
-savefig(plots_sim, string("logistic_discrete_turing_plots_sim", "_", model_variation, "_", aulab, ".pdf") )
-savefig(plots_sim, string("logistic_discrete_turing_plots_sim", "_", model_variation, "_", aulab, ".svg") )
-savefig(plots_sim, string("logistic_discrete_turing_plots_sim", "_", model_variation, "_", aulab, ".png") )
+# savefig(plots_sim, string("logistic_discrete_turing_plots_sim", "_", model_variation, "_", aulab, ".pdf") )
+# savefig(plots_sim, string("logistic_discrete_turing_plots_sim", "_", model_variation, "_", aulab, ".svg") )
+# savefig(plots_sim, string("logistic_discrete_turing_plots_sim", "_", model_variation, "_", aulab, ".png") )
 
 
 plot(0)
@@ -211,9 +141,9 @@ plots_fishing = logistic_discrete_turing_plot( selection=selection )
 # plot!(; ylim=(0, 65 ) )
 
 # gui(plots_fishing)
-savefig(plots_fishing, string("logistic_discrete_turing_plots_fishing", "_", model_variation, "_", aulab, ".pdf") ) 
-savefig(plots_fishing, string("logistic_discrete_turing_plots_fishing", "_", model_variation, "_", aulab, ".svg") ) 
-savefig(plots_fishing, string("logistic_discrete_turing_plots_fishing", "_", model_variation, "_", aulab, ".png") ) 
+# savefig(plots_fishing, string("logistic_discrete_turing_plots_fishing", "_", model_variation, "_", aulab, ".pdf") ) 
+# savefig(plots_fishing, string("logistic_discrete_turing_plots_fishing", "_", model_variation, "_", aulab, ".svg") ) 
+# savefig(plots_fishing, string("logistic_discrete_turing_plots_fishing", "_", model_variation, "_", aulab, ".png") ) 
 
 
   
@@ -247,6 +177,22 @@ plot(res, seriestype=(:meanplot, :autocorplot), dpi=300)
 
 
 plot(res[:,[Symbol("m0[$i]") for i in 1:10],:])
+
+
+
+if false
+ 
+  # Prior predictive check: 
+    prior_res = sample(   fmod, Prior(), 100, nwarmup = 100, nchains = 3 );
+
+    missing_data = Vector{Missing}(missing, nT)
+    mod_preds = fmod( missing_data, kmu, nT, removed )
+    prior_check = predict( mod_preds, prior_res )
+    summarystats( prior_check )
+    plot(prior_check)
+ 
+  end
+
 
 using ArviZ
 using PyPlot
