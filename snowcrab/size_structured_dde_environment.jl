@@ -225,6 +225,14 @@ if length(ikeep) > 0
   fish_year = fish_year[ikeep]
 end
   
+directory_output = joinpath( project_directory, "outputs", model_variation )
+mkpath(directory_output)
+
+include( "fishery_model_functions.jl" )  # to load core dynamical model functions
+include( "size_structured_dde_functions.jl" )  #specific to model form
+
+
+
 cb = PresetTimeCallback( fish_time, affect_fishing! )
 
 # cb = CallbackSet(
@@ -245,17 +253,10 @@ n_chains=4
 max_depth=9
 init_ϵ=0.01
 
-directory_output = joinpath( project_directory, "outputs", model_variation )
-mkpath(directory_output)
-
-
-include( "fishery_model_functions.jl" )  # to load core dynamical model functions
-
-include( "size_structured_dde_functions.jl" )  #specific to model form
 
 
 
-if model_variation=="size_structured"
+if model_variation=="size_structured_dde"
 
   p = dde_parameters() # dummy values needed to bootstrap DifferentialEquations/Turing initialization
   prob = DDEProblem( size_structured_dde!, u0, h, tspan, p, constant_lags=tau  )  # tau=[1]

@@ -88,11 +88,13 @@ function fishery_model_mortality( removed, fb )
   end
   FR =  Fkt ./ ( Fkt .+  fb )  # relative F
   FM = -1 .* log.(  1.0 .- min.( FR, 0.99) )  # instantaneous F
+  o = mean(FM, dims=2)
+  ub = quantile(vec(FM), 0.975) 
   pl = plot()
   pl = plot!(pl, survey_time, FM ;  alpha=0.02, color=:lightslateblue)
-  pl = plot!(pl, survey_time, mean(FM, dims=2) ;  alpha=0.8, color=:slateblue, lw=4)
+  pl = plot!(pl, survey_time, o ;  alpha=0.8, color=:slateblue, lw=4)
   pl = plot!(pl, xlim=(minimum(yrs)-0.5, maximum(yrs)+1.5  ) )
-  pl = plot!(pl, ylim=(0, maximum(FM)*1.1 ) )
+  pl = plot!(pl, ylim=(0, ub ) )
   pl = plot!(pl ; legend=false )
   return ( Fkt, FR, FM, pl )
 end
@@ -162,4 +164,6 @@ function fishery_model_harvest_control_rule(res, yrs; FM=FM, fb=fb, n_sample=500
 
   return(K, fb_mean, fm_mean, fmsy, pl)
 end
+
+# ----------------
 

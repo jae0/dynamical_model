@@ -9,32 +9,28 @@ if false
 end
 
 
-
-
+ 
 # translate model-specific functions, etc to generics
 if model_variation=="logistic_discrete_basic"
   fn_env = joinpath( project_directory, "logistic_discrete_environment.jl" )  
-  include(  fn_env )
 end
 
 
 if model_variation=="logistic_discrete" 
   fn_env = joinpath( project_directory, "logistic_discrete_environment.jl" )  
-  include(  fn_env )
 end
 
 
 if model_variation=="logistic_discrete_map" 
   fn_env = joinpath( project_directory, "logistic_discrete_environment.jl" )  
-  include(  fn_env )
 end
 
 
 if model_variation=="size_structured_dde" 
   fn_env = joinpath( project_directory, "size_structured_dde_environment.jl" )  
-  include(  fn_env )
 end
 
+include(  fn_env )
 
 
 
