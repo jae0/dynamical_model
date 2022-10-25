@@ -247,7 +247,7 @@ tau = [1.0]  # delay resolution
 
 u0 = [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ]  ; # generics to bootstrap the process
 
-n_adapts=5000
+n_adapts=1000
 n_samples=1000
 n_chains=4
 max_depth=9
