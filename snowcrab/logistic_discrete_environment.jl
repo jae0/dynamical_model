@@ -179,11 +179,17 @@ include( "logistic_discrete_functions.jl" )  #specific to model form
 
 # translate model-specific functions, etc to generics
 if model_variation=="logistic_discrete_basic"
+
   fmod = logistic_discrete_turing_basic( S, kmu, nT, nM, removed )  # q only
+
 elseif model_variation=="logistic_discrete"
+
   fmod = logistic_discrete_turing( S, kmu, nT, nM, removed )   
+
 elseif model_variation=="logistic_discrete_map"
+
   fmod = logistic_discrete_map_turing( S, kmu, nT, nM, removed )  
+
 end
 
 

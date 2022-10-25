@@ -52,13 +52,11 @@ end
 # ----------
 
 
-function fishery_model_inference( fmod; n_adapts=1000, n_samples=1000, n_chains=4, max_depth=7, init_ϵ=0.05, 
+function fishery_model_inference( fmod; n_adapts=1000, n_samples=1000, n_chains=1, max_depth=7, init_ϵ=0.05, 
   turing_sampler = Turing.NUTS(n_adapts, 0.65; max_depth=max_depth, init_ϵ=init_ϵ), debug=false, seed=1  )
   
   if !debug 
     Logging.disable_logging(Logging.Warn) # or e.g. Logging.Info
-  else
-    n_chains=1  
   end
   
   Random.seed!(seed)
@@ -106,6 +104,8 @@ end
 
 function fishery_model_harvest_control_rule(res, yrs; FM=FM, fb=fb, n_sample=500 )
 
+  fmsy = nothing
+
   pl = plot()
 
   if  occursin( r"size_structured", model_variation ) 
@@ -114,26 +114,32 @@ function fishery_model_harvest_control_rule(res, yrs; FM=FM, fb=fb, n_sample=500
 
     # sample and plot posterior K
     K = vec( Array(res[:, Symbol("K[1]"), :]) ) .* mean(sf)  # convert to biomass
-  else
+  elseif  occursin( r"logistic_discrete", model_variation ) 
+    r = vec( Array(res[:, Symbol("r"), :]) )
     K = vec( Array(res[:, Symbol("K"), :]) ) 
+    (msy, bmsy, fmsy) = logistic_discrete_reference_points(r, K)
+    pl = hline!(pl, rand(fmsy, n_sample); alpha=0.01, color=:lightgray )
+    pl = hline!(pl, [mean(fmsy)];  alpha=0.6, color=:darkgray, lw=5 )
+    pl = hline!(pl, [quantile(fmsy, 0.975)];  alpha=0.5, color=:gray, lw=2, line=:dash )
+    pl = hline!(pl, [quantile(fmsy, 0.025)];  alpha=0.5, color=:gray, lw=2, line=:dash )
   end
-  
+
   o = rand(K, n_sample)
   pl = vline!(pl, o;  alpha=0.05, color=:limegreen )
   pl = vline!(pl, o./2;  alpha=0.05, color=:darkkhaki )
   pl = vline!(pl, o./4;  alpha=0.05, color=:darkred )
 
-  pl = vline!(pl, [mean(o)];  alpha=0.6, color=:chartreuse4, lw=5 )
-  pl = vline!(pl, [quantile(o, 0.975)];  alpha=0.5, color=:chartreuse4, lw=2, line=:dash )
-  pl = vline!(pl, [quantile(o, 0.025)];  alpha=0.5, color=:chartreuse4, lw=2, line=:dash )
+  pl = vline!(pl, [mean(K)];  alpha=0.6, color=:chartreuse4, lw=5 )
+  pl = vline!(pl, [quantile(K, 0.975)];  alpha=0.5, color=:chartreuse4, lw=2, line=:dash )
+  pl = vline!(pl, [quantile(K, 0.025)];  alpha=0.5, color=:chartreuse4, lw=2, line=:dash )
 
-  pl = vline!(pl, [mean(o)/2.0];  alpha=0.6, color=:darkkhaki, lw=5 )
-  pl = vline!(pl, [quantile(o, 0.975)]/2.0;  alpha=0.5, color=:darkkhaki, lw=2, line=:dash )
-  pl = vline!(pl, [quantile(o, 0.025)]/2.0;  alpha=0.5, color=:darkkhaki, lw=2, line=:dash )
+  pl = vline!(pl, [mean(K)/2.0];  alpha=0.6, color=:darkkhaki, lw=5 )
+  pl = vline!(pl, [quantile(K, 0.975)]/2.0;  alpha=0.5, color=:darkkhaki, lw=2, line=:dash )
+  pl = vline!(pl, [quantile(K, 0.025)]/2.0;  alpha=0.5, color=:darkkhaki, lw=2, line=:dash )
 
   pl = vline!(pl, [mean(o)/4.0];  alpha=0.6, color=:darkred, lw=5 )
-  pl = vline!(pl, [quantile(o, 0.975)]/4.0;  alpha=0.5, color=:darkred, lw=2, line=:dash )
-  pl = vline!(pl, [quantile(o, 0.025)]/4.0;  alpha=0.5, color=:darkred, lw=2, line=:dash )
+  pl = vline!(pl, [quantile(K, 0.975)]/4.0;  alpha=0.5, color=:darkred, lw=2, line=:dash )
+  pl = vline!(pl, [quantile(K, 0.025)]/4.0;  alpha=0.5, color=:darkred, lw=2, line=:dash )
 
   nt = length(survey_time)
   colours = get(colorschemes[:tab20c], 1:nt, :extrema )[rand(1:nt, nt)]
@@ -149,9 +155,11 @@ function fishery_model_harvest_control_rule(res, yrs; FM=FM, fb=fb, n_sample=500
   pl = scatter!(pl,  fb_mean, fm_mean ;  alpha=0.8, color=colours,  markersize=4, markerstrokewidth=0,
     series_annotations = text.(trunc.(Int, survey_time), :top, :left, pointsize=4) )
   pl = scatter!(pl,  [fb_mean[nt]], [fm_mean[nt]] ;  alpha=0.8, color=:yellow, markersize=8, markerstrokewidth=1)
+  
   ub = max( quantile(o, 0.95), maximum( fb_mean ) ) * 1.05
   pl = plot!(pl; legend=false, xlim=(0, ub ), ylim=(0, maximum(fm_mean ) * 1.05  ) )
   # TODO # add predictions ???
-  return(K, fb_mean, fm_mean, pl)
+
+  return(K, fb_mean, fm_mean, fmsy, pl)
 end
 

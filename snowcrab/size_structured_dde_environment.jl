@@ -74,9 +74,7 @@ solver = MethodOfSteps(Tsit5())   # faster
 Turing.setadbackend(:forwarddiff)  # only AD that works right now
 
 # Turing.setrdcache(true) # reverse diff not working right Newton
-
-
-
+ 
 
 # perpare dat for dde run of fishery model
 
@@ -216,8 +214,7 @@ ys =  aulab == "cfanorth" ? "yrs" :
       "yrs"   # default
 
 fish_year =  round.( round.( removals[:,Symbol(ys)] ./ dt; digits=0 ) .* dt; digits=no_digits)    # time of observations for survey
-
-
+ 
 removed = removals[:,Symbol("$aulab")]
 
 # keep nonzero elements
@@ -227,8 +224,7 @@ if length(ikeep) > 0
   fish_time = fish_time[ikeep]
   fish_year = fish_year[ikeep]
 end
- 
-
+  
 cb = PresetTimeCallback( fish_time, affect_fishing! )
 
 # cb = CallbackSet(
@@ -243,6 +239,11 @@ tau = [1.0]  # delay resolution
 
 u0 = [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ]  ; # generics to bootstrap the process
 
+n_adapts=5000
+n_samples=1000
+n_chains=4
+max_depth=9
+init_ϵ=0.01
 
 directory_output = joinpath( project_directory, "outputs", model_variation )
 mkpath(directory_output)
@@ -252,17 +253,15 @@ include( "fishery_model_functions.jl" )  # to load core dynamical model function
 
 include( "size_structured_dde_functions.jl" )  #specific to model form
 
-n_adapts=5000
-n_samples=1000
-n_chains=4
-max_depth=9
-init_ϵ=0.01
 
 
 if model_variation=="size_structured"
+
   p = dde_parameters() # dummy values needed to bootstrap DifferentialEquations/Turing initialization
   prob = DDEProblem( size_structured_dde!, u0, h, tspan, p, constant_lags=tau  )  # tau=[1]
   fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM, solver, dt )
+
 elseif model_variation=="size_structured_other"
   # add more here
+
 end

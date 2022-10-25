@@ -56,7 +56,8 @@ include( joinpath( project_directory, "fishery_model_environment.jl"  ))  # boot
 
 
 
-if false
+debugging = false
+if debugging
     # if debugging:
     
     # to test dynamical model with generic/random parameters
@@ -148,28 +149,20 @@ savefig(pl, joinpath( directory_output, string("plot_predictions_", aulab, ".pdf
 statevar = 6  # index of S
 (numS, pl)  = fishery_model_predictions_timeseries(num; prediction_time=prediction_time, plot_k=statevar )
 pl
-savefig(pl, joinpath( directory_output, string("plots_predictions_timeseries_", aulab, statevar, ".pdf") )  )
+savefig(pl, joinpath( directory_output, string("plot_predictions_timeseries_", aulab, statevar, ".pdf") )  )
 
 
-# plot fishing mortalityb
+# plot fishing mortality
 (Fkt, FR, FM, pl) = fishery_model_mortality( removed, fb ) 
 pl
-savefig(pl, joinpath( directory_output, string("size_structured_dde_turing_plots_fishingmortality_", aulab, ".pdf") )  )
+savefig(pl, joinpath( directory_output, string("plot_fishing_mortality_", aulab, ".pdf") )  )
+
 
 
 # HCR plot
-(K, bi, fm, pl) = fishery_model_harvest_control_rule(res, yrs; FM=FM, fb=fb, n_sample=500)
+(K, bi, fm, fmsy, pl) = fishery_model_harvest_control_rule(res, yrs; FM=FM, fb=fb, n_sample=500)
 pl
-savefig(pl, joinpath( directory_output, string("size_structured_dde_turing_plots_hcr_", aulab, ".pdf") )  )
-
-
-if @isdefined fishery_model_reference_points
-    # NOTE: not fully relevent for continuous models
-    (msy, bmsy, fmsy) = fishery_model_reference_points(res)
-    # MSY    = r * exp(K) / 4 ; # maximum height of of the latent productivity (yield)
-    # BMSY   = exp(K)/2 ; # biomass at MSY
-    # FMSY   = 2.0 * MSY / exp(K) ; # fishing mortality at MSY
-end
+savefig(pl, joinpath( directory_output, string("plot_hcr_", aulab, ".pdf") )  )
 
 
 
