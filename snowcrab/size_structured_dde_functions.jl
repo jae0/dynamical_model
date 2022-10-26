@@ -275,24 +275,23 @@ end
 
   
 
-function fishery_model_predictions( res; prediction_time=prediction_time, n_sample=1e10 )
+function fishery_model_predictions( res; prediction_time=prediction_time, n_sample=100 )
 
   nchains = size(res)[3]
   nsims = size(res)[1]
 
-  nI = Int( min( nchains*nsims , n_sample ) )
-
-  md = zeros(nM, nS, nI, 2)  # number normalized
-  mn = zeros(nM, nS, nI, 2)  # numbers
+  nZ = nchains*nsims
+  nI = Int( min( nZ , n_sample ) )
+ 
+  md = zeros(nM, nS, nZ, 2)  # number normalized
+  mn = zeros(nM, nS, nZ, 2)  # numbers
   mb = mn[:,1,:,:]  # biomass of first class
-
   z = 0
 
   for j in 1:nsims  # nsims
   for l in 1:nchains #nchains
-
     z += 1
-
+    
     b = [ res[j, Symbol("b[$k]"), l] for k in 1:2]
     K = [ res[j, Symbol("K[$k]"), l] for k in 1:nS]
     a = [ res[j, Symbol("a[$k]"), l] for k in 1:(nS-1)]
@@ -327,8 +326,6 @@ function fishery_model_predictions( res; prediction_time=prediction_time, n_samp
 
     end
 
-    z >= nI && break
-
   end
   end
 
@@ -339,7 +336,7 @@ function fishery_model_predictions( res; prediction_time=prediction_time, n_samp
   # plot biomass
   gr()
   pl = plot()
-  # pl = plot!(pl, prediction_time, g;  alpha=0.01, color=:lightslateblue)
+  pl = plot!(pl, prediction_time, g[:,sample(1:nZ, nI)];  alpha=0.01, color=:lightslateblue)
   pl = plot!(pl, prediction_time, mean(g, dims=2);  alpha=0.8, color=:darkslateblue, lw=4)
   pl = plot!(pl; legend=false )
   pl = plot!(pl; ylim=(0, maximum(g)*1.01 ) )
@@ -371,10 +368,12 @@ function fishery_model_predictions_trace( res; n_sample=10, plot_k=1, alpha=0.01
     nchains = size(res)[3]
     nsims = size(res)[1]
 
-    nI = Int( min( nchains*nsims , n_sample ) )
-
-    z = 0
-
+    nZ = nchains*nsims
+    nI = Int( min( nZ , n_sample ) )
+    
+    jj = sample( 1:nsims, nI )  # to plot
+    ll = sample( 1:nchains, nI )  # to plot
+   
     out = Vector{Vector{Float64}}()
     out2 = Vector{Vector{Float64}}()
 
@@ -382,15 +381,9 @@ function fishery_model_predictions_trace( res; n_sample=10, plot_k=1, alpha=0.01
     theme(:default)
     pl =plot()
 
-    for j in 1:nsims  # nsims
-    for l in 1:nchains #nchains
-        z += 1
-        if z > nI
-          pl =  plot!(pl; xlim=(minimum(yrs)-0.5, maximum(yrs)+1.5  ) )
-          # pl =  plot!(pl; ylim=(0, maximum(m[:,:,2,z])*1.1 ) )
-          pl =  plot!(pl; legend=false )
-          return (out, out2, pl)
-        end
+    for z in 1:nI  # nsims
+        j = jj[z]
+        l = ll[z]
 
         b = [ res[j, Symbol("b[$k]"), l] for k in 1:2]
         K = [ res[j, Symbol("K[$k]"), l] for k in 1:nS]
@@ -436,9 +429,7 @@ function fishery_model_predictions_trace( res; n_sample=10, plot_k=1, alpha=0.01
 
             push!(out2, yval2)
         end
-
-
-    end
+ 
     end
 
     pl =  plot!(pl; xlim=(minimum(yrs)-0.5, maximum(yrs)+1.5  ) )

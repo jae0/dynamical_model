@@ -4,7 +4,7 @@
 
 # run-level options
 
-# choose model
+# choose model and area
 model_variation = "logistic_discrete"
 model_variation = "logistic_discrete_basic"
 model_variation = "logistic_discrete_map"
@@ -21,7 +21,8 @@ aulab ="cfa4x"
 
 
 yrs = 1999:2021  # <<<<<<<<-- change
- 
+
+
 # create data (in R)
 if false
 
@@ -45,8 +46,9 @@ if false
     project_directory = @__DIR__() #  same folder as the current file
     push!(LOAD_PATH, project_directory)  # add the directory to the load path, so it can be found
     include( "startup.jl" )
-
-
+    
+    basic_run_and_save() # running this as a function is a challenge right now due to namespaces .. for now run manually as a script:
+  
 end
 
 
@@ -58,40 +60,7 @@ end
 include( joinpath( project_directory, "fishery_model_environment.jl"  ))  # bootstrap different project environments depending on above choices
 
 
-# above must be run for any model/area to bootstrap loading of libs 
-models=("logistic_discrete", "logistic_discrete_basic", "logistic_discrete_map", "size_structured_dde" ) 
-areas= ("cfanorth", "cfasouth", "cfa4x")
-
-
-# running as a function is a challenge right now due to namespaces .. for now run manually as a script:
-i = 2
-j = 1
-
-model_variation = models[i]
-aulab = areas[j]
-      
-include( joinpath( project_directory, "fishery_model_environment.jl"  ))  # bootstrap different project environments depending on above choices
-res = fishery_model_inference( fmod, n_adapts=n_adapts, n_samples=n_samples, n_chains=n_chains, max_depth=max_depth, init_ϵ=init_ϵ )
-save_fn = joinpath( directory_output, string("results_turing", "_", aulab, ".hdf5" ) ) 
-@save save_fn res
-print(save_fn)
-(m, num, bio, pl)  = fishery_model_predictions(res; prediction_time=prediction_time, n_sample=500)
-fb = bio[1:length(survey_time),:,1]  # the last 1 is for size struct; no effect in discrete
-savefig(pl, joinpath( directory_output, string("plot_predictions_", aulab, ".pdf") )  )
-(Fkt, FR, FM, pl) = fishery_model_mortality( removed, fb ) 
-savefig(pl, joinpath( directory_output, string("plot_fishing_mortality_", aulab, ".pdf") )  )
-(K, bi, fm, fmsy, pl) = fishery_model_harvest_control_rule(res, yrs; FM=FM, fb=fb, n_sample=500)
-savefig(pl, joinpath( directory_output, string("plot_hcr_", aulab, ".pdf") )  )
-
-
-if occursin.( r"size_structured", model_variation )
-  (trace_nofishing, trace_fishing, pl) = fishery_model_predictions_trace( res; n_sample=30, plot_k=1, alpha=0.1 )  # model traces
-  savefig(pl, joinpath( directory_output, string("plot_predictions_trace_", aulab, ".pdf") )  )
-end
-
-        
-  
-
+   
 
 debugging = false
 if debugging
@@ -173,7 +142,7 @@ pl
 savefig(pl, joinpath( directory_output, string("plot_predictions_", aulab, ".pdf") )  )
 
 # plot fishing mortality
-(Fkt, FR, FM, pl) = fishery_model_mortality( removed, fb ) 
+(Fkt, FR, FM, pl) = fishery_model_mortality( removed, fb, n_sample=500 ) 
 pl
 savefig(pl, joinpath( directory_output, string("plot_fishing_mortality_", aulab, ".pdf") )  )
 
@@ -187,7 +156,7 @@ savefig(pl, joinpath( directory_output, string("plot_hcr_", aulab, ".pdf") )  )
 
 if occursin.( r"size_structured", model_variation )
   # plot simulation traces of FB with and without fishing .. only for continuous models, otherwise identical to predictions (below)
-  (trace_nofishing, trace_fishing, pl) = fishery_model_predictions_trace( res; n_sample=30, plot_k=1, alpha=0.1 )  # model traces
+  (trace_nofishing, trace_fishing, pl) = fishery_model_predictions_trace( res; n_sample=50, plot_k=1, alpha=0.1, plot_only_fishing=false )  # model traces
   pl
   savefig(pl, joinpath( directory_output, string("plot_predictions_trace_", aulab, ".pdf") )  )
 

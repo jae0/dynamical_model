@@ -158,21 +158,20 @@ end
 
 
 
-function fishery_model_predictions( res; prediction_time=prediction_time, n_sample=1e10 )
- 
+function fishery_model_predictions( res; prediction_time=prediction_time, n_sample=100 )
+  # n_sample = num samples to plot
   nchains = size(res)[3]
   nsims = size(res)[1]
 
-  nI = Int( min( nchains*nsims , n_sample ) )
-
-  mb = md = zeros(nM, nI)  # biomass normalized
+  nZ = nchains*nsims
+  nI = Int( min( nZ , n_sample ) )
+ 
+  mb = md = zeros(nM, nZ)  # biomass normalized
   
   z = 0
-
   for j in 1:nsims  # nsims
   for l in 1:nchains #nchains
     z += 1
-    z > nI && break
     for i in 1:nM
         md[i,z] = res[j, Symbol("m[$i]"), l]
         mb[i,z] = md[i,z]  * res[j, Symbol("K"), l]
@@ -180,10 +179,10 @@ function fishery_model_predictions( res; prediction_time=prediction_time, n_samp
   end
   end
 
-    # plot biomass
+  # plot biomass
   gr()
   pl = plot()
-  pl = plot!(pl, prediction_time, mb;  alpha=0.02, color=:lightslateblue)
+  pl = plot!(pl, prediction_time, mb[:,sample(1:nZ, nI)];  alpha=0.02, color=:lightslateblue)
   pl = plot!(pl, prediction_time, mean(mb, dims=2);  alpha=0.8, color=:darkslateblue, lw=4)
   pl = plot!(pl; legend=false )
   pl = plot!(pl; ylim=(0, maximum(mb)*1.01 ) )

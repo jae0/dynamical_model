@@ -1,6 +1,40 @@
 
 # generic functions shared by fishery_models
 
+function basic_run_and_save()
+
+    # running as a function is a challenge right now due to namespaces .. for now run manually as a script:
+    models=("logistic_discrete", "logistic_discrete_basic", "logistic_discrete_map", "size_structured_dde" ) 
+    i = 4
+    model_variation = models[i]
+
+    areas= ("cfanorth", "cfasouth", "cfa4x")
+    j = 1
+    aulab = areas[j]
+    
+    yrs = 1999:2021  # <<<<<<<<-- change
+
+    include( joinpath( project_directory, "fishery_model_environment.jl"  ))  # bootstrap different project environments depending on above choices
+    res = fishery_model_inference( fmod, n_adapts=n_adapts, n_samples=n_samples, n_chains=n_chains, max_depth=max_depth, init_ϵ=init_ϵ )
+    save_fn = joinpath( directory_output, string("results_turing", "_", aulab, ".hdf5" ) ) 
+    @save save_fn res
+    print(save_fn)
+    (m, num, bio, pl)  = fishery_model_predictions(res; prediction_time=prediction_time, n_sample=500)
+    fb = bio[1:length(survey_time),:,1]  # the last 1 is for size struct; no effect in discrete
+    savefig(pl, joinpath( directory_output, string("plot_predictions_", aulab, ".pdf") )  )
+    (Fkt, FR, FM, pl) = fishery_model_mortality( removed, fb, n_sample=500 ) 
+    savefig(pl, joinpath( directory_output, string("plot_fishing_mortality_", aulab, ".pdf") )  )
+    (K, bi, fm, fmsy, pl) = fishery_model_harvest_control_rule(res, yrs; FM=FM, fb=fb, n_sample=500)
+    savefig(pl, joinpath( directory_output, string("plot_hcr_", aulab, ".pdf") )  )
+
+    if occursin.( r"size_structured", model_variation )
+      (trace_nofishing, trace_fishing, pl) = fishery_model_predictions_trace( res; n_sample=200, plot_k=1, alpha=0.1, plot_only_fishing=false )  # model traces
+      savefig(pl, joinpath( directory_output, string("plot_predictions_trace_", aulab, ".pdf") )  )
+    end
+
+  end
+
+
 function fishing_mortality_instantaneous( removed, abundance )
   -log(  1.0 - (removed  / abundance)  )  ;
 end
@@ -79,7 +113,7 @@ end
 # -----------
 
 
-function fishery_model_mortality( removed, fb )    
+function fishery_model_mortality( removed, fb; n_sample=100 )    
   if @isdefined fish_year
     removed_annual_kt = removals_aggregate( removed, fish_year )
     Fkt = removed_annual_kt[:,:rem_sum] ./1000.0 ./ 1000.0  # removal in kg -> kt
@@ -90,8 +124,14 @@ function fishery_model_mortality( removed, fb )
   FM = -1 .* log.(  1.0 .- min.( FR, 0.99) )  # instantaneous F
   o = mean(FM, dims=2)
   ub = quantile(vec(FM), 0.975) 
+
+  nchains = size(res)[3]
+  nsims = size(res)[1]
+  nZ = nchains*nsims
+  nI = Int( min( nZ , n_sample ) )
+
   pl = plot()
-  pl = plot!(pl, survey_time, FM ;  alpha=0.02, color=:lightslateblue)
+  pl = plot!(pl, survey_time, FM[:,sample(1:nZ, nI)] ;  alpha=0.02, color=:lightslateblue)
   pl = plot!(pl, survey_time, o ;  alpha=0.8, color=:slateblue, lw=4)
   pl = plot!(pl, xlim=(minimum(yrs)-0.5, maximum(yrs)+1.5  ) )
   pl = plot!(pl, ylim=(0, ub ) )
@@ -120,13 +160,13 @@ function fishery_model_harvest_control_rule(res, yrs; FM=FM, fb=fb, n_sample=500
     r = vec( Array(res[:, Symbol("r"), :]) )
     K = vec( Array(res[:, Symbol("K"), :]) ) 
     (msy, bmsy, fmsy) = logistic_discrete_reference_points(r, K)
-    pl = hline!(pl, rand(fmsy, n_sample); alpha=0.01, color=:lightgray )
+    pl = hline!(pl, sample(fmsy, n_sample); alpha=0.01, color=:lightgray )
     pl = hline!(pl, [mean(fmsy)];  alpha=0.6, color=:darkgray, lw=5 )
     pl = hline!(pl, [quantile(fmsy, 0.975)];  alpha=0.5, color=:gray, lw=2, line=:dash )
     pl = hline!(pl, [quantile(fmsy, 0.025)];  alpha=0.5, color=:gray, lw=2, line=:dash )
   end
 
-  o = rand(K, n_sample)
+  o = sample(K, n_sample)
   pl = vline!(pl, o;  alpha=0.05, color=:limegreen )
   pl = vline!(pl, o./2;  alpha=0.05, color=:darkkhaki )
   pl = vline!(pl, o./4;  alpha=0.05, color=:darkred )
