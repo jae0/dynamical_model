@@ -45,12 +45,6 @@ end
 
 
 
-function affect_fishing!(integrator)
-  i = findall(t -> t == integrator.t, fish_time)[1]
-  #   integrator.u[1] -=  removed[ i[1] ]
-  integrator.u[1] -=  removed[ i ] / integrator.p[2][1]  # p[2] ==K divide by K[1]  .. keep unscaled to estimate magnitude of other components
-end
-
 
 
 @model function size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM,

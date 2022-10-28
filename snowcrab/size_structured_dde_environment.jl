@@ -10,14 +10,10 @@ if false
   push!(LOAD_PATH, project_directory)  # add the directory to the load path, so it can be found
   include( "startup.jl" )
   # include( joinpath( project_directory, "startup.jl" ))    # alt
-  
-  if model_variation=="size_structured_dde" 
-    fn_env = joinpath( project_directory, "size_structured_dde_environment.jl" )  
-  end
-  
+   
+  fn_env = joinpath( project_directory, "size_structured_dde_environment.jl" )  
   include(  fn_env )
-  
-  
+    
 end
 
 
@@ -83,6 +79,7 @@ o = load( fndat, convert=true)
 Y = o["Y"]
 
 Kmu = o["Kmu"]
+Kmu = [5.0, 60, 1.5]
 
 removals = o["L"]
 MW = o["M0_W"]
@@ -149,6 +146,12 @@ statevars = [
 ]
 
 S = Matrix(Y[:, statevars ])
+
+# # scale index
+# for i in 1:nS
+#   S[:,i] = (S[:,i] .- minimum(skipmissing(S[:,i])) ) ./ ( maximum( skipmissing(S[:,i])) .- minimum(skipmissing(S[:,i])) ) # range from 0=min to 1=max
+#   # S[:,i] = (S[:,i] .- mean(skipmissing(S[:,i])) ) ./ std( skipmissing(S[:,i]))  # scale to std and center to 0 
+# end
 
 # interpolating function for mean weight
 mwspline = extrapolate( interpolate( MW[:,Symbol("mw_", "$aulab") ], (BSpline(Linear()) ) ),  Interpolations.Flat() )
@@ -232,13 +235,52 @@ mkpath(directory_output)
 
 include( "fishery_model_functions.jl" )  # to load core dynamical model functions
 
-funcs = 
-  model_variation=="size_structured_dde" ? "size_structured_dde_functions.jl" :
-  model_variation=="size_structured_dde_unnormalized" ? "size_structured_dde_unnormalized_functions.jl" :
-  model_variation=="size_structured_dde_ratios" ? "size_structured_dde_ratios_functions.jl" :
-  "not_found"
 
-include( funcs )
+if model_variation=="size_structured_dde_normalized" 
+  include( "size_structured_dde_normalized_functions.jl" )  
+
+  u0 = [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ]  ; # generics to bootstrap the process
+
+  # history function (prior to start)  defaults to values of 0.5*u before t0; note u = (0,1)
+  h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS)  .* 0.5
+
+  function affect_fishing!(integrator)
+    i = findall(t -> t == integrator.t, fish_time)[1]
+    integrator.u[1] -=  removed[ i ] / integrator.p[2][1]  # p[2] ==K divide by K[1]  .. keep unscaled to estimate magnitude of other components
+  end
+   
+elseif  model_variation=="size_structured_dde_unnormalized"
+  include( "size_structured_dde_unnormalized_functions.jl" )  
+
+  u0 = [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ]  .* kmu; # generics to bootstrap the process
+
+  # history function (prior to start)  defaults to values of 0.5*u before t0; note u = (0,1)
+  h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS)  .* 0.5 .* kmu
+
+  function affect_fishing!(integrator)
+    i = findall(t -> t == integrator.t, fish_time)[1]
+    integrator.u[1] -=  removed[ i[1] ]  # sol on same scale
+  end
+   
+elseif  model_variation=="size_structured_dde_ratios"
+  include( "size_structured_dde_ratios_functions.jl" )  
+
+  u0 = [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ] ; # generics to bootstrap the process
+
+  # history function (prior to start)  defaults to values of 0.5*u before t0; note u = (0,1)
+  h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS)  .* 0.5 
+
+  function affect_fishing!(integrator)
+    i = findall(t -> t == integrator.t, fish_time)[1]
+    integrator.u[1] -=  removed[ i ] / integrator.p[2][1]  # p[2] ==K divide by K[1]  .. keep unscaled to estimate magnitude of other components
+  end
+   
+else 
+  
+  error("model_variation not found")
+
+end
+ 
 
 cb = PresetTimeCallback( fish_time, affect_fishing! )
 
@@ -247,12 +289,8 @@ cb = PresetTimeCallback( fish_time, affect_fishing! )
 #   PositiveDomain()
 # );
 
-# history function (prior to start)  defaults to values of 0.5*u before t0; note u = (0,1)
-h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS)  # .* 0.5
 
 tau = [1.0]  # delay resolution
-
-u0 = [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ]  ; # generics to bootstrap the process
 
 n_adapts=1000
 n_samples=1000

@@ -1,39 +1,6 @@
 
 # generic functions shared by fishery_models
-
-function basic_run_and_save()
-
-    # running as a function is a challenge right now due to namespaces .. for now run manually as a script:
-    models=("logistic_discrete", "logistic_discrete_basic", "logistic_discrete_map", "size_structured_dde" ) 
-    i = 4
-    model_variation = models[i]
-
-    areas= ("cfanorth", "cfasouth", "cfa4x")
-    j = 1
-    aulab = areas[j]
-    
-    yrs = 1999:2021  # <<<<<<<<-- change
-
-    include( joinpath( project_directory, "fishery_model_environment.jl"  ))  # bootstrap different project environments depending on above choices
-    res = fishery_model_inference( fmod, n_adapts=n_adapts, n_samples=n_samples, n_chains=n_chains, max_depth=max_depth, init_ϵ=init_ϵ )
-    save_fn = joinpath( directory_output, string("results_turing", "_", aulab, ".hdf5" ) ) 
-    @save save_fn res
-    print(save_fn)
-    (m, num, bio, pl)  = fishery_model_predictions(res; prediction_time=prediction_time, n_sample=500)
-    fb = bio[1:length(survey_time),:,1]  # the last 1 is for size struct; no effect in discrete
-    savefig(pl, joinpath( directory_output, string("plot_predictions_", aulab, ".pdf") )  )
-    (Fkt, FR, FM, pl) = fishery_model_mortality( removed, fb, n_sample=500 ) 
-    savefig(pl, joinpath( directory_output, string("plot_fishing_mortality_", aulab, ".pdf") )  )
-    (K, bi, fm, fmsy, pl) = fishery_model_harvest_control_rule(res, yrs; FM=FM, fb=fb, n_sample=500)
-    savefig(pl, joinpath( directory_output, string("plot_hcr_", aulab, ".pdf") )  )
-
-    if occursin.( r"size_structured", model_variation )
-      (trace_nofishing, trace_fishing, pl) = fishery_model_predictions_trace( res; n_sample=200, plot_k=1, alpha=0.1, plot_only_fishing=false )  # model traces
-      savefig(pl, joinpath( directory_output, string("plot_predictions_trace_", aulab, ".pdf") )  )
-    end
-
-  end
-
+ 
 
 function fishing_mortality_instantaneous( removed, abundance )
   -log(  1.0 - (removed  / abundance)  )  ;
@@ -87,11 +54,9 @@ end
 
 
 function fishery_model_inference( fmod; n_adapts=1000, n_samples=1000, n_chains=1, max_depth=7, init_ϵ=0.05, 
-  turing_sampler = Turing.NUTS(n_adapts, 0.65; max_depth=max_depth, init_ϵ=init_ϵ), debug=false, seed=1  )
-  
-  if !debug 
-    Logging.disable_logging(Logging.Warn) # or e.g. Logging.Info
-  end
+  turing_sampler = Turing.NUTS(n_adapts, 0.65; max_depth=max_depth, init_ϵ=init_ϵ), seed=1  )
+   
+  Logging.disable_logging(Logging.Warn) # or e.g. Logging.Info
   
   Random.seed!(seed)
   

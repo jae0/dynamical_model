@@ -68,7 +68,9 @@ fndat = "/home/jae/bio.data/bio.snowcrab/modelled/1999_present_fb/fishery_model_
 o = load( fndat, convert=true)
 Y = o["Y"]
 Ksd = o["Ksd"]
-Kmu = o["Kmu"]
+
+Kmu = o["Kmu"] 
+
 removals = o["L"] 
 
 
@@ -130,6 +132,11 @@ smallnumber = 1.0e-9 # floating point value sufficient to assume 0 valued
     
 # "survey index"
 S = Y[:,Symbol("$aulab"  )]
+
+ 
+# # scale index 
+# S = (S .- minimum(skipmissing(S)) ) ./ ( maximum( skipmissing(S)) .- minimum(skipmissing(S)) ) # range from 0=min to 1=max
+# # S = (S .- mean(skipmissing(S)) ) ./ std( skipmissing(S))  # scale to std and center to 0 
 
 # id index
 ki = aulab=="cfanorth" ? 1 :

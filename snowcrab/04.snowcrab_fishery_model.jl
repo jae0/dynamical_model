@@ -5,13 +5,13 @@
 # run-level options
 
 # choose model and area
-model_variation = "logistic_discrete"
 model_variation = "logistic_discrete_basic"
 model_variation = "logistic_discrete_map"
+model_variation = "logistic_discrete"  # default (for discrete)
 
 model_variation = "size_structured_dde_unnormalized"  # basic model without normaliztion
 model_variation = "size_structured_dde_ratios"  # permit ratios of K to vary 
-model_variation = "size_structured_dde"  # normalized
+model_variation = "size_structured_dde_normalized"  # default (for continuous)
 
 
 # choose a region of interest"
@@ -51,9 +51,7 @@ if false
   
 end
 
-
-
-# to run and save as a loop:
+ 
     
 # ---------------
 # load libs and options and prepare data for diffeq/turing model and set default parameters
@@ -65,25 +63,45 @@ include( joinpath( project_directory, "fishery_model_environment.jl"  ))  # boot
 debugging = false
 if debugging
     # if debugging/development:
-    
+     
     # to test dynamical model with generic/random parameters
     if @isdefined fishery_model_test  
-        (test, pl) = fishery_model_test( ("basic", "random_external_forcing", "fishing", "nofishing") )
-        pl
-        showall( summarize( test ) )
+      (test, pl) = fishery_model_test( "basic" )
+      pl
+
+      (test, pl) = fishery_model_test( "random_external_forcing"  )
+      pl
+      
+      (test, pl) = fishery_model_test( "fishing"  )
+      pl
+      
+      (test, pl) = fishery_model_test( "nofishing" )
+      pl
+      showall( summarize( test ) )
     end
 
-    res = fishery_model_inference( fmod, n_adapts=30, n_samples=30, n_chains=1, max_depth=7, init_ϵ=0.01, debug=true )
-    
+
+    res  =  sample( fmod, Turing.NUTS(30, 0.65; max_depth=7, init_ϵ=0.01), 30 ) # to see progress
+    # res = fishery_model_inference( fmod, n_adapts=30, n_samples=30, n_chains=1, max_depth=7, init_ϵ=0.01  )
+ 
     showall( summarize( res ) )
 
     (m, num, bio, pl)  = fishery_model_predictions(res; prediction_time=prediction_time, n_sample=30 )
+    fb = bio[1:length(survey_time),:,1]  # the last 1 is for size struct; no effect in discrete
     (pl)
  
     # trace plot .. only useful in continuous models, otherwise identical to predictions
     (trace_nofishing, trace_fishing, pl) = fishery_model_predictions_trace( res; n_sample=30, plot_k=1, alpha=0.1 )  # model traces
     (pl)
 
+    # plot fishing mortality
+    (Fkt, FR, FM, pl) = fishery_model_mortality( removed, fb, n_sample=500 ) 
+    pl
+
+    # HCR plot
+    (K, bi, fm, fmsy, pl) = fishery_model_harvest_control_rule(res, yrs; FM=FM, fb=fb, n_sample=500)
+    pl
+    
     # describe(res)
     # plot(res)
     # summarystats(res)

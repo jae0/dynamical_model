@@ -7,12 +7,12 @@ using Turing
   K ~ TruncatedNormal( kmu, kmu*0.2, kmu/5.0, kmu*5.0)  
   r ~  TruncatedNormal( 1.0, 0.1, 0.5, 1.5)   # (mu, sd)
 
-  bpsd ~  TruncatedNormal( 0.1, 0.05, 0.01, 0.25 )  ;  # slightly informative .. center of mass between (0,1)
-  bosd ~  TruncatedNormal( 0.1, 0.05, 0.01, 0.25 )  ;  # slightly informative .. center of mass between (0,1)
+  bpsd ~  TruncatedNormal( 0.1, 0.05, 0.01, 0.5 )  ;  # slightly informative .. center of mass between (0,1)
+  bosd ~  TruncatedNormal( 0.1, 0.05, 0.01, 0.5 )  ;  # slightly informative .. center of mass between (0,1)
 
   q ~ TruncatedNormal(  1.0, 0.1,  0.01, 10.0)    
-  qc ~ TruncatedNormal( 0.0, 0.1, -0.5, 0.5) 
- 
+  qc ~ TruncatedNormal( 0.0, 0.1, -1.0, 1.0) 
+
   m = TArray{T}( nM )
   m[1] ~  TruncatedNormal( 0.9, 0.2, 0.1, 1.0 )  ; # starting b prior to first catch event
 
@@ -24,7 +24,7 @@ using Turing
     m[i] ~ TruncatedNormal( m[i-1] + r * m[i-1] * ( 1.0 - m[i-1] ), bpsd, 0.0, 1.0)  ;  # predict with no removals
   end
 
-  if any( x -> x < 0.0, m)
+  if any( x -> x < 0.0 || x >1.0, m)
     Turing.@addlogprob! -Inf
     return nothing
   end
@@ -40,7 +40,7 @@ using Turing
   # likelihood
   # observation model: Y = q X + qc ; X = (Y - qc) / q
   for i in iok
-    S[i] ~ TruncatedNormal( q * m[i] + qc, bosd, 0.0, 1.0 )  ;
+    S[i] ~ Normal( q * m[i] + qc, bosd )  ;
   end
 
 end
@@ -70,7 +70,7 @@ end
   end
   
   
-  if any( x -> x < 0.0, m)
+  if any( x -> x < 0.0 || x >1.0, m)
     Turing.@addlogprob! -Inf
     return nothing
   end
@@ -78,8 +78,9 @@ end
   # likelihood
   # observation model: Y = q X  ; X = (Y ) / q
   for i in iok
-    S[i] ~ TruncatedNormal( q * m[i], bosd, 0.0, 1.0 )  ;
+    S[i] ~ Normal( q * m[i], bosd )  ;
   end
+
 end
   
 
@@ -95,7 +96,7 @@ end
     bosd ~  TruncatedNormal( 0.1, 0.05, 0.01, 0.25 )  ;  # slightly informative .. center of mass between (0,1)
 
     q ~ TruncatedNormal(  1.0, 0.1,  0.01, 10.0)    
-    qc ~ TruncatedNormal( 0.0, 0.1, -0.5, 0.5) 
+    qc ~ TruncatedNormal( 0.0, 0.1, -1.0, 1.0) 
 
     m = TArray{T}( nM )# fished (postfishery) abundance
     m[1] ~  TruncatedNormal( 0.9, 0.2, 0.1, 1.0 )  ; # starting b prior to first catch event
@@ -108,7 +109,7 @@ end
       m[i] ~ TruncatedNormal(  r * m[i-1] * ( 1.0 - m[i-1] ), bpsd, 0.0, 1.0)  ;  # predict with no removals
     end
 
-    if any( x -> x < 0.0, m)
+    if any( x -> x < 0.0, m)  # permit overshoot
       Turing.@addlogprob! -Inf
       return nothing
     end
@@ -123,8 +124,9 @@ end
     # likelihood
     # observation model: Y = q X + qc ; X = (Y - qc) / q
     for i in iok
-      S[i] ~ TruncatedNormal( q * m[i] + qc, bosd, 0.0, 1.0 )  ;
+      S[i] ~ Normal( q * m[i] + qc, bosd )  ;
     end
+  
 end
 
   

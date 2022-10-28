@@ -41,14 +41,8 @@ function dde_parameters()
     return params
 end
  
-
-function affect_fishing!(integrator)
-  i = findall(t -> t == integrator.t, fish_time)[1]
-  integrator.u[1] -=  removed[ i[1] ]
-  # integrator.u[1] -=  removed[ i ] / integrator.p[2][1]  # vintegrator.p[2] == K ; so divide by K[1]  
-end
-
-
+ 
+ 
 
 @model function size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM,
     solver=MethodOfSteps(Tsit5()), dt = 0.01,  ::Type{T} = Float64) where T

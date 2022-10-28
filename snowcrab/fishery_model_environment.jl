@@ -11,31 +11,15 @@ end
 
  
 # translate model-specific functions, etc to generics
-if model_variation=="logistic_discrete_basic"
+ 
+if  occursin( r"size_structured", model_variation ) 
+
+  fn_env = joinpath( project_directory, "size_structured_dde_environment.jl" )
+  
+elseif  occursin( r"logistic_discrete", model_variation ) 
+  
   fn_env = joinpath( project_directory, "logistic_discrete_environment.jl" )  
-end
 
-
-if model_variation=="logistic_discrete" 
-  fn_env = joinpath( project_directory, "logistic_discrete_environment.jl" )  
-end
-
-
-if model_variation=="logistic_discrete_map" 
-  fn_env = joinpath( project_directory, "logistic_discrete_environment.jl" )  
-end
-
-
-if model_variation=="size_structured_dde" 
-  fn_env = joinpath( project_directory, "size_structured_dde_environment.jl" )  
-end
-
-if model_variation=="size_structured_dde_unnormalized" 
-  fn_env = joinpath( project_directory, "size_structured_dde_unnormalized_environment.jl" )  
-end
-
-if model_variation=="size_structured_dde_ratios" 
-  fn_env = joinpath( project_directory, "size_structured_dde_ratios_environment.jl" )  
 end
 
 include(  fn_env )
