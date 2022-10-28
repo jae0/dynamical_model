@@ -9,9 +9,9 @@ model_variation = "logistic_discrete"
 model_variation = "logistic_discrete_basic"
 model_variation = "logistic_discrete_map"
 
-model_variation = "size_structured_dde"
-model_variation = "size_structured_dde_unnormalized"
-model_variation = "size_structured_etc"
+model_variation = "size_structured_dde_unnormalized"  # basic model without normaliztion
+model_variation = "size_structured_dde_ratios"  # permit ratios of K to vary 
+model_variation = "size_structured_dde"  # normalized
 
 
 # choose a region of interest"
@@ -77,12 +77,13 @@ if debugging
     
     showall( summarize( res ) )
 
+    (m, num, bio, pl)  = fishery_model_predictions(res; prediction_time=prediction_time, n_sample=30 )
+    (pl)
+ 
     # trace plot .. only useful in continuous models, otherwise identical to predictions
     (trace_nofishing, trace_fishing, pl) = fishery_model_predictions_trace( res; n_sample=30, plot_k=1, alpha=0.1 )  # model traces
     (pl)
 
-    (m, num, bio, pl)  = fishery_model_predictions(res; prediction_time=prediction_time, n_sample=30 )
-    (pl)
     # describe(res)
     # plot(res)
     # summarystats(res)

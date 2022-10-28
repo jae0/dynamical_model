@@ -30,6 +30,14 @@ if model_variation=="size_structured_dde"
   fn_env = joinpath( project_directory, "size_structured_dde_environment.jl" )  
 end
 
+if model_variation=="size_structured_dde_unnormalized" 
+  fn_env = joinpath( project_directory, "size_structured_dde_unnormalized_environment.jl" )  
+end
+
+if model_variation=="size_structured_dde_ratios" 
+  fn_env = joinpath( project_directory, "size_structured_dde_ratios_environment.jl" )  
+end
+
 include(  fn_env )
 
 

@@ -228,10 +228,17 @@ end
 directory_output = joinpath( project_directory, "outputs", model_variation )
 mkpath(directory_output)
 
+# model-specifics functions and data
+
 include( "fishery_model_functions.jl" )  # to load core dynamical model functions
-include( "size_structured_dde_functions.jl" )  #specific to model form
 
+funcs = 
+  model_variation=="size_structured_dde" ? "size_structured_dde_functions.jl" :
+  model_variation=="size_structured_dde_unnormalized" ? "size_structured_dde_unnormalized_functions.jl" :
+  model_variation=="size_structured_dde_ratios" ? "size_structured_dde_ratios_functions.jl" :
+  "not_found"
 
+include( funcs )
 
 cb = PresetTimeCallback( fish_time, affect_fishing! )
 
@@ -253,16 +260,7 @@ n_chains=4
 max_depth=9
 init_ϵ=0.01
 
+p = dde_parameters() # dummy values needed to bootstrap DifferentialEquations/Turing initialization
+prob = DDEProblem( size_structured_dde!, u0, h, tspan, p, constant_lags=tau  )  # tau=[1]
+fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM, solver, dt )
 
-
-
-if model_variation=="size_structured_dde"
-
-  p = dde_parameters() # dummy values needed to bootstrap DifferentialEquations/Turing initialization
-  prob = DDEProblem( size_structured_dde!, u0, h, tspan, p, constant_lags=tau  )  # tau=[1]
-  fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM, solver, dt )
-
-elseif model_variation=="size_structured_other"
-  # add more here
-
-end
