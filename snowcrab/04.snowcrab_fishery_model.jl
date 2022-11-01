@@ -10,7 +10,6 @@ model_variation = "logistic_discrete_map"
 model_variation = "logistic_discrete"  # default (for discrete)
 
 model_variation = "size_structured_dde_unnormalized"  # basic model without normaliztion
-model_variation = "size_structured_dde_ratios"  # permit ratios of K to vary 
 model_variation = "size_structured_dde_normalized"  # default (for continuous)
 
 
@@ -46,9 +45,7 @@ if false
     project_directory = @__DIR__() #  same folder as the current file
     push!(LOAD_PATH, project_directory)  # add the directory to the load path, so it can be found
     include( "startup.jl" )
-    
-    basic_run_and_save() # running this as a function is a challenge right now due to namespaces .. for now run manually as a script:
-  
+       
 end
 
  
@@ -81,11 +78,9 @@ if debugging
     end
 
 
-    res  =  sample( fmod, Turing.NUTS(30, 0.65; max_depth=7, init_ϵ=0.01), 30 ) # to see progress
+    res  =  sample( fmod, Turing.NUTS(30, 0.65; max_depth=8, init_ϵ=0.05), 30 ) # to see progress
     # res = fishery_model_inference( fmod, n_adapts=30, n_samples=30, n_chains=1, max_depth=7, init_ϵ=0.01  )
  
-    showall( summarize( res ) )
-
     (m, num, bio, pl)  = fishery_model_predictions(res; prediction_time=prediction_time, n_sample=30 )
     fb = bio[1:length(survey_time),:,1]  # the last 1 is for size struct; no effect in discrete
     (pl)
@@ -101,7 +96,9 @@ if debugging
     # HCR plot
     (K, bi, fm, fmsy, pl) = fishery_model_harvest_control_rule(res, yrs; FM=FM, fb=fb, n_sample=500)
     pl
-    
+   
+    showall( summarize( res ) )
+ 
     # describe(res)
     # plot(res)
     # summarystats(res)

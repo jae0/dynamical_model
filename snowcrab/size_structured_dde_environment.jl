@@ -79,7 +79,8 @@ o = load( fndat, convert=true)
 Y = o["Y"]
 
 Kmu = o["Kmu"]
-Kmu = [5.0, 60, 1.5]
+
+Kmu = [5.5, 65.0, 1.5]
 
 removals = o["L"]
 MW = o["M0_W"]
@@ -108,23 +109,23 @@ MW = o["M0_W"]
 
         # example line plots
         plot(  Y[:,:yrs], Y[:,:cfasouth_M0] )
-        plot!( Y[:,:yrs] .+1 , Y[:,:cfasouth_M1] )
-        plot!( Y[:,:yrs] .+2, Y[:,:cfasouth_M2] )
-        plot!( Y[:,:yrs] .+3, Y[:,:cfasouth_M3] )
-        plot!( Y[:,:yrs] .+4, Y[:,:cfasouth_M4] )
+        plot!( Y[:,:yrs]  , Y[:,:cfasouth_M1] )
+        plot!( Y[:,:yrs] , Y[:,:cfasouth_M2] )
+        plot!( Y[:,:yrs] , Y[:,:cfasouth_M3] )
+        plot!( Y[:,:yrs] , Y[:,:cfasouth_M4] )
 
         plot(  Y[:,:yrs], Y[:,:cfanorth_M0] )
-        plot!( Y[:,:yrs] .+1 , Y[:,:cfanorth_M1] )
-        plot!( Y[:,:yrs] .+2 , Y[:,:cfanorth_M2] )
-        plot!( Y[:,:yrs] .+3, Y[:,:cfanorth_M3] )
-        plot!( Y[:,:yrs] .+4, Y[:,:cfanorth_M4] )
+        plot!( Y[:,:yrs]  , Y[:,:cfanorth_M1] )
+        plot!( Y[:,:yrs]  , Y[:,:cfanorth_M2] )
+        plot!( Y[:,:yrs] , Y[:,:cfanorth_M3] )
+        plot!( Y[:,:yrs] , Y[:,:cfanorth_M4] )
 
 
         plot(  Y[:,:yrs], Y[:,:cfa4x_M0] )
-        plot!( Y[:,:yrs] .+1 , Y[:,:cfa4x_M1] )
-        plot!( Y[:,:yrs] .+2 , Y[:,:cfa4x_M2] )
-        plot!( Y[:,:yrs] .+3, Y[:,:cfa4x_M3] )
-        plot!( Y[:,:yrs] .+4, Y[:,:cfa4x_M4] )
+        plot!( Y[:,:yrs]  , Y[:,:cfa4x_M1] )
+        plot!( Y[:,:yrs]  , Y[:,:cfa4x_M2] )
+        plot!( Y[:,:yrs] , Y[:,:cfa4x_M3] )
+        plot!( Y[:,:yrs] , Y[:,:cfa4x_M4] )
     end
 
 
@@ -147,11 +148,10 @@ statevars = [
 
 S = Matrix(Y[:, statevars ])
 
-# # scale index
-# for i in 1:nS
-#   S[:,i] = (S[:,i] .- minimum(skipmissing(S[:,i])) ) ./ ( maximum( skipmissing(S[:,i])) .- minimum(skipmissing(S[:,i])) ) # range from 0=min to 1=max
-#   # S[:,i] = (S[:,i] .- mean(skipmissing(S[:,i])) ) ./ std( skipmissing(S[:,i]))  # scale to std and center to 0 
-# end
+# center and  scale index
+for i in 1:nS
+  S[:,i] = (S[:,i] .- minimum(skipmissing(S[:,i])) ) ./ ( maximum( skipmissing(S[:,i])) .- minimum(skipmissing(S[:,i])) ) # range from 0=min to 1=max
+end
 
 # interpolating function for mean weight
 mwspline = extrapolate( interpolate( MW[:,Symbol("mw_", "$aulab") ], (BSpline(Linear()) ) ),  Interpolations.Flat() )
@@ -242,7 +242,7 @@ if model_variation=="size_structured_dde_normalized"
   u0 = [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ]  ; # generics to bootstrap the process
 
   # history function (prior to start)  defaults to values of 0.5*u before t0; note u = (0,1)
-  h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS)  .* 0.5
+  h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS)  .* 0.9
 
   function affect_fishing!(integrator)
     i = findall(t -> t == integrator.t, fish_time)[1]
@@ -255,25 +255,13 @@ elseif  model_variation=="size_structured_dde_unnormalized"
   u0 = [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ]  .* kmu; # generics to bootstrap the process
 
   # history function (prior to start)  defaults to values of 0.5*u before t0; note u = (0,1)
-  h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS)  .* 0.5 .* kmu
+  h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS)  .* 0.9 .* kmu
 
   function affect_fishing!(integrator)
     i = findall(t -> t == integrator.t, fish_time)[1]
     integrator.u[1] -=  removed[ i[1] ]  # sol on same scale
   end
    
-elseif  model_variation=="size_structured_dde_ratios"
-  include( "size_structured_dde_ratios_functions.jl" )  
-
-  u0 = [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ] ; # generics to bootstrap the process
-
-  # history function (prior to start)  defaults to values of 0.5*u before t0; note u = (0,1)
-  h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS)  .* 0.5 
-
-  function affect_fishing!(integrator)
-    i = findall(t -> t == integrator.t, fish_time)[1]
-    integrator.u[1] -=  removed[ i ] / integrator.p[2][1]  # p[2] ==K divide by K[1]  .. keep unscaled to estimate magnitude of other components
-  end
    
 else 
   

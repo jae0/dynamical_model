@@ -14,10 +14,10 @@ function size_structured_dde!( du, u, h, p, t)
   tr =  v .* u1
   # dr =  d .* ( max.(u,0.0) ./ vh) .^ (2.0)
   uv = u ./ (K .* vh)
-#  dr =  d .* u .+  d2 .* u .* uv
-#  dr =  d .* u .+  d2 .* u .* ( uv .^ 2.0 )
-dr =  d .* u .* uv .+  d2 .* u .* ( uv .^ 2.0 )
-# dr =  d .* u .* uv .* (1.0 .+ uv )
+  # dr =  d .* u .+  d2 .* u .* uv
+  # dr =  d .* u .+  d2 .* u .* ( uv .^ 2.0 )
+    dr =  d .* u .* uv .+  d2 .* u .* ( uv .^ 2.0 )
+  # dr =  d .* u .* uv .* (1.0 .+ uv )
  
   du[1] = tr[1]            - dr[1]       # note:
   du[2] = tr[2]   - tr[1]  - dr[2]
