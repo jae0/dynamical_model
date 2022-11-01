@@ -14,8 +14,8 @@ function size_structured_dde!( du, u, h, p, t)
   tr =  v .* u1
 
   # background mortality + excess mortality due to habitat fluctuations 
-  uv = ( u ./ hf ) 
-  dr = d .* u .* uv  + hp .*  u .* uv .* uv 
+
+  dr = d .* u ./ hf + hp .* u .* u ./ hf  
   
   a = K[2:6] ./ K[1:5]
 
@@ -47,7 +47,7 @@ end
     solver=MethodOfSteps(Tsit5()), dt = 0.01, ::Type{T} = Float64) where T
 
     # biomass process model:
-    K ~ filldist( TruncatedNormal( kmu, kmu*0.2, kmu/100.0, kmu*100.0), nS )  # kmu is max of a multiyear group , serves as upper bound for all
+    K ~ filldist( TruncatedNormal( kmu, kmu*0.2, kmu/1000.0, kmu*1000.0), nS )  # kmu is max of a multiyear group , serves as upper bound for all
  
     q ~ filldist( TruncatedNormal(  1.0, 0.2,  0.5, 2.0), nS )
     qc ~ filldist( TruncatedNormal( 0.0, 0.2, -1.0, 1.0), nS )
@@ -55,7 +55,7 @@ end
     model_sd ~ TruncatedNormal( 0.1, 0.1, 0.01, 0.25 )
 
     # "birth" rate from F(y - 8 to 10)  and for males m5 and femaless
-    b ~ filldist( TruncatedNormal(10.0, 0.5, 0.01, 100.0), 2 )
+    b ~ filldist( TruncatedNormal(1.0, 0.1, 0.01, 10.0), 2 )
 
     # background mortality
     d ~ filldist( TruncatedNormal(0.1, 0.1, 0.01, 1.0), nS )
@@ -78,8 +78,8 @@ end
         solver,
         callback=cb,
         # maxiters=1e6,
-        isoutofdomain=(y,p,t)->any(x -> (x<0.0 || x>1.0), y) ,
-        # isoutofdomain=(y,p,t)->any(x -> (x<0.0), y),
+        # isoutofdomain=(y,p,t)->any(x -> (x<0.0 || x>1.0), y) ,
+        isoutofdomain=(y,p,t)->any(x -> (x<0.0), y),
         saveat=dt
     )
 

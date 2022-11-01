@@ -13,12 +13,14 @@ function size_structured_dde!( du, u, h, p, t)
   br =  f8 .* b
   tr =  v .* u1
   # dr =  d .* ( max.(u,0.0) ./ vh) .^ (2.0)
-  uv = u ./ (K .* vh)
+  # uv = u ./ (K .* vh) 
   # dr =  d .* u .+  d2 .* u .* uv
   # dr =  d .* u .+  d2 .* u .* ( uv .^ 2.0 )
-    dr =  d .* u .* uv .+  d2 .* u .* ( uv .^ 2.0 )
   # dr =  d .* u .* uv .* (1.0 .+ uv )
- 
+  # dr =  d .* u .* uv .+  d2 .* u .* ( uv .^ 2.0 )
+  
+  dr =  d .* u  .+  d2 .* u .* u ./ (K .* vh)  
+  
   du[1] = tr[1]            - dr[1]       # note:
   du[2] = tr[2]   - tr[1]  - dr[2]
   du[3] = tr[3]   - tr[2]  - dr[3]
@@ -53,20 +55,20 @@ end
     q ~ filldist( TruncatedNormal(  1.0, 0.1,  0.2, 5.0), nS )
     qc ~ filldist( TruncatedNormal( 0.0, 0.1, -1.0, 1.0), nS )
 
-    model_sd ~ truncated( Cauchy( 1.0, 1.0), 0.0, 1.0 )
+    model_sd ~ TruncatedNormal( 0.1, 0.1, 0.0, 1.0)
 
     # birth rate from F(y - 8 to 10)  and for males m5 and females
     b ~ filldist( TruncatedNormal(10.0, 1.0, 0.01, 100.0), 2 )
 
     # background mortality
-    d ~ filldist( TruncatedNormal(0.4, 0.1, 0.01, 0.99), nS )
-    d2 ~ filldist( TruncatedNormal(0.4, 0.1, 0.01, 0.99), nS )
+    d ~ filldist( TruncatedNormal(0.1, 0.1, 0.01, 0.99), nS )
+    d2 ~ filldist( TruncatedNormal(0.5, 0.1, 0.01, 0.99), nS )
 
     # transition rates
     v ~ filldist( TruncatedNormal(0.8, 0.1, 0.01, 10.0), 4 )
 
     # initial conditions
-    u0 ~ filldist( TruncatedNormal(0.6, 0.1, 0.01, 0.99), nS )
+    u0 ~ filldist( TruncatedNormal(0.8, 0.1, 0.01, 0.99), nS )
 
     pm = ( b, K, d, d2, v, tau, hsa )
     # @show pm
@@ -78,20 +80,12 @@ end
         remake( prob; u0=u0 .* K, h=h, tspan=tspan, p=pm ),
         solver,
         callback=cb,
-        # maxiters=1e6,
-        # isoutofdomain=(y,p,t)->any(x -> (x<0.0 || x>1.0), y) , # force solutions to remain within 95% quantile bounds
         isoutofdomain=(y,p,t)->any(x -> (x<0.0), y),
         saveat=dt
     )
 
     # @show msol.retcode
     if msol.retcode != :Success
-      # fill this as without causes Turing confusion
-      # for i in 1:nSI
-      #     for k in 1:nS
-      #         m[i,k] ~ TruncatedNormal( smallnumber, smallnumber , 0.0, 1.0 )  # dummy values as m has not been sampled yet .. without this it will crash
-      #     end
-      # end
       Turing.@addlogprob! -Inf
       return nothing
     end
