@@ -25,6 +25,7 @@ yrs = 1999:2021  # <<<<<<<<-- change
 # create data (in R)
 if false
 
+  #  https://mybinder.org/v2/gh/jae0/dynamical_model/main
 
     # ==== R-code ==== start
     # NOTE::: this requires 03.snowcrab_carstm.r to be completed
@@ -177,19 +178,31 @@ if occursin.( r"size_structured", model_variation )
   savefig(pl, joinpath( directory_output, string("plot_predictions_trace_", aulab, ".pdf") )  )
 
   # timeseries of predictions (number; kn and pl =plot) -- not relevent if only 1 state varable
+  statevar = 1  # index of S
+  (numS, pl)  = fishery_model_predictions_timeseries(num; prediction_time=prediction_time, plot_k=statevar )
+  pl
+  statevar = 2  # index of S
+  (numS, pl)  = fishery_model_predictions_timeseries(num; prediction_time=prediction_time, plot_k=statevar )
+  pl
+  statevar = 3  # index of S
+  (numS, pl)  = fishery_model_predictions_timeseries(num; prediction_time=prediction_time, plot_k=statevar )
+  pl
+  statevar = 4  # index of S
+  (numS, pl)  = fishery_model_predictions_timeseries(num; prediction_time=prediction_time, plot_k=statevar )
+  pl
+  statevar = 5  # index of S
+  (numS, pl)  = fishery_model_predictions_timeseries(num; prediction_time=prediction_time, plot_k=statevar )
+  pl
+  
   statevar = 6  # index of S
   (numS, pl)  = fishery_model_predictions_timeseries(num; prediction_time=prediction_time, plot_k=statevar )
   pl
+  
   savefig(pl, joinpath( directory_output, string("plot_predictions_timeseries_", aulab, statevar, ".pdf") )  )
 end
 
 
-
-
-
-
-
-
+ 
 
 ### end
 ### -------------

@@ -12,14 +12,9 @@ function size_structured_dde!( du, u, h, p, t)
   # this break down seems to speed it up a bit ... not sure why
   br =  f8 .* b
   tr =  v .* u1
-  # dr =  d .* ( max.(u,0.0) ./ vh) .^ (2.0)
-  # uv = u ./ (K .* vh) 
-  # dr =  d .* u .+  d2 .* u .* uv
-  # dr =  d .* u .+  d2 .* u .* ( uv .^ 2.0 )
-  # dr =  d .* u .* uv .* (1.0 .+ uv )
-  # dr =  d .* u .* uv .+  d2 .* u .* ( uv .^ 2.0 )
-  
-  dr =  d .* u  .+  d2 .* u .* u ./ (K .* vh)  
+
+  # d: background mortality + d2: excess mortality due to habitat fluctuations 
+  dr =  d .* u  .+  d2 .* u .* ( u ./ K ) ./ vh   
   
   du[1] = tr[1]            - dr[1]       # note:
   du[2] = tr[2]   - tr[1]  - dr[2]
@@ -42,26 +37,27 @@ function dde_parameters()
     params = ( b, K, d, d2, v, tau, hsa)
     return params
 end
- 
- 
+
  
 
 @model function size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM,
-    solver=MethodOfSteps(Tsit5()), dt = 0.01,  ::Type{T} = Float64) where T
+    solver=MethodOfSteps(Tsit5()), dt = 0.01, ::Type{T} = Float64) where T
 
     # biomass process model:
-    K ~ filldist( TruncatedNormal( kmu, kmu*0.25, kmu/1000.0, kmu*1000.0), nS )  # kmu is max of a multiyear group , serves as upper bound for all
+    K ~ filldist( TruncatedNormal( kmu, kmu*0.2, kmu/1000.0, kmu*1000.0), nS )  # kmu is max of a multiyear group , serves as upper bound for all
  
     q ~ filldist( TruncatedNormal(  1.0, 0.1,  0.2, 5.0), nS )
     qc ~ filldist( TruncatedNormal( 0.0, 0.1, -1.0, 1.0), nS )
 
-    model_sd ~ TruncatedNormal( 0.1, 0.1, 0.0, 1.0)
+    model_sd ~ filldist( TruncatedNormal( 0.1, 0.1, 0.0, 1.0 ), nS)
 
     # birth rate from F(y - 8 to 10)  and for males m5 and females
-    b ~ filldist( TruncatedNormal(10.0, 1.0, 0.01, 100.0), 2 )
+    b ~ filldist( TruncatedNormal(5.0, 0.1, 0.01, 100.0), 2 )
 
     # background mortality
     d ~ filldist( TruncatedNormal(0.1, 0.1, 0.01, 0.99), nS )
+
+    # excess mortality due to habitat (second order)
     d2 ~ filldist( TruncatedNormal(0.5, 0.1, 0.01, 0.99), nS )
 
     # transition rates
@@ -94,7 +90,7 @@ end
     for i in 1:nSI
         ii = findall(x->x==survey_time[Si[i]], msol.t)[1]
         for k in 1:nS
-          S[Si[i],k] ~ Normal( msol.u[ii][k] / K[k] * q[k] + qc[k], model_sd )  # observation and process error combined .. expand truncation for edge cases
+          S[Si[i],k] ~ Normal( msol.u[ii][k] / K[k] * q[k] + qc[k], model_sd[k] )  # observation and process error combined .. expand truncation for edge cases
         end
 
     end
@@ -280,23 +276,25 @@ function fishery_model_predictions( res; prediction_time=prediction_time, n_samp
 
     prb = remake( prob; u0=u0.*K , h=h, tspan=tspan, p=pm )
 
-    msol = solve( prb, solver, callback=cb, saveat=dt )
-    msol2 = solve( prb, solver, saveat=dt ) # no call backs
+    msol = solve( prb, solver, callback=cb, saveat=dt  )
+    msol2 = solve( prb, solver, saveat=dt   ) # no call backs
+    
+    if (msol.retcode == :Success) && (msol2.retcode == :Success) 
 
-    for i in 1:nM
-        ii = findall(x->x==prediction_time[i], msol.t)[1]
-        jj = findall(x->x==prediction_time[i], msol2.t)[1]
-        sf  = nameof(typeof(mw)) == :ScaledInterpolation ? mw(msol.t[ii])  ./ 1000.0 ./ 1000.0  :  scale_factor   # n to kt
-        sf2 = nameof(typeof(mw)) == :ScaledInterpolation ? mw(msol2.t[jj]) ./ 1000.0 ./ 1000.0  :  scale_factor   # n to kt
-        md[i,:,z,1] = msol.u[ii]  ./ K # with fishing
-        md[i,:,z,2] = msol2.u[jj]  ./ K # no fishing
-        mn[i,:,z,1] = msol.u[ii]     # with fishing
-        mn[i,:,z,2] = msol2.u[jj]   # no fishing
-        mb[i,z,1] = mn[i,1,z,1]  .* sf
-        mb[i,z,2] = mn[i,1,z,2]  .* sf2
+      for i in 1:nM
+          ii = findall(x->x==prediction_time[i], msol.t)[1]
+          jj = findall(x->x==prediction_time[i], msol2.t)[1]
+          sf  = nameof(typeof(mw)) == :ScaledInterpolation ? mw(msol.t[ii])  ./ 1000.0 ./ 1000.0  :  scale_factor   # n to kt
+          sf2 = nameof(typeof(mw)) == :ScaledInterpolation ? mw(msol2.t[jj]) ./ 1000.0 ./ 1000.0  :  scale_factor   # n to kt
+          md[i,:,z,1] = msol.u[ii]  ./ K # with fishing
+          md[i,:,z,2] = msol2.u[jj]  ./ K # no fishing
+          mn[i,:,z,1] = msol.u[ii]     # with fishing
+          mn[i,:,z,2] = msol2.u[jj]   # no fishing
+          mb[i,z,1] = mn[i,1,z,1]  .* sf
+          mb[i,z,2] = mn[i,1,z,2]  .* sf2
 
+      end
     end
-
   end
   end
 
@@ -387,28 +385,34 @@ function fishery_model_predictions_trace( res; n_sample=10, plot_k=1, alpha=0.01
         if plot_k==1
             # do fishing and nonfishing
 
-            msol = solve( prb, solver, callback=cb, saveat=dt )
-            msol2 = solve( prb, solver, saveat=dt ) # no call backs
+            msol = solve( prb, solver, callback=cb, saveat=dt  )
+            msol2 = solve( prb, solver, saveat=dt  ) # no call backs
 
-            sf = nameof(typeof(mw)) == :ScaledInterpolation ? mw(msol.t) ./ 1000.0 ./ 1000.0 :  scale_factor
-            sf2 = nameof(typeof(mw)) == :ScaledInterpolation ? mw(msol2.t) ./ 1000.0 ./ 1000.0  :  scale_factor   # n to kt
+            if (msol.retcode == :Success) && (msol2.retcode == :Success) 
 
-            yval2 = vec( reduce(hcat, msol2.u)'[:,plot_k])   .* sf2
-            yval = vec( reduce(hcat, msol.u)'[:,plot_k] )   .* sf
+              sf = nameof(typeof(mw)) == :ScaledInterpolation ? mw(msol.t) ./ 1000.0 ./ 1000.0 :  scale_factor
+              sf2 = nameof(typeof(mw)) == :ScaledInterpolation ? mw(msol2.t) ./ 1000.0 ./ 1000.0  :  scale_factor   # n to kt
 
-            pl = plot!( pl, msol.t, yval, alpha=alpha, lw=1, color=:orange )
-            pl = plot!( pl, msol2.t, yval2, alpha=alpha*2.0, lw=1, color=:lime )
+              yval2 = vec( reduce(hcat, msol2.u)'[:,plot_k])   .* sf2
+              yval = vec( reduce(hcat, msol.u)'[:,plot_k] )   .* sf
 
-            push!(out, yval)
-            push!(out2, yval2)
+              pl = plot!( pl, msol.t, yval, alpha=alpha, lw=1, color=:orange )
+              pl = plot!( pl, msol2.t, yval2, alpha=alpha*2.0, lw=1, color=:lime )
 
+              push!(out, yval)
+              push!(out2, yval2)
+            end
         else
+          if (msol.retcode == :Success) && (msol2.retcode == :Success) 
+
             msol2 = solve( prb, solver, saveat=dt ) # no call backs
             yval2 = vec( reduce(hcat, msol2.u)'[:,plot_k])  
             pl = plot!( pl, msol2.t, yval2, alpha=alpha, lw=1, color=:lime )
 
             push!(out2, yval2)
+          end
         end
+
  
     end
 

@@ -3,7 +3,7 @@ using Turing
 function size_structured_dde!( du, u, h, p, t)
   # here u, du are actual numbers .. not normalized by K due to use of callbacks
 
-  (b, K, d, v, hp, tau, hsa)  = p
+  (b, K, d, d2, v, tau, hsa)  = p
 
   u1 = h(p, t-1.0)[2:5]    # no in previous years
   f8 = h(p, t-8.0)[6]      # no mature fem 8  yrs ago
@@ -13,9 +13,8 @@ function size_structured_dde!( du, u, h, p, t)
   br =  f8 .* b
   tr =  v .* u1
 
-  # background mortality + excess mortality due to habitat fluctuations 
-
-  dr = d .* u ./ hf + hp .* u .* u ./ hf  
+  # d: background mortality + d2: excess mortality due to habitat fluctuations 
+  dr = d .* u   + d2 .* u .* u ./ hf  
   
   a = K[2:6] ./ K[1:5]
 
@@ -35,8 +34,8 @@ function dde_parameters()
     K=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0] .*kmu;
     d=[0.15, 0.11, 0.14, 0.17, 0.16, 0.19];
     v=[0.65, 0.68, 0.61, 0.79];
-    hp = [0.4, 0.4, 0.4, 0.4, 0.4, 0.4] 
-    params = ( b, K, d, v, hp, tau, hsa)
+    d2 = [0.4, 0.4, 0.4, 0.4, 0.4, 0.4] 
+    params = ( b, K, d, d2, v, tau, hsa)
     return params
 end
 
@@ -47,29 +46,32 @@ end
     solver=MethodOfSteps(Tsit5()), dt = 0.01, ::Type{T} = Float64) where T
 
     # biomass process model:
-    K ~ filldist( TruncatedNormal( kmu, kmu*0.2, kmu/1000.0, kmu*1000.0), nS )  # kmu is max of a multiyear group , serves as upper bound for all
+    K ~ filldist( TruncatedNormal( kmu, kmu*0.25, kmu/1000.0, kmu*1000.0), nS )  # kmu is max of a multiyear group , serves as upper bound for all
  
-    q ~ filldist( TruncatedNormal(  1.0, 0.2,  0.5, 2.0), nS )
-    qc ~ filldist( TruncatedNormal( 0.0, 0.2, -1.0, 1.0), nS )
+    q ~ filldist( TruncatedNormal(  1.0, 0.1,  0.1, 10.0), nS )
+    qc ~ filldist( TruncatedNormal( 0.0, 0.1, -10.0, 10.0), nS )
 
-    model_sd ~ TruncatedNormal( 0.1, 0.1, 0.01, 0.25 )
+    model_sd ~ filldist( TruncatedNormal( 0.1, 0.1, 0.01, 0.25 ), nS ) 
 
     # "birth" rate from F(y - 8 to 10)  and for males m5 and femaless
-    b ~ filldist( TruncatedNormal(1.0, 0.1, 0.01, 10.0), 2 )
+    #    b~N(5.0, 0.1), 60 kt, max-norm  cfasouth
+    #    b~N(1.0, 0.1), 5.5 kt, max-norm  cfasouth
+    
+    b ~ filldist( TruncatedNormal(5.0, 0.1, 0.01, 100.0), 2 )  
 
     # background mortality
-    d ~ filldist( TruncatedNormal(0.1, 0.1, 0.01, 1.0), nS )
+    d ~ filldist( TruncatedNormal(0.2, 0.1, 0.01, 0.99), nS )
 
     # excess mortality due to habitat (second order)
-    hp ~ filldist( TruncatedNormal(0.5, 0.1, 0.01, 1.0), nS )
+    d2 ~ filldist( TruncatedNormal(0.4, 0.1, 0.01, 0.99), nS )
 
     # transition rates
-    v ~ filldist( TruncatedNormal(0.8, 0.1, 0.01, 1.0), 4 )
+    v ~ filldist( TruncatedNormal(0.8, 0.1, 0.01, 0.99), 4 )
 
     # initial conditions
-    u0 ~ filldist( TruncatedNormal(0.8, 0.1, 0.01, 1.0), nS )
+    u0 ~ filldist( TruncatedNormal(0.8, 0.1, 0.01, 0.99), nS )
 
-    pm = ( b, K, d, v, hp, tau, hsa )
+    pm = ( b, K, d, d2, v, tau, hsa )
     # @show pm
  
     # process model
@@ -77,9 +79,8 @@ end
         remake( prob; u0=u0, h=h, tspan=tspan, p=pm ),
         solver,
         callback=cb,
-        # maxiters=1e6,
-        # isoutofdomain=(y,p,t)->any(x -> (x<0.0 || x>1.0), y) ,
-        isoutofdomain=(y,p,t)->any(x -> (x<0.0), y),
+        # isoutofdomain=(y,p,t)->any(x -> (x<0.0 || x>1.0), y) , # this constraint is too much as there are timeseries-lag effects
+        isoutofdomain=(y,p,t)->any(x -> (x<0.0), y),  # permit exceeding K
         saveat=dt
     )
 
@@ -93,7 +94,7 @@ end
     for i in 1:nSI
         ii = findall(x->x==survey_time[Si[i]], msol.t)[1]
         for k in 1:nS
-            S[Si[i],k] ~ Normal( msol.u[ii][k] * q[k] + qc[k], model_sd )  # observation and process error combined
+            S[Si[i],k] ~ Normal( msol.u[ii][k] * q[k] + qc[k], model_sd[k] )  # observation and process error combined
         end
     end
 
@@ -116,11 +117,11 @@ function fishery_model_test( test=("basic", "random_external_forcing", "fishing"
     K=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0] .* kmu;
     d=[0.15, 0.11, 0.14, 0.17, 0.16, 0.19];
     v=[0.65, 0.68, 0.61, 0.79];
-    hp =[0.5, 0.5, 0.5, 0.5, 0.5, 0.5] 
+    d2 =[0.5, 0.5, 0.5, 0.5, 0.5, 0.5] 
     
     u0 = [ 0.65, 0.6, 0.52, 0.62, 0.58, 0.32 ]  ; 
     tau=[1.0] 
-    params = ( b, K, d,  v, hp, tau, hsa)
+    params = ( b, K, d, d2, v, tau, hsa)
     prob1 = DDEProblem( size_structured_dde!, u0, h, tspan, params, constant_lags=tau  )  # tau=[1]
     out = msol1 =  solve( prob1,  solver, callback=cb, saveat=dt )
     pl = plot()
@@ -136,7 +137,7 @@ function fishery_model_test( test=("basic", "random_external_forcing", "fishing"
     K=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0] .* ks;
     d=[0.4, 0.4, 0.4, 0.4, 0.4, 0.4];
     v=[0.9, 0.9, 0.9, 0.9];  
-    hp=[0.5, 0.5, 0.5, 0.5, 0.5, 0.5] 
+    d2=[0.5, 0.5, 0.5, 0.5, 0.5, 0.5] 
     tau=[1.0] 
   
     survey_time = 1999:2021
@@ -147,7 +148,7 @@ function fishery_model_test( test=("basic", "random_external_forcing", "fishing"
     efc = extrapolate( interpolate( external_forcing, (BSpline(Linear()), NoInterp()) ), Interpolations.Flat() )
     hsa = Interpolations.scale(efc, 1999:2021, 1:6 )
   
-    p = ( b, K, d, v, hp, tau, hsa )   
+    p = ( b, K, d, d2, v, tau, hsa )   
     tspan = (1990.0, 2050.0)
     nS = length(u0)  # n components
     
@@ -171,7 +172,7 @@ function fishery_model_test( test=("basic", "random_external_forcing", "fishing"
     b=[0.6, 0.4]
     d=[0.20223639702656727, 0.18864211980978104, 0.18063928527606177, 0.23030220100440996, 0.19713968752681676, 0.40151610614035915]
     v=[0.8066539263878958, 0.7165358852484025, 0.8341124383106499, 0.7857601054678678]
-    hp=[0.6, 0.6, 0.6, 0.6, 0.6, 0.6] 
+    d2=[0.6, 0.6, 0.6, 0.6, 0.6, 0.6] 
     tau=[1.0] 
 
     h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS) .* 0.5
@@ -184,7 +185,7 @@ function fishery_model_test( test=("basic", "random_external_forcing", "fishing"
     external_forcing = ones(length(survey_time),6)  # turn off external forcing  (wrt viable habitat)
     efc1 = extrapolate( interpolate( external_forcing, (BSpline(Linear()), NoInterp()) ), Interpolations.Flat() )
     hsa = Interpolations.scale(efc1, 1999:2021, 1:6 )
-    p = ( b, K, d, v, hp, tau, hsa )   
+    p = ( b, K, d, d2, v, tau, hsa )   
   
     prob3 = DDEProblem( size_structured_dde!, u0, h, tspan, p; constant_lags=tau )
     out = msol3 =  solve( prob3,  solver, saveat=dt  ) #, isoutofdomain=(y,p,t)->any(x->(x<0)|(x>1), y) )
@@ -207,7 +208,7 @@ function fishery_model_test( test=("basic", "random_external_forcing", "fishing"
     b=[0.8, 0.5]
     d=[0.20223639702656727, 0.18864211980978104, 0.18063928527606177, 0.23030220100440996, 0.19713968752681676, 0.40151610614035915]
     v=[0.8066539263878958, 0.7165358852484025, 0.8341124383106499, 0.7857601054678678]
-    hp=[0.4, 0.4, 0.4, 0.4, 0.4, 0.4] 
+    d2=[0.4, 0.4, 0.4, 0.4, 0.4, 0.4] 
     tau=[1.0] 
 
     h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS) .* ks
@@ -222,7 +223,7 @@ function fishery_model_test( test=("basic", "random_external_forcing", "fishing"
     efc2 = extrapolate( interpolate( external_forcing, (BSpline(Linear()), NoInterp()) ), Interpolations.Flat() )
     hsa = Interpolations.scale(efc2, 1999:2021, 1:6 )
    
-    p = ( b, K, d, v, hp, tau, hsa)   
+    p = ( b, K, d, d2, v, tau, hsa)   
   
     prob4 = DDEProblem( size_structured_dde!, u0, h, tspan, p; constant_lags=tau )
     # prob4 = remake( prob; u0=u0, h=h, tspan=tspan, p=p )
@@ -269,11 +270,11 @@ function fishery_model_predictions( res; prediction_time=prediction_time, n_samp
     K = [ res[j, Symbol("K[$k]"), l] for k in 1:nS]
     d = [ res[j, Symbol("d[$k]"), l] for k in 1:nS]
     v = [ res[j, Symbol("v[$k]"), l] for k in 1:4]
-    hp=[ res[j, Symbol("hp[$k]"), l] for k in 1:nS]
+    d2=[ res[j, Symbol("d2[$k]"), l] for k in 1:nS]
 
     u0 = [ res[j, Symbol("u0[$k]"), l] for k in 1:nS]
 
-    pm = ( b, K, d, v, hp, tau, hsa )
+    pm = ( b, K, d, d2, v, tau, hsa )
 
     prb = remake( prob; u0=u0 , h=h, tspan=tspan, p=pm )
 
@@ -367,11 +368,11 @@ function fishery_model_predictions_trace( res; n_sample=10, plot_k=1, alpha=0.01
         K = [ res[j, Symbol("K[$k]"), l] for k in 1:nS]
         d = [ res[j, Symbol("d[$k]"), l] for k in 1:nS]
         v = [ res[j, Symbol("v[$k]"), l] for k in 1:4]
-        hp=[ res[j, Symbol("hp[$k]"), l] for k in 1:nS]
+        d2=[ res[j, Symbol("d2[$k]"), l] for k in 1:nS]
 
         u0 = [ res[j, Symbol("u0[$k]"), l] for k in 1:nS]
 
-        pm = ( b, K, d, v, hp, tau, hsa )
+        pm = ( b, K, d, d2, v, tau, hsa )
 
         prb = remake( prob; u0=u0, h=h, tspan=tspan, p=pm )
 

@@ -147,10 +147,12 @@ statevars = [
 ]
 
 S = Matrix(Y[:, statevars ])
+Smins = [minimum(skipmissing(S[:,i])) for i in 1:nS ]
+Smaxs = [maximum(skipmissing(S[:,i])) for i in 1:nS ]
 
-# center and  scale index
+# scale index to min-max
 for i in 1:nS
-  S[:,i] = (S[:,i] .- minimum(skipmissing(S[:,i])) ) ./ ( maximum( skipmissing(S[:,i])) .- minimum(skipmissing(S[:,i])) ) # range from 0=min to 1=max
+  S[:,i] = (S[:,i] .- Smins[i] ) ./ ( Smaxs[i] .- Smins[i] ) # range from 0=min to 1=max
 end
 
 # interpolating function for mean weight
