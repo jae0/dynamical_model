@@ -5,11 +5,12 @@
 # run-level options
 
 # choose model and area
-model_variation = "logistic_discrete_basic"
-model_variation = "logistic_discrete_map"
-model_variation = "logistic_discrete"  # default (for discrete)
+# model_variation = "logistic_discrete_basic"
+# model_variation = "logistic_discrete_map"
+# model_variation = "logistic_discrete"  # default (for discrete)
+# model_variation = "size_structured_dde_unnormalized"  # basic model without normaliztion
+# model_variation = "size_structured_dde_normalized"  # default (for continuous)
 
-model_variation = "size_structured_dde_unnormalized"  # basic model without normaliztion
 model_variation = "size_structured_dde_normalized"  # default (for continuous)
 
 
