@@ -80,7 +80,7 @@ Y = o["Y"]
 
 Kmu = o["Kmu"]
 
-Kmu = [4.0, 60.0, 1.0]
+Kmu = [6.0, 65.0, 1.5]
 
 removals = o["L"]
 MW = o["M0_W"]
