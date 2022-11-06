@@ -290,14 +290,6 @@ n_samples=1000
 n_chains=4
 
 # NUTS-specific
-rejection_rate = 0.75
-max_depth=10
-init_ϵ=0.01
-
-# DiffEq-specific
-p = dde_parameters() # dummy values needed to bootstrap DifferentialEquations/Turing initialization
-prob = DDEProblem( size_structured_dde!, u0, h, tspan, p, constant_lags=tau  )  # tau=[1]
-
-# Turing-DiffEq model
-fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM, solver, dt )
-
+rejection_rate = 0.65  ## too high and it become impossibly slow .. this is a good balance between variability and speed
+max_depth=7  ## too high and it become impossibly slow
+init_ϵ=0.01 # step size (auto compute usually gives from 0.02 to 0.05)

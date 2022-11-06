@@ -57,7 +57,14 @@ include( "startup.jl" )
 include( joinpath( project_directory, "fishery_model_environment.jl"  ))  # bootstrap different project environments depending on above choices
 
 
-   
+# DiffEq-model setup
+p = dde_parameters() # dummy values needed to bootstrap DifferentialEquations/Turing initialization
+prob = DDEProblem( size_structured_dde!, u0, h, tspan, p, constant_lags=tau  )  # tau=[1]
+
+# Turing-DiffEq model setup
+fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM, solver, dt )
+
+
 
 debugging = false
 if debugging
@@ -80,7 +87,7 @@ if debugging
     end
 
 
-    res  =  sample( fmod, Turing.NUTS(30, 0.65; max_depth=8, init_ϵ=0.05), 30 ) # to see progress
+    res  =  sample( fmod, Turing.NUTS(30, 0.65; max_depth=7, init_ϵ=0.05), 30 ) # to see progress -- about 5 min
     # res = fishery_model_inference( fmod, n_adapts=30, n_samples=30, n_chains=1, max_depth=7, init_ϵ=0.01  )
  
     (m, num, bio, pl)  = fishery_model_predictions(res; prediction_time=prediction_time, n_sample=30 )
@@ -108,7 +115,7 @@ end
 
 
 
-# params defined in environments
+# params defined in environments .. about 3-5 hrs each
 res = fishery_model_inference( fmod, rejection_rate=rejection_rate, n_adapts=n_adapts, n_samples=n_samples, 
     n_chains=n_chains, max_depth=max_depth, init_ϵ=init_ϵ )
 
