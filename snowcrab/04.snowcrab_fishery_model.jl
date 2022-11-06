@@ -29,28 +29,28 @@ if false
   #  https://mybinder.org/v2/gh/jae0/dynamical_model/main
 
     # ==== R-code ==== start
-    # NOTE::: this requires 03.snowcrab_carstm.r to be completed
-    source( file.path( code_root, "bio_startup.R" )  )
-    loadfunctions("bio.snowcrab")
-    # prep data for discrete version
-    if (grepl("logistic_discrete", model_variation )) {
-        fishery_model_data_inputs( year.assessment=2021, type="biomass_dynamics", for_julia=TRUE   )
-    }
-    # prep data for continuous version: 
-    if (grepl("size_structured", model_variation)) {
-        # fishery landings has a weekly time step = 2/52 ~ 0.0385 ~ 0.04  X dt=0.01 seems to work best
-        fishery_model_data_inputs( year.assessment=2021, type="size_structured_numerical_dynamics", for_julia=TRUE, time_resolution=2/52  )
-    }
+        # # NOTE::: this requires 03.snowcrab_carstm.r to be completed
+        # source( file.path( code_root, "bio_startup.R" )  )
+        # loadfunctions("bio.snowcrab")
+        # # prep data for discrete version
+        # if (grepl("logistic_discrete", model_variation )) {
+        #     fishery_model_data_inputs( year.assessment=2021, type="biomass_dynamics", for_julia=TRUE   )
+        # }
+        # # prep data for continuous version: 
+        # if (grepl("size_structured", model_variation)) {
+        #     # fishery landings has a weekly time step = 2/52 ~ 0.0385 ~ 0.04  X dt=0.01 seems to work best
+        #     fishery_model_data_inputs( year.assessment=2021, type="size_structured_numerical_dynamics", for_julia=TRUE, time_resolution=2/52  )
+        # }
     # ==== R-code ==== end
  
-    # in REPL< this needs to be loaded first as it skips the startup.jl
-    project_directory = @__DIR__() #  same folder as the current file
-    push!(LOAD_PATH, project_directory)  # add the directory to the load path, so it can be found
-    include( "startup.jl" )
-       
+      
 end
 
- 
+# in REPL or VSCODE, this needs to be loaded first as "startup.jl" is skipped
+project_directory = @__DIR__() #  same folder as the current file
+push!(LOAD_PATH, project_directory)  # add the directory to the load path, so it can be found
+include( "startup.jl" )
+
     
 # ---------------
 # load libs and options and prepare data for diffeq/turing model and set default parameters
@@ -108,8 +108,8 @@ end
 
 
 
-# params defined in environment
-res = fishery_model_inference( fmod, n_adapts=n_adapts, n_samples=n_samples, 
+# params defined in environments
+res = fishery_model_inference( fmod, rejection_rate=rejection_rate, n_adapts=n_adapts, n_samples=n_samples, 
     n_chains=n_chains, max_depth=max_depth, init_ϵ=init_ϵ )
 
 

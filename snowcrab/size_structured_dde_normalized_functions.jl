@@ -46,19 +46,16 @@ end
     solver=MethodOfSteps(Tsit5()), dt = 0.01, ::Type{T} = Float64) where T
 
     # biomass process model:
-    K ~ filldist( TruncatedNormal( kmu, kmu*0.25, kmu/1000.0, kmu*1000.0), nS )  # kmu is max of a multiyear group , serves as upper bound for all
+    K ~ filldist( TruncatedNormal( kmu, kmu*0.2, kmu/1000.0, kmu*1000.0), nS )  # kmu is max of a multiyear group , serves as upper bound for all
  
     q ~ filldist( TruncatedNormal(  1.0, 0.1,  0.1, 10.0), nS )
 
-    qc ~ arraydist([Normal(-Smins[i], 0.1) for i in 1:nS])
-    # qc ~ filldist( TruncatedNormal( 0.0, 0.1, -10.0, 10.0), nS )
+    qc ~ arraydist([Normal(-Smins[i], 0.1) for i in 1:nS])  # informative prior on relative height 
+    # qc ~ filldist( TruncatedNormal( 0.0, 0.1, -10.0, 10.0), nS )  # uninformative
 
     model_sd ~ filldist( TruncatedNormal( 0.1, 0.1, 0.01, 0.25 ), nS ) 
 
     # "birth" rate from F(y - 8 to 10)  and for males m5 and femaless
-    #    b~N(5.0, 0.1), 60 kt, max-norm  cfasouth
-    #    b~N(1.0, 0.1), 5.5 kt, max-norm  cfasouth
-    
     b ~ filldist( TruncatedNormal(10.0, 0.1, 0.1, 100.0), 2 )  
 
     # background mortality

@@ -80,7 +80,7 @@ Y = o["Y"]
 
 Kmu = o["Kmu"]
 
-Kmu = [6.0, 65.0, 1.5]
+Kmu = [5.5, 60.0, 1.5]
 
 removals = o["L"]
 MW = o["M0_W"]
@@ -272,23 +272,32 @@ else
 end
  
 
+# callbacks for external perturbations to the system (deterministic fishing without error)
 cb = PresetTimeCallback( fish_time, affect_fishing! )
-
+# alternative formulation:
 # cb = CallbackSet(
 #   PresetTimeCallback( fish_time, affect_fishing! ),
 #   PositiveDomain()
 # );
 
 
-tau = [1.0]  # delay resolution
+# delay resolution
+tau = [1.0]  
 
+# Turing sampling-specific
 n_adapts=1000
 n_samples=1000
 n_chains=4
-max_depth=9
+
+# NUTS-specific
+rejection_rate = 0.75
+max_depth=10
 init_ϵ=0.01
 
+# DiffEq-specific
 p = dde_parameters() # dummy values needed to bootstrap DifferentialEquations/Turing initialization
 prob = DDEProblem( size_structured_dde!, u0, h, tspan, p, constant_lags=tau  )  # tau=[1]
+
+# Turing-DiffEq model
 fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM, solver, dt )
 

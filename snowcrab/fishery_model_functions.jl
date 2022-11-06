@@ -53,8 +53,8 @@ end
 # ----------
 
 
-function fishery_model_inference( fmod; n_adapts=1000, n_samples=1000, n_chains=1, max_depth=7, init_ϵ=0.05, 
-  turing_sampler = Turing.NUTS(n_adapts, 0.65; max_depth=max_depth, init_ϵ=init_ϵ), seed=1  )
+function fishery_model_inference( fmod; rejection_rate=0.65, n_adapts=1000, n_samples=1000, n_chains=1, max_depth=7, init_ϵ=0.05, 
+  turing_sampler = Turing.NUTS(n_adapts, rejection_rate; max_depth=max_depth, init_ϵ=init_ϵ), seed=1  )
    
   Logging.disable_logging(Logging.Warn) # or e.g. Logging.Info
   
@@ -62,7 +62,7 @@ function fishery_model_inference( fmod; n_adapts=1000, n_samples=1000, n_chains=
   
   # 1000 -> ? hrs (Tsit5);  500 -> 6 hrs;; 29hrs 100/100 cfasouth
   #   # n_chains = Threads.nthreads()
-  # turing_sampler = Turing.NUTS(n_adapts, 0.65; max_depth=max_depth, init_ϵ=init_ϵ)  ;# stepsize based upon previous experience
+  # turing_sampler = Turing.NUTS(n_adapts, rejection_rate; max_depth=max_depth, init_ϵ=init_ϵ)  ;# stepsize based upon previous experience
   
   res  =  sample( fmod, turing_sampler, MCMCThreads(), n_samples, n_chains )
   # if on windows and threads are not working, use single processor mode:
