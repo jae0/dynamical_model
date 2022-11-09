@@ -42,27 +42,21 @@ if false
         #     fishery_model_data_inputs( year.assessment=2021, type="size_structured_numerical_dynamics", for_julia=TRUE, time_resolution=2/52  )
         # }
     # ==== R-code ==== end
- 
+  
+  # in REPL or VSCODE, this needs to be loaded first as "startup.jl" is skipped
+  project_directory = @__DIR__() #  same folder as the current file
+  push!(LOAD_PATH, project_directory)  # add the directory to the load path, so it can be found
+  include( "startup.jl" )
+
+      
       
 end
 
-# in REPL or VSCODE, this needs to be loaded first as "startup.jl" is skipped
-project_directory = @__DIR__() #  same folder as the current file
-push!(LOAD_PATH, project_directory)  # add the directory to the load path, so it can be found
-include( "startup.jl" )
 
-    
 # ---------------
 # load libs and options and prepare data for diffeq/turing model and set default parameters
 include( joinpath( project_directory, "fishery_model_environment.jl"  ))  # bootstrap different project environments depending on above choices
 
-
-# DiffEq-model setup
-p = dde_parameters() # dummy values needed to bootstrap DifferentialEquations/Turing initialization
-prob = DDEProblem( size_structured_dde!, u0, h, tspan, p, constant_lags=tau  )  # tau=[1]
-
-# Turing-DiffEq model setup
-fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM, solver, dt )
 
 
 
@@ -95,7 +89,7 @@ if debugging
     (pl)
  
     # trace plot .. only useful in continuous models, otherwise identical to predictions
-    (trace_nofishing, trace_fishing, pl) = fishery_model_predictions_trace( res; n_sample=30, plot_k=1, alpha=0.1 )  # model traces
+    (trace_nofishing, trace_fishing, pl) = fishery_model_predictions_trace( res; n_sample=50, plot_k=1, alpha=0.1, plot_only_fishing=false )  # model traces
     (pl)
 
     # plot fishing mortality

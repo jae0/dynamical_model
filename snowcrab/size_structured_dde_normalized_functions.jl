@@ -46,7 +46,7 @@ end
     solver=MethodOfSteps(Tsit5()), dt = 0.01, ::Type{T} = Float64) where T
 
     # biomass process model:
-    K ~ filldist( TruncatedNormal( kmu, kmu*0.2, kmu/1000.0, kmu*1000.0), nS )  # kmu is max of a multiyear group , serves as upper bound for all
+    K ~ filldist( TruncatedNormal( kmu, kmu*0.1, kmu/1000.0, kmu*1000.0), nS )  # kmu is max of a multiyear group , serves as upper bound for all
  
     q ~ filldist( TruncatedNormal(  1.0, 0.1,  0.1, 10.0), nS )
 
@@ -280,17 +280,24 @@ function fishery_model_predictions( res; prediction_time=prediction_time, n_samp
     msol = solve( prb, solver, callback=cb, saveat=dt )
     msol2 = solve( prb, solver, saveat=dt ) # no call backs
 
+    
     for i in 1:nM
-        ii = findall(x->x==prediction_time[i], msol.t)[1]
-        jj = findall(x->x==prediction_time[i], msol2.t)[1]
-        sf  = nameof(typeof(mw)) == :ScaledInterpolation ? mw(msol.t[ii])  ./ 1000.0 ./ 1000.0  :  scale_factor   # n to kt
-        sf2 = nameof(typeof(mw)) == :ScaledInterpolation ? mw(msol2.t[jj]) ./ 1000.0 ./ 1000.0  :  scale_factor   # n to kt
-        md[i,:,z,1] = msol.u[ii]   # with fishing
-        md[i,:,z,2] = msol2.u[jj]  # no fishing
-        mn[i,:,z,1] = msol.u[ii]   .* K  # with fishing
-        mn[i,:,z,2] = msol2.u[jj]   .* K # no fishing
-        mb[i,z,1] = mn[i,1,z,1]  .* sf
-        mb[i,z,2] = mn[i,1,z,2]  .* sf2
+      
+        ii = findall(x->x==prediction_time[i], msol.t) 
+        jj = findall(x->x==prediction_time[i], msol2.t)
+        
+        if length(ii) > 0 && length(jj) > 0 
+          ii = ii[1]
+          jj = jj[1]
+          sf  = nameof(typeof(mw)) == :ScaledInterpolation ? mw(msol.t[ii])  ./ 1000.0 ./ 1000.0  :  scale_factor   # n to kt
+          sf2 = nameof(typeof(mw)) == :ScaledInterpolation ? mw(msol2.t[jj]) ./ 1000.0 ./ 1000.0  :  scale_factor   # n to kt
+          md[i,:,z,1] = msol.u[ii]   # with fishing
+          md[i,:,z,2] = msol2.u[jj]  # no fishing
+          mn[i,:,z,1] = msol.u[ii]   .* K  # with fishing
+          mn[i,:,z,2] = msol2.u[jj]   .* K # no fishing
+          mb[i,z,1] = mn[i,1,z,1]  .* sf
+          mb[i,z,2] = mn[i,1,z,2]  .* sf2
+        end
 
     end
 
@@ -434,4 +441,5 @@ function fishery_model_predictions_timeseries( num; prediction_time, plot_k )
 end
 
 # -----------
+
 
