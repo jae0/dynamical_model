@@ -47,14 +47,7 @@
 #     y ~ poisson_log(X * beta + phi + log_offset);
 # end
  
- 
-using Turing 
-using PDMats
-using LinearAlgebra 
-using StatsModels
-using DataFrames
-using SparseArrays
-using Graph
+
 
 # stan implementation:
 # https://mc-stan.org/users/documentation/case-studies/mbjoseph-CARStan.html
@@ -214,22 +207,8 @@ num = [4, 2, 2, 3, 5, 2, 5, 1,  6,
 5, 7, 6, 4, 5, 4, 6, 6, 4, 9, 
 3, 4, 4, 4, 5, 5, 6]
 
-N_edges = Integer( length(adj) / 2 );
-node1 =  fill(0, N_edges); 
-node2 =  fill(0, N_edges); 
 
-iAdj = 0;
-iEdge = 0;
-for i in 1:N
-for j in 1:num[i]
-    iAdj = iAdj + 1;
-    if i < adj[iAdj]
-        iEdge = iEdge + 1;
-        node1[iEdge] = i;
-        node2[iEdge] = adj[iAdj];
-    end
-end
-end
+node1, node2 = nodes( adj )
 
 e = Edge.(node1, node2)
 g = Graph(e)

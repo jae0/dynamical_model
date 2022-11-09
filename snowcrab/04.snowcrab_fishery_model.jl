@@ -15,9 +15,9 @@ model_variation = "size_structured_dde_normalized"  # default (for continuous)
 
 
 # choose a region of interest"
-aulab ="cfanorth"
-aulab ="cfasouth"
-aulab ="cfa4x"
+aulab ="cfanorth"  # about 5 hrs
+aulab ="cfasouth"  # about 5 hrs
+aulab ="cfa4x"     # up to 12 hrs
 
 
 yrs = 1999:2021  # <<<<<<<<-- change

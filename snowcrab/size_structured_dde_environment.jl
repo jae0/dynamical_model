@@ -80,7 +80,7 @@ Y = o["Y"]
 
 Kmu = o["Kmu"]
 
-Kmu = [5.0, 60.0, 1.5]
+Kmu = [5.0, 60.0, 2.0]
 
 removals = o["L"]
 MW = o["M0_W"]
@@ -290,6 +290,7 @@ n_samples=1000
 n_chains=4
 
 # NUTS-specific
+# see write up here: https://turing.ml/dev/docs/using-turing/sampler-viz
 rejection_rate = 0.65  ## too high and it become impossibly slow .. this is a good balance between variability and speed
 max_depth=8  ## too high and it become impossibly slow
 init_ϵ=0.01 # step size (auto compute usually gives from 0.01 to 0.05)

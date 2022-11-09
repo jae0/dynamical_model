@@ -10,35 +10,48 @@ push!(LOAD_PATH, project_directory)  # add the directory to the load path, so it
 include( "startup.jl" )
 
 
+project_directory = "/home/jae/projects/dynamical_model/car"
+
+ 
+using Turing 
+using PDMats
+using LinearAlgebra 
+using StatsModels
+using DataFrames
+using SparseArrays
+using Graphs
+
+
+include( joinpath( project_directory, "car_functions.jl"  ))  
+
 
 # ---------------
 # load libs and options and prepare data for diffeq/turing model and set default parameters
 include( joinpath( project_directory, "scottish_lip_cancer_environment.jl"  ))  # bootstrap different project environments depending on above choices
 
 
-include( joinpath( project_directory, "car_functions.jl"  ))  
-
-
  
 
 
 
-m = turing_car(D, W, X, log_offset, y)        # 161 sec
+m = turing_car(D, W, X, log_offset, y)        # 204 sec
 
-m = turing_car_prec(D, W, X, log_offset, y)   # 50 sec
+m = turing_car_prec(D, W, X, log_offset, y)   # 65 sec
 
-m = turing_icar_direct(X, log_offset, y, node1, node2)
+m = turing_icar_direct_test( node1, node2, std(y) )  # Morris' "simple_iar" testing difference formulation .. using same run specs: results are similar with much better ess than stan   
 
-m = turing_icar_direct_bym(X, log_offset, y, node1, node2)
+m = turing_icar_direct_bym(X, log_offset, y, node1, node2) # 13 sec
    
-scaling_factor = scaling_factor_bym2(adjacency_mat)
-m = turing_icar_direct_bym2(X, log_offset, y, node1, node2, scaling_factor)
+# bym2 requires a "scaling factor"
+m = turing_icar_direct_bym2(X, log_offset, y, node1, node2, scaling_factor_bym2(W)) # W is adjacency matrix , 18 sec; 30min for full run
 
 
-# not finished group model
+# bym2 group model (multiple groups or disconnected groups): this is not finished 
 scaling_factor = scaling_factor_bym2_groups(node1, node2, groups)
 m = turing_icar_direct_bym2_groups(X, log_offset, y, node1, node2, scaling_factor, groups)
 
+
+# use NUTS: see write up here: https://turing.ml/dev/docs/using-turing/sampler-viz
 
 # check timings and accuracy
 n_samples, n_adapts, n_chains = 100, 100, 1
@@ -49,10 +62,10 @@ o = sample(m, turing_sampler, n_samples)
 
 # larger runs (linux)
 n_samples, n_adapts, n_chains = 9_000, 1_000, 4
-target_acceptance, max_depth, init_ϵ = 0.65, 9, 0.1
+target_acceptance, max_depth, init_ϵ = 0.65, 10, 0.1   # Morris uses 0.97 for target_acceptance, stan default is 0.95; such high acceptance rate does not work well -- divergent chains
 turing_sampler = Turing.NUTS(n_adapts, target_acceptance; max_depth=max_depth, init_ϵ=init_ϵ)
-# o = sample( m, turing_sampler, MCMCThreads(), n_samples, n_chains  ) # to see progress
-o = sample(m, turing_sampler, n_samples) 
+o = sample( m, turing_sampler, MCMCThreads(), n_samples, n_chains  ) # to see progress
+# o = sample(m, turing_sampler, n_samples) 
 
 # if on windows and threads are still not working, use single processor mode:
 # o = mapreduce(c -> sample(m, turing_sampler, n_samples), chainscat, 1:n_chains)

@@ -47,11 +47,11 @@ end
   
 
 
-@model function turing_car(D, W, X, log_offset, y)
+@model function turing_car(D, W, X, log_offset, y,  nbeta=size(X)[2] )
     # base model .. slow
     alpha ~ Uniform(0.0, 1.0); # alpha = 0.9 ; alpha==1 for BYM / iCAR
     tau ~ Gamma(2.0, 1.0/2.0);  # tau=0.9
-    beta ~ filldist( Normal(0.0, 1.0), p);
+    beta ~ filldist( Normal(0.0, 1.0), nbeta );
  
     prec = tau .* (D - alpha .* W)
     
@@ -69,10 +69,10 @@ end
 end
 
    
-@model function turing_car_prec(D, W, X, log_offset, y)
+@model function turing_car_prec(D, W, X, log_offset, y,  nbeta=size(X)[2] )
     alpha ~ Uniform(0.0, 1.0); # alpha = 0.9 ; alpha==1 for BYM / iCAR
     tau ~ Gamma(2.0, 1.0/2.0);  # tau=0.9
-    beta ~ filldist( Normal(0.0, 1.0), p);
+    beta ~ filldist( Normal(0.0, 1.0), nbeta);
  
     prec = tau .* (D - alpha .* W)
     
@@ -93,14 +93,11 @@ end
 
 
 
-@model function turing_icar_direct(X, log_offset, y, node1, node2)
-    # alpha == 1, direct difference form
-    # notau ~ Gamma(2.0, 1.0/2.0);  # tau=0.9
-    beta ~ filldist( Normal(0.0, 1.0), p);
-    phi ~ filldist( Uniform(-10, 10 ), N)   # stan goes from -Inf to Inf .. 
-        
-    # pairwise difference formulation 
+@model function turing_icar_direct_test( node1, node2, ysd  )
+    # equivalent to Morris' "simple_iar' .. testing pairwise difference formulation
     # see (https://mc-stan.org/users/documentation/case-studies/icar_stan.html)
+
+    phi ~ filldist( Normal(0.0, ysd), N)   # 10 is std from data: std(y)=7.9 stan goes from U(-Inf,Inf) .. not sure why 
     dphi = phi[node1] - phi[node2]
     lp_phi =  -0.5 * dot( dphi, dphi )
     Turing.@addlogprob! lp_phi
@@ -110,20 +107,19 @@ end
     sum_phi = sum(phi)
     sum_phi ~ Normal(0, 0.001 * N);  
   
-    # no data likelihood -- just prior sampling
-    # lambda = exp.( X * beta .+ phi .+ log_offset )
-    # @. y ~ Poisson( lambda );
+    # no data likelihood -- just prior sampling  -- 
 end
 
   
-@model function turing_icar_direct_bym( X, log_offset, y, node1, node2)
+@model function turing_icar_direct_bym( X, log_offset, y, node1, node2,  nbeta=size(X)[2], ysd=std(y) )
     # BYM
     # alpha ~ Uniform(0.0, 1.0); # alpha = 0.9 ; alpha==1 for BYM / iCAR
      # tau ~ Gamma(2.0, 1.0/2.0);  # tau=0.9
-     beta ~ filldist( Normal(0.0, 5.0), p);
+     beta ~ filldist( Normal(0.0, 5.0), nbeta);
      theta ~ filldist( Normal(0.0, 1.0), N) # unstructured (heterogeneous effect)
-     phi ~ filldist( Uniform(-10, 10 ), N) # spatial effects: stan goes from -Inf to Inf .. 
-        
+     # phi ~ filldist( Laplace(0.0, ysd), N) # spatial effects: stan goes from -Inf to Inf .. 
+     phi ~ filldist( Normal(0.0, ysd), N) # spatial effects: stan goes from -Inf to Inf .. 
+ 
      # pairwise difference formulation ::  prior on phi on the unit scale with sd = 1
      # see (https://mc-stan.org/users/documentation/case-studies/icar_stan.html)
      dphi = phi[node1] - phi[node2]
@@ -142,29 +138,19 @@ end
      sigma_phi = inv(sqrt(tau_phi));      # convert precision to sigma
 
      lambda = exp.( X * beta .+ phi .* sigma_phi .+ theta .* sigma_theta .+ log_offset )
- 
-    #  for j in 1:k 
-    #     # ic = segment(group_idx, pos, group_size[j])
-    #     ic = group_idx[ pos:(pos+group_size[j]-1) )
-    #     if group_size[j] == 1 
-    #         convolution[ ic ] = theta[ ic ];
-    #     else
-    #         convolution[ ic ] = phi[ ic ] + theta[ ic ];
-    #     end
-    #     pos += group_size[j];
-    #  end
-
+  
      @. y ~ Poisson( lambda );
 end
  
 
-@model function turing_icar_direct_bym2(X, log_offset, y, node1, node2, scaling_factor)
+@model function turing_icar_direct_bym2(X, log_offset, y, node1, node2, scaling_factor,  nbeta=size(X)[2], ysd=std(y) )
     # BYM2
     # alpha ~ Uniform(0.0, 1.0); # alpha = 0.9 ; alpha==1 for BYM / iCAR
      # tau ~ Gamma(2.0, 1.0/2.0);  # tau=0.9
-     beta ~ filldist( Normal(0.0, 5.0), p);
+     beta ~ filldist( Normal(0.0, 5.0), nbeta);
      theta ~ filldist( Normal(0.0, 1.0), N)  # unstructured (heterogeneous effect)
-     phi ~ filldist( Uniform(-10, 10 ), N) # spatial effects: stan goes from -Inf to Inf .. 
+#     phi ~ filldist( Laplace(0.0, ysd), N) # spatial effects: stan goes from -Inf to Inf .. 
+     phi ~ filldist( Normal(0.0, ysd), N) # spatial effects: stan goes from -Inf to Inf .. 
         
      # pairwise difference formulation ::  prior on phi on the unit scale with sd = 1
      # see (https://mc-stan.org/users/documentation/case-studies/icar_stan.html)
@@ -196,11 +182,11 @@ end
 
 
 
-@model function turing_icar_direct_bym2_groups(X, log_offset, y, node1, node2, scaling_factor, groups)
+@model function turing_icar_direct_bym2_groups(X, log_offset, y, node1, node2, scaling_factor, groups,  nbeta=size(X)[2] )
     # BYM2
     # alpha ~ Uniform(0.0, 1.0); # alpha = 0.9 ; alpha==1 for BYM / iCAR
      # tau ~ Gamma(2.0, 1.0/2.0);  # tau=0.9
-     beta ~ filldist( Normal(0.0, 5.0), p);
+     beta ~ filldist( Normal(0.0, 5.0), nbeta);
      theta ~ filldist( Normal(0.0, 1.0), N)  # unstructured (heterogeneous effect)
      phi ~ filldist( Uniform(-10, 10 ), N) # spatial effects: stan goes from -Inf to Inf .. 
         
@@ -218,18 +204,18 @@ end
      sigma ~ truncated( Normal(0, 1.0), 0, Inf) ; 
      rho ~ Beta(0.5, 0.5);
   
-     int pos=1;
+    #  int pos=1;
     
-     for j in 1:k 
-         ic = group_idx[ pos:(pos+group_size[j]-1) )
-         # ic = segment(group_idx, pos, group_size[j])
-         if  group_size[j] == 1 
-             convolution[ ic ] = spatial_scale * theta_tilde[ ic ];
-         else  
-             convolution[ ic ] = spatial_scale * (sqrt(rho) * inv_sqrt_scale_factor[j] * phi_tilde[ ic ] + sqrt(1 - rho) * theta_tilde[ ic ] );
-         end
-         pos += group_size[j];
-     end
+    #  for j in 1:k 
+    #      ic = group_idx[ pos:(pos+group_size[j]-1) )
+    #      # ic = segment(group_idx, pos, group_size[j])
+    #      if  group_size[j] == 1 
+    #          convolution[ ic ] = spatial_scale * theta_tilde[ ic ];
+    #      else  
+    #          convolution[ ic ] = spatial_scale * (sqrt(rho) * inv_sqrt_scale_factor[j] * phi_tilde[ ic ] + sqrt(1 - rho) * theta_tilde[ ic ] );
+    #      end
+    #      pos += group_size[j];
+    #  end
   
      convolved_re =  sqrt.(1 .- rho) .* theta .+ sqrt.(rho ./ scaling_factor) .* phi;
    
@@ -241,5 +227,24 @@ end
     #  real logit_rho = log(rho / (1.0 - rho));
     #  vector[N] eta = log_E + beta0 + x * betas + convolved_re * sigma; // co-variates
     #  vector[N] lambda = exp(eta);
-  end
+end
   
+function nodes( adj )
+    N_edges = Integer( length(adj) / 2 );
+    node1 =  fill(0, N_edges); 
+    node2 =  fill(0, N_edges); 
+
+    i_adjacency = 0;
+    i_edge = 0;
+    for i in 1:N
+    for j in 1:num[i]
+        i_adjacency = i_adjacency + 1;
+        if i < adj[i_adjacency]
+            i_edge = i_edge + 1;
+            node1[i_edge] = i;
+            node2[i_edge] = adj[i_adjacency];
+        end
+    end
+    end
+    return node1, node2
+end
