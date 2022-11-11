@@ -28,15 +28,7 @@ using Turing
     Turing.@addlogprob! -Inf
     return nothing
   end
-   
-
-  #  check positivity of back transform
-  # yhat = S[iok] .*  q  .-  qc   
-  # if any( x -> x < 0.0, yhat )
-  #   Turing.@addlogprob! -Inf
-  #   return nothing
-  # end
-
+ 
   # likelihood
   # observation model: Y = q X + qc ; X = (Y - qc) / q
   for i in iok
@@ -44,6 +36,54 @@ using Turing
   end
 
 end
+
+
+
+@model function logistic_discrete_turing_north_south( S, kmu, nT, nM, removed, ty = 6, ::Type{T} = Float64) where T 
+  # biomass process model: dn/dt = r n (1-n/K) - removed ; b, removed are not normalized by K  
+  # priors 
+
+  K ~ TruncatedNormal( kmu, kmu*0.2, kmu/5.0, kmu*5.0)  
+  r ~  TruncatedNormal( 1.0, 0.1, 0.5, 1.5)   # (mu, sd)
+
+  bpsd ~  TruncatedNormal( 0.1, 0.05, 0.01, 0.5 )  ;  # slightly informative .. center of mass between (0,1)
+  bosd ~  TruncatedNormal( 0.1, 0.05, 0.01, 0.5 )  ;  # slightly informative .. center of mass between (0,1)
+
+  q ~ TruncatedNormal(  1.0, 0.1,  0.01, 10.0)    
+  qc ~ TruncatedNormal( 0.0, 0.1, -1.0, 1.0) 
+
+  m = TArray{T}( nM )
+  m[1] ~  TruncatedNormal( 0.9, 0.2, 0.1, 1.0 )  ; # starting b prior to first catch event
+
+  for i in 2:nT
+    m[i] ~ TruncatedNormal( m[i-1] + r * m[i-1] * ( 1.0 - m[i-1] ) - removed[i-1]/K, bpsd, 0.0, 1.0)  ;
+  end
+
+  for i in (nT+1):nM
+    m[i] ~ TruncatedNormal( m[i-1] + r * m[i-1] * ( 1.0 - m[i-1] ), bpsd, 0.0, 1.0)  ;  # predict with no removals
+  end
+
+  if any( x -> x < 0.0 || x >1.0, m)
+    Turing.@addlogprob! -Inf
+    return nothing
+  end
+ 
+  # likelihood
+  # observation model: Y = q X + qc ; X = (Y - qc) / q
+   
+  for i in iok
+    if i == 1
+      S[i] ~ Normal( q * ( m[i] - removed[i]/K ) + qc, bosd )  ;  # init
+    elseif 1 < i < ty
+      S[i] ~ Normal( q * ( m[i] - removed[i-1]/K )+ qc, bosd )  ;  # spring survey
+    elseif i == ty
+      S[i] ~ Normal( q * ( m[i] - (removed[i-1] + removed[i]) / (2.0*K ) )+ qc, bosd )  ;  # transition year 
+    else
+      S[i] ~ Normal( q * ( m[i] - removed[i]/K )+ qc, bosd )  ; # fall survey
+    end
+  end
+end
+
 
 
 @model function logistic_discrete_turing_basic( S, kmu, nT, nM, removed, ::Type{T} = Float64) where T
@@ -79,6 +119,103 @@ end
   # observation model: Y = q X  ; X = (Y ) / q
   for i in iok
     S[i] ~ Normal( q * m[i], bosd )  ;
+  end
+
+end
+  
+ 
+
+@model function logistic_discrete_turing_historical( S, kmu, nT, nM, removed, ty = 6, ::Type{T} = Float64) where T
+  # biomass process model: dn/dt = r n (1-n/K) - removed ; b, removed are not normalized by K  
+  # priors 
+
+  K ~  TruncatedNormal( kmu, kmu*0.2, 1.0e-9, Inf )   
+  r ~  TruncatedNormal( 1.0, 0.1, 0.25, 2.0)   # (mu, sd)
+
+  bpsd ~  truncated( Cauchy( 0, 0.1), 1.0e-9, 0.5 )  ;  # slightly informative .. center of mass between (0,1)
+  bosd ~  truncated( Cauchy( 0, 0.1), 1.0e-9, 0.5 )  ;  # slightly informative .. center of mass between (0,1)
+
+  q ~ TruncatedNormal(  1.0, 0.1,  1.0e-9, 2.0 )    
+
+  # m = total available biomass
+  m = TArray{T}( nM )
+  m[1] ~  truncated( Beta( 8, 2) )  ; # starting b prior to first catch event
+
+  for i in 2:nT
+    m[i] ~ TruncatedNormal( m[i-1] + r * m[i-1] * ( 1.0 - m[i-1] ) - removed[i-1]/K, bpsd, 0.0, 1.25)  ;
+  end
+
+  for i in (nT+1):nM
+    m[i] ~ TruncatedNormal( m[i-1] + r * m[i-1] * ( 1.0 - m[i-1] ), bpsd, 0.0, 1.25)  ; # predict with no removals
+  end
+
+  if any( x -> x < 0.0 || x >1.25, m)
+    Turing.@addlogprob! -Inf
+    return nothing
+  end
+   
+  # likelihood
+  # observation model: Y = q X  ; X = (Y ) / q
+
+  # yrs = 1999:2021  # <<<<<<<<-- change
+  # spring to fall survey: transition year = 2004
+  # spring = 1:5
+  # fall = 6:last
+  # in cfa4x fishery always after survey
+  # m's are "postfishery"
+  
+
+  for i in iok
+    if i == 1
+      S[i] ~ Normal( q * ( m[i] - removed[i]/K ), bosd )  ;  # init
+    elseif 1 < i < ty
+      S[i] ~ Normal( q * ( m[i] - removed[i-1]/K ), bosd )  ;  # spring survey
+    elseif i == ty
+      S[i] ~ Normal( q * ( m[i] - (removed[i-1] + removed[i]) / (2.0*K ) ), bosd )  ;  # transition year 
+    else
+      S[i] ~ Normal( q * ( m[i] - removed[i]/K ), bosd )  ; # fall survey
+    end
+  end
+
+end
+  
+
+
+@model function logistic_discrete_turing_historical_4x( S, kmu, nT, nM, removed, ::Type{T} = Float64) where T
+  # biomass process model: dn/dt = r n (1-n/K) - removed ; b, removed are not normalized by K  
+  # priors 
+
+  K ~  TruncatedNormal( kmu, kmu*0.2, 1.0e-9, Inf )   
+  r ~  TruncatedNormal( 1.0, 0.1, 0.25, 2.0)   # (mu, sd)
+
+  bpsd ~  truncated( Cauchy( 0, 0.1), 1.0e-9, 0.5 )  ;  # slightly informative .. center of mass between (0,1)
+  bosd ~  truncated( Cauchy( 0, 0.1), 1.0e-9, 0.5 )  ;  # slightly informative .. center of mass between (0,1)
+
+  q ~ TruncatedNormal(  1.0, 0.1,  1.0e-9, 2.0 )    
+
+  # m's are "total avaialble for fishery"
+  m = TArray{T}( nM )
+  m[1] ~  truncated( Beta( 8, 2) )  ; # starting b prior to first catch event
+
+  for i in 2:nT
+    m[i] ~ TruncatedNormal( m[i-1] + r * m[i-1] * ( 1.0 - m[i-1] ) - removed[i-1]/K, bpsd, 0.0, 1.25)  ;
+  end
+
+  for i in (nT+1):nM
+    m[i] ~ TruncatedNormal( m[i-1] + r * m[i-1] * ( 1.0 - m[i-1] ), bpsd, 0.0, 1.25)  ; # predict with no removals
+  end
+
+  if any( x -> x < 0.0 || x >1.25, m)
+    Turing.@addlogprob! -Inf
+    return nothing
+  end
+   
+  # likelihood
+  # observation model: Y = q X  ; X = (Y ) / q
+
+  # in cfa4x fishery always after survey
+  for i in iok
+    S[i] ~ Normal( q * ( m[i] - removed[i]/K ) , bosd )  ; # fall survey
   end
 
 end
@@ -193,6 +330,8 @@ function fishery_model_predictions( res; prediction_time=prediction_time, n_samp
   # S[i,k] ~ TruncatedNormal( msol.u[ii][k] * q[k] + qc[k], bpsd, 0.0, 1.0)
   if model_variation=="logistic_discrete_basic"  
     yhat = S ./ mean(res[:,Symbol("q"),:]) .* mean(res[:,Symbol("K"),:]  )
+  elseif model_variation=="logistic_discrete_historical"  
+    yhat = ( S ) ./ mean(res[:,Symbol("q"),:]) .* mean(res[:,Symbol("K"),:]  )
   elseif model_variation=="logistic_discrete"  
     yhat = ( S .- mean(res[:,Symbol("qc"),:] ) ) ./ mean(res[:,Symbol("q"),:]) .* mean(res[:,Symbol("K"),:]  )
   elseif model_variation=="logistic_discrete_map"  

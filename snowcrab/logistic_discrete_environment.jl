@@ -12,18 +12,20 @@ if false
   # include( joinpath( project_directory, "startup.jl" ))    # alt
  
   # translate model-specific functions, etc to generics
-  if model_variation=="logistic_discrete_basic"
-    fn_env = joinpath( project_directory, "logistic_discrete_environment.jl" )  
-  end
+  # if model_variation=="logistic_discrete_basic"
+  #   fn_env = joinpath( project_directory, "logistic_discrete_environment.jl" )  
+  # end
 
-  if model_variation=="logistic_discrete" 
-    fn_env = joinpath( project_directory, "logistic_discrete_environment.jl" )  
-  end
+  # if model_variation=="logistic_discrete" 
+  #   fn_env = joinpath( project_directory, "logistic_discrete_environment.jl" )  
+  # end
 
-  if model_variation=="logistic_discrete_map" 
-    fn_env = joinpath( project_directory, "logistic_discrete_environment.jl" )  
-  end
-  
+  # if model_variation=="logistic_discrete_map" 
+  #   fn_env = joinpath( project_directory, "logistic_discrete_environment.jl" )  
+  # end
+
+  fn_env = joinpath( project_directory, "logistic_discrete_environment.jl" )  
+
   include(  fn_env )
  
 
@@ -172,8 +174,21 @@ Turing.setprogress!(false);
 n_adapts=5000
 n_samples=1000
 n_chains=4
-max_depth=9
-init_ϵ=0.01
+
+
+# NUTS-specific
+# see write up here: https://turing.ml/dev/docs/using-turing/sampler-viz
+rejection_rate = 0.99  ## too high and it become impossibly slow .. this is a good balance between variability and speed
+max_depth=9  ## too high and it become impossibly slow
+init_ϵ=0.01 # step size (auto compute usually gives from 0.01 to 0.05)
+ 
+
+if model_variation=="logistic_discrete_historical"   # pre-2022, mimic STAN defaults
+  rejection_rate = 0.99  
+  max_depth=12  ## too high and it become impossibly slow
+end
+
+# model_variation = "logistic_discrete_historical" 
 
 # Turing.setrdcache(true)
 
@@ -185,17 +200,31 @@ include( "logistic_discrete_functions.jl" )  #specific to model form
 
 
 # translate model-specific functions, etc to generics
-if model_variation=="logistic_discrete_basic"
+if model_variation=="logistic_discrete_historical"
 
-  fmod = logistic_discrete_turing_basic( S, kmu, nT, nM, removed )  # q only
-
-elseif model_variation=="logistic_discrete"
-
-  fmod = logistic_discrete_turing( S, kmu, nT, nM, removed )   
+  if aulab=="cfa4x"
+    fmod = logistic_discrete_turing_historical_4x( S, kmu, nT, nM, removed )  # q only
+  else
+    fmod = logistic_discrete_turing_historical( S, kmu, nT, nM, removed, 6 )  # q only
+  end
 
 elseif model_variation=="logistic_discrete_map"
 
   fmod = logistic_discrete_map_turing( S, kmu, nT, nM, removed )  
+
+
+elseif model_variation=="logistic_discrete_basic"
+
+  fmod = logistic_discrete_turing_basic( S, kmu, nT, nM, removed )   
+
+
+elseif model_variation=="logistic_discrete"
+
+  if aulab=="cfa4x"
+    fmod = logistic_discrete_turing( S, kmu, nT, nM, removed )   
+  else
+    fmod = logistic_discrete_turing_north_south( S, kmu, nT, nM, removed, 6 )   
+  end
 
 end
 

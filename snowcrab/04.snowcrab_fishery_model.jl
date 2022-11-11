@@ -5,7 +5,7 @@
 # run-level options
 
 # choose model and area
-# model_variation = "logistic_discrete_basic"
+# model_variation = "logistic_discrete_historical"  # pre-2022
 # model_variation = "logistic_discrete_map"
 # model_variation = "logistic_discrete"  # default (for discrete)
 # model_variation = "size_structured_dde_unnormalized"  # basic model without normaliztion
@@ -108,18 +108,23 @@ if debugging
 end
 
 
-
 # params defined in environments .. about 3-5 hrs each
 res = fishery_model_inference( fmod, rejection_rate=rejection_rate, n_adapts=n_adapts, n_samples=n_samples, 
     n_chains=n_chains, max_depth=max_depth, init_ϵ=init_ϵ )
 
 
 # save results to (directory_output) as a hdf5  # directory location is created in environment
-# can also read back in R as:  h5read( save_fn, "res" )
-save_fn = joinpath( directory_output, string("size_structured_dde_turing_data", "_", aulab, ".hdf5" ) ) 
-@save save_fn res
-# @load save_fn res
+# can also read back in R as:  h5read( res_fn, "res" )
+res_fn = joinpath( directory_output, string("results_turing", "_", aulab, ".hdf5" ) )  
+@save res_fn res
 
+if false
+  # to reload a save file:
+  aulab = "cfa4x"
+  include( joinpath( project_directory, "fishery_model_environment.jl"  ))  # some parameters need to be reset
+  res_fn = joinpath( directory_output, string("results_turing", "_", aulab, ".hdf5" ) ) 
+  @load res_fn res
+end
 
     
 # summaries and plots 
@@ -157,18 +162,24 @@ plot( autocorplot(res) )
 # annual snapshots of biomass (kt); return m=normalized abundance, num=numbers, bio=biomass and pl=plot, where possible
 (m, num, bio, pl)  = fishery_model_predictions(res; prediction_time=prediction_time, n_sample=500)
 fb = bio[1:length(survey_time),:,1]  # the last 1 is for size struct; no effect in discrete
-pl
+pl = plot(pl, ylim=aulab=="cfanorth" ? (0, 6.5) : aulab=="cfasouth" ? (0, 80) : (0, 1.8))
 savefig(pl, joinpath( directory_output, string("plot_predictions_", aulab, ".pdf") )  )
 
 # plot fishing mortality
 (Fkt, FR, FM, pl) = fishery_model_mortality( removed, fb, n_sample=500 ) 
-pl
+pl = plot(pl, ylim=(0, 1.0))
+if occursin.( r"size_structured", model_variation )
+  pl = plot(pl, ylim=aulab=="cfanorth" ? (0, 1.5) : aulab=="cfasouth" ? (0, 0.6) : (0, 5))
+end
 savefig(pl, joinpath( directory_output, string("plot_fishing_mortality_", aulab, ".pdf") )  )
 
 
 # HCR plot
 (K, bi, fm, fmsy, pl) = fishery_model_harvest_control_rule(res, yrs; FM=FM, fb=fb, n_sample=500)
-pl
+pl = plot(pl, ylim=(0, 1.0))
+if occursin.( r"size_structured", model_variation )
+  pl = plot(pl, ylim=aulab=="cfanorth" ? (0, 1.5) : aulab=="cfasouth" ? (0, 0.6) : (0, 5))
+end
 savefig(pl, joinpath( directory_output, string("plot_hcr_", aulab, ".pdf") )  )
 
 
@@ -176,7 +187,7 @@ savefig(pl, joinpath( directory_output, string("plot_hcr_", aulab, ".pdf") )  )
 if occursin.( r"size_structured", model_variation )
   # plot simulation traces of FB with and without fishing .. only for continuous models, otherwise identical to predictions (below)
   (trace_nofishing, trace_fishing, pl) = fishery_model_predictions_trace( res; n_sample=50, plot_k=1, alpha=0.1, plot_only_fishing=false )  # model traces
-  pl
+  pl = plot(pl, ylim=(aulab=="cfanorth" ? (0, 7) : aulab=="cfasouth" ? (0, 85) : (0, 2)))
   savefig(pl, joinpath( directory_output, string("plot_predictions_trace_", aulab, ".pdf") )  )
 
   # timeseries of predictions (number; kn and pl =plot) -- not relevent if only 1 state varable

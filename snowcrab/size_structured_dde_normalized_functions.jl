@@ -54,7 +54,8 @@ end
     # qc ~ filldist( TruncatedNormal( 0.0, 0.1, -10.0, 10.0), nS )  # uninformative
 
     model_sd ~ filldist( TruncatedNormal( 0.1, 0.1, 0.01, 0.25 ), nS ) 
-
+ 
+    
     # "birth" rate from F(y - 8 to 10)  and for males m5 and femaless
     b ~ filldist( TruncatedNormal(10.0, 0.1, 0.1, 100.0), 2 )  
 
@@ -311,7 +312,7 @@ function fishery_model_predictions( res; prediction_time=prediction_time, n_samp
   # plot biomass
   gr()
   pl = plot()
-  pl = plot!(pl, prediction_time, g[:,sample(1:nZ, nI)];  alpha=0.01, color=:lightslateblue)
+  pl = plot!(pl, prediction_time, g[:,sample(1:nZ, nI)];  alpha=0.02, color=:lightslateblue)
   pl = plot!(pl, prediction_time, mean(g, dims=2);  alpha=0.8, color=:darkslateblue, lw=4)
   pl = plot!(pl; legend=false )
   pl = plot!(pl; ylim=(0, maximum(g)*1.01 ) )
@@ -348,7 +349,7 @@ end
 # -----------
 
 
-function fishery_model_predictions_trace( res; n_sample=10, plot_k=1, alpha=0.01, plot_only_fishing=true )
+function fishery_model_predictions_trace( res; n_sample=10, plot_k=1, alpha=0.02, plot_only_fishing=true )
 
     nchains = size(res)[3]
     nsims = size(res)[1]

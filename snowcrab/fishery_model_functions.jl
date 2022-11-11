@@ -87,9 +87,12 @@ function fishery_model_mortality( removed, fb; n_sample=100 )
   end
   FR =  Fkt ./ ( Fkt .+  fb )  # relative F
   FM = -1 .* log.(  1.0 .- min.( FR, 0.99) )  # instantaneous F
-  o = mean(FM, dims=2)
-  ub = quantile(vec(FM), 0.975) 
+  # FM[ FM .< eps(0.0)] .= zero(eltype(FM))
 
+  o = mean( FM, dims=2)
+  o[isnan.(o)] .= zero(eltype(FM))
+ 
+  ub = maximum(o) * 1.1
   nchains = size(res)[3]
   nsims = size(res)[1]
   nZ = nchains*nsims
