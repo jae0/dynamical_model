@@ -5,14 +5,20 @@
 # run-level options
 
 # choose model and area
-# model_variation = "logistic_discrete_historical"  # pre-2022
-# model_variation = "logistic_discrete_map"
-# model_variation = "logistic_discrete"  # default (for discrete)
-# model_variation = "size_structured_dde_unnormalized"  # basic model without normaliztion
-# model_variation = "size_structured_dde_normalized"  # default (for continuous)
 
-model_variation = "size_structured_dde_normalized"  # default (for continuous)
+model_variations_implemented = [
+ "logistic_discrete_historical",  # pre-2022, no normalization, q-based observation model
+ "logistic_discrete_map",  # logistic map ... more extreme fluctuations
+ "logistic_discrete_basic",  # q catchability only for observation model
+ "logistic_discrete",  # q and intercept for observation model
+ "size_structured_dde_unnormalized",  # basic continuous model without normaliztion
+ "size_structured_dde_normalized"  # default (for continuous)
+]
 
+model_variation = "logistic_discrete_historical"   # pre-2022 method 
+model_variation = "logistic_discrete_basic"  # Model 1
+model_variation = "logistic_discrete"        # Model 2
+model_variation = "size_structured_dde_normalized"  # Model 3
 
 # choose a region of interest"
 aulab ="cfanorth"  # about 5 hrs
@@ -55,7 +61,19 @@ end
 
 # ---------------
 # load libs and options and prepare data for diffeq/turing model and set default parameters
-include( joinpath( project_directory, "fishery_model_environment.jl"  ))  # bootstrap different project environments depending on above choices
+# bootstrap different project environments depending on above choices
+
+if  occursin( r"size_structured", model_variation ) 
+
+  fn_env = joinpath( project_directory, "size_structured_dde_environment.jl" )
+  
+elseif  occursin( r"logistic_discrete", model_variation ) 
+  
+  fn_env = joinpath( project_directory, "logistic_discrete_environment.jl" )  
+
+end
+
+include( fn_env )
 
 
 
@@ -109,8 +127,9 @@ end
 
 
 # params defined in environments .. about 3-5 hrs each
-res = fishery_model_inference( fmod, rejection_rate=rejection_rate, n_adapts=n_adapts, n_samples=n_samples, 
-    n_chains=n_chains, max_depth=max_depth, init_ϵ=init_ϵ )
+res = fishery_model_inference( fmod, 
+  rejection_rate=rejection_rate, n_adapts=n_adapts, n_samples=n_samples, 
+  n_chains=n_chains, max_depth=max_depth, init_ϵ=init_ϵ )
 
 
 # save results to (directory_output) as a hdf5  # directory location is created in environment
@@ -120,13 +139,10 @@ res_fn = joinpath( directory_output, string("results_turing", "_", aulab, ".hdf5
 
 if false
   # to reload a save file:
-  aulab = "cfa4x"
-  include( joinpath( project_directory, "fishery_model_environment.jl"  ))  # some parameters need to be reset
-  res_fn = joinpath( directory_output, string("results_turing", "_", aulab, ".hdf5" ) ) 
   @load res_fn res
 end
 
-    
+
 # summaries and plots 
 
 (directory_output)  #check output directory
@@ -162,12 +178,12 @@ plot( autocorplot(res) )
 # annual snapshots of biomass (kt); return m=normalized abundance, num=numbers, bio=biomass and pl=plot, where possible
 (m, num, bio, pl)  = fishery_model_predictions(res; prediction_time=prediction_time, n_sample=500)
 fb = bio[1:length(survey_time),:,1]  # the last 1 is for size struct; no effect in discrete
-pl = plot(pl, ylim=aulab=="cfanorth" ? (0, 6.5) : aulab=="cfasouth" ? (0, 80) : (0, 1.8))
+pl = plot(pl, ylim=aulab=="cfanorth" ? (0, 6.5) : aulab=="cfasouth" ? (0, 80) : (0, 1.5))
 savefig(pl, joinpath( directory_output, string("plot_predictions_", aulab, ".pdf") )  )
 
 # plot fishing mortality
 (Fkt, FR, FM, pl) = fishery_model_mortality( removed, fb, n_sample=500 ) 
-pl = plot(pl, ylim=(0, 1.0))
+pl = plot(pl, ylim=(0, 1.5))
 if occursin.( r"size_structured", model_variation )
   pl = plot(pl, ylim=aulab=="cfanorth" ? (0, 1.5) : aulab=="cfasouth" ? (0, 0.6) : (0, 5))
 end
@@ -176,7 +192,7 @@ savefig(pl, joinpath( directory_output, string("plot_fishing_mortality_", aulab,
 
 # HCR plot
 (K, bi, fm, fmsy, pl) = fishery_model_harvest_control_rule(res, yrs; FM=FM, fb=fb, n_sample=500)
-pl = plot(pl, ylim=(0, 1.0))
+pl = plot(pl, ylim=(0, 1.5))
 if occursin.( r"size_structured", model_variation )
   pl = plot(pl, ylim=aulab=="cfanorth" ? (0, 1.5) : aulab=="cfasouth" ? (0, 0.6) : (0, 5))
 end

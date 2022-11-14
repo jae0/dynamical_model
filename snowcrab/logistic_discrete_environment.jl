@@ -41,7 +41,7 @@ pkgs = [
   "ForwardDiff", "DataFrames", "JLD2", "PlotThemes", "Colors", "ColorSchemes", "RData",
   "Plots", "StatsPlots", "MultivariateStats", "StaticArrays", "LazyArrays", "FillArrays",
   "Turing", "ModelingToolkit", "DifferentialEquations", "Interpolations", "LinearAlgebra"
-] 
+]
 
 for pk in pkgs; @eval using $(Symbol(pk)); end   # Pkg.add( pkgs ) # add required packages
 
@@ -98,6 +98,7 @@ removals = o["L"]
         # @rget ty
 
         # example line plots
+        plot(  Y[:,:yrs], Y[:,:cfasouth] )
         plot(  Y[:,:yrs], Y[:,:cfasouth_M0] )
         plot!( Y[:,:yrs] .+1 , Y[:,:cfasouth_M1] )
         plot!( Y[:,:yrs] .+2, Y[:,:cfasouth_M2] )
@@ -135,10 +136,23 @@ smallnumber = 1.0e-9 # floating point value sufficient to assume 0 valued
 # "survey index"
 S = Y[:,Symbol("$aulab"  )]
 
- 
-# # scale index 
-# S = (S .- minimum(skipmissing(S)) ) ./ ( maximum( skipmissing(S)) .- minimum(skipmissing(S)) ) # range from 0=min to 1=max
-# # S = (S .- mean(skipmissing(S)) ) ./ std( skipmissing(S))  # scale to std and center to 0 
+# scale index where required
+Smean = mean(skipmissing(S))
+Sstd = std( skipmissing(S))
+Smin = minimum(skipmissing(S))
+Smax = maximum( skipmissing(S))
+Srange = Smax - Smin 
+
+SminFraction = Smin ./ Srange  # used as informative prior mean in some runs
+
+if model_variation=="logistic_discrete_historical"
+  # do nothing (no scaling)
+elseif occursin( r"scale_center", model_variation ) 
+  S = (S .- Smean ) ./ Sstd  # scale to std and center to 0 
+else 
+  S = (S .- Smin ) ./ Srange    # default is to scale (min,max) -> (0,1)
+end
+
 
 # id index
 ki = aulab=="cfanorth" ? 1 :
@@ -169,54 +183,28 @@ prediction_time =
 iok = findall( !ismissing, S )
 
 
-# run model estimations / overrides
-Turing.setprogress!(false);
-n_adapts=5000
-n_samples=1000
-n_chains=4
-
-
-# NUTS-specific
-# see write up here: https://turing.ml/dev/docs/using-turing/sampler-viz
-rejection_rate = 0.99  ## too high and it become impossibly slow .. this is a good balance between variability and speed
-max_depth=9  ## too high and it become impossibly slow
-init_ϵ=0.01 # step size (auto compute usually gives from 0.01 to 0.05)
- 
-
-if model_variation=="logistic_discrete_historical"   # pre-2022, mimic STAN defaults
-  rejection_rate = 0.99  
-  max_depth=12  ## too high and it become impossibly slow
-end
-
-# model_variation = "logistic_discrete_historical" 
-
-# Turing.setrdcache(true)
-
 directory_output = joinpath( project_directory, "outputs", model_variation )
 mkpath(directory_output)
-
-include( "fishery_model_functions.jl" )  # to load core dynamical model functions
+ 
 include( "logistic_discrete_functions.jl" )  #specific to model form
 
 
 # translate model-specific functions, etc to generics
 if model_variation=="logistic_discrete_historical"
-
+    
   if aulab=="cfa4x"
-    fmod = logistic_discrete_turing_historical_4x( S, kmu, nT, nM, removed )  # q only
+    fmod = logistic_discrete_turing_historical( S, kmu, nT, nM, removed)  # q only
   else
-    fmod = logistic_discrete_turing_historical( S, kmu, nT, nM, removed, 6 )  # q only
+    fmod = logistic_discrete_turing_historical_north_south( S, kmu, nT, nM, removed, 6  )  # q only
   end
-
-elseif model_variation=="logistic_discrete_map"
-
-  fmod = logistic_discrete_map_turing( S, kmu, nT, nM, removed )  
-
 
 elseif model_variation=="logistic_discrete_basic"
 
-  fmod = logistic_discrete_turing_basic( S, kmu, nT, nM, removed )   
-
+  if aulab=="cfa4x"
+    fmod = logistic_discrete_turing_basic( S, kmu, nT, nM, removed )   
+  else
+    fmod = logistic_discrete_turing_basic_north_south( S, kmu, nT, nM, removed, 6 )   
+  end
 
 elseif model_variation=="logistic_discrete"
 
@@ -226,9 +214,35 @@ elseif model_variation=="logistic_discrete"
     fmod = logistic_discrete_turing_north_south( S, kmu, nT, nM, removed, 6 )   
   end
 
+elseif model_variation=="logistic_discrete_map"
+
+  # no used .. just for testing
+  fmod = logistic_discrete_map_turing( S, kmu, nT, nM, removed )  
+
+end
+ 
+
+# run model estimations / overrides
+Turing.setprogress!(false);
+n_adapts=6000
+n_samples=2000
+n_chains=4
+
+
+# NUTS-specific
+# see write up here: https://turing.ml/dev/docs/using-turing/sampler-viz
+rejection_rate = 0.65  ## too high and it become impossibly slow .. this is a good balance between variability and speed
+max_depth=9  ## too high and it become impossibly slow
+init_ϵ=0.01 # step size (auto compute usually gives from 0.01 to 0.05)
+
+if model_variation=="logistic_discrete_historical"   # pre-2022, mimic STAN defaults
+  n_adapts=10000
+  n_samples=2000
+  rejection_rate = 0.99  
+  max_depth=14  ## too high and it become impossibly slow
 end
 
-
+print( model_variation, ": ", aulab)
 
 
 

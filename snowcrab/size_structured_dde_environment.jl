@@ -80,7 +80,7 @@ Y = o["Y"]
 
 Kmu = o["Kmu"]
 
-Kmu = [5.0, 60.0, 1.25]
+Kmu = [5.0, 60.0, 1.5]
 
 removals = o["L"]
 MW = o["M0_W"]
@@ -88,7 +88,7 @@ MW = o["M0_W"]
 
     if false
         # alternatively, if running manually:
-        # can run R-code that creates local RData file with required data
+        # can run R-code that creates slocal RData file with required data
         # run in R externally or from within julia or ..
         # from within julia
 
@@ -147,13 +147,31 @@ statevars = [
 ]
 
 S = Matrix(Y[:, statevars ])
-Smins = [minimum(skipmissing(S[:,i])) for i in 1:nS ]
-Smaxs = [maximum(skipmissing(S[:,i])) for i in 1:nS ]
+
+
+# scale index where required
+Smean = [mean(skipmissing(S)) for i in 1:nS ]
+Sstd = [std( skipmissing(S)) for i in 1:nS ]
+Smin = [minimum(skipmissing(S[:,i])) for i in 1:nS ]
+Smax = [maximum(skipmissing(S[:,i])) for i in 1:nS ]
+Srange = Smax .- Smin 
+
+SminFraction = Smin ./ Srange  # used as informative prior mean in some runs
+
+
+if model_variation=="noscaling"
+  # do nothing (no scaling)
+elseif occursin( r"scale_center", model_variation ) 
+  for i in 1:nS
+    S[:,i] = (S[:,i] .- Smean[i] ) ./ Sstd[i]    # scale to std and center to 0 
+  end
+else 
+  for i in 1:nS
+    S[:,i] = (S[:,i] .- Smin[i] ) ./ Srange[i]   # range from 0=min to 1=max
+  end
+end
 
 # scale index to min-max
-for i in 1:nS
-  S[:,i] = (S[:,i] .- Smins[i] ) ./ ( Smaxs[i] .- Smins[i] ) # range from 0=min to 1=max
-end
 
 # interpolating function for mean weight
 mwspline = extrapolate( interpolate( MW[:,Symbol("mw_", "$aulab") ], (BSpline(Linear()) ) ),  Interpolations.Flat() )
@@ -233,18 +251,16 @@ end
 directory_output = joinpath( project_directory, "outputs", model_variation )
 mkpath(directory_output)
 
+
 # model-specifics functions and data
+include( "size_structured_dde_normalized_functions.jl" )  
 
-include( "fishery_model_functions.jl" )  # to load core dynamical model functions
 
+# DiffEq-model setup
 
 if model_variation=="size_structured_dde_normalized" 
-  include( "size_structured_dde_normalized_functions.jl" )  
 
-  u0 = [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ]  ; # generics to bootstrap the process
-
-  # history function (prior to start)  defaults to values of 0.5*u before t0; note u = (0,1)
-  h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS)  .* 0.9
+  k_mult = 1.0
 
   function affect_fishing!(integrator)
     i = findall(t -> t == integrator.t, fish_time)[1]
@@ -252,25 +268,29 @@ if model_variation=="size_structured_dde_normalized"
   end
    
 elseif  model_variation=="size_structured_dde_unnormalized"
-  include( "size_structured_dde_unnormalized_functions.jl" )  
 
-  u0 = [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ]  .* kmu; # generics to bootstrap the process
-
-  # history function (prior to start)  defaults to values of 0.5*u before t0; note u = (0,1)
-  h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS)  .* 0.9 .* kmu
+  k_mult = kmu
 
   function affect_fishing!(integrator)
     i = findall(t -> t == integrator.t, fish_time)[1]
     integrator.u[1] -=  removed[ i[1] ]  # sol on same scale
   end
-   
-   
+     
 else 
   
   error("model_variation not found")
 
 end
  
+
+u0 = [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ]  .* k_mult; # generics to bootstrap the process
+
+# history function (prior to start)  defaults to values of 0.5*u before t0; note u = (0,1)
+h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS)  .* 0.9 .* k_mult
+
+
+tau = [1.0]  # delay resolution
+p = dde_parameters() # dummy values needed to bootstrap DifferentialEquations/Turing initialization
 
 # callbacks for external perturbations to the system (deterministic fishing without error)
 cb = PresetTimeCallback( fish_time, affect_fishing! )
@@ -280,9 +300,13 @@ cb = PresetTimeCallback( fish_time, affect_fishing! )
 #   PositiveDomain()
 # );
 
+prob = DDEProblem( size_structured_dde!, u0, h, tspan, p, constant_lags=tau  )   
 
-# delay resolution
-tau = [1.0]  
+# Turing-DiffEq model setup
+fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM, solver, dt )
+
+
+
 
 # Turing sampling-specific
 n_adapts=1000
@@ -299,19 +323,11 @@ init_ϵ=0.01 # step size (auto compute usually gives from 0.01 to 0.05)
 rejection_rate = 
   aulab == "cfanorth" ? 0.65 :
   aulab == "cfasouth" ? 0.65 :
-  aulab == "cfa4x"    ? 0.8 :
+  aulab == "cfa4x"    ? 0.65 :
   0.65  # default
 
 max_depth=
   aulab == "cfanorth" ? 8 :
   aulab == "cfasouth" ? 8 :
-  aulab == "cfa4x"    ? 9 :
+  aulab == "cfa4x"    ? 8 :
   8  # default
-
-
-# DiffEq-model setup
-p = dde_parameters() # dummy values needed to bootstrap DifferentialEquations/Turing initialization
-prob = DDEProblem( size_structured_dde!, u0, h, tspan, p, constant_lags=tau  )  # tau=[1]
-
-# Turing-DiffEq model setup
-fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM, solver, dt )
