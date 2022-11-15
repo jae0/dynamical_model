@@ -11,11 +11,11 @@ model_variations_implemented = [
  "logistic_discrete_map",  # logistic map ... more extreme fluctuations
  "logistic_discrete_basic",  # q catchability only for observation model
  "logistic_discrete",  # q and intercept for observation model
- "size_structured_dde_unnormalized",  # basic continuous model without normaliztion
+ "size_structured_dde_unnormalized",  # basic continuous model without normaliztion ... very very slow .. do not use
  "size_structured_dde_normalized"  # default (for continuous)
 ]
 
-model_variation = "logistic_discrete_historical"   # pre-2022 method 
+model_variation = "logistic_discrete_historical"   # Model 0 .. pre-2022 method 
 model_variation = "logistic_discrete_basic"  # Model 1
 model_variation = "logistic_discrete"        # Model 2
 model_variation = "size_structured_dde_normalized"  # Model 3
@@ -64,13 +64,9 @@ end
 # bootstrap different project environments depending on above choices
 
 if  occursin( r"size_structured", model_variation ) 
-
   fn_env = joinpath( project_directory, "size_structured_dde_environment.jl" )
-  
 elseif  occursin( r"logistic_discrete", model_variation ) 
-  
   fn_env = joinpath( project_directory, "logistic_discrete_environment.jl" )  
-
 end
 
 include( fn_env )
@@ -99,7 +95,7 @@ if debugging
     end
 
 
-    res  =  sample( fmod, Turing.NUTS(30, 0.65; max_depth=7, init_ϵ=0.05), 30 ) # to see progress -- about 5 min
+    res  =  sample( fmod, Turing.NUTS(30, 0.65; max_depth=7, init_ϵ=0.01), 30 ) # to see progress -- about 5 min
     # res = fishery_model_inference( fmod, n_adapts=30, n_samples=30, n_chains=1, max_depth=7, init_ϵ=0.01  )
  
     (m, num, bio, pl)  = fishery_model_predictions(res; prediction_time=prediction_time, n_sample=30 )

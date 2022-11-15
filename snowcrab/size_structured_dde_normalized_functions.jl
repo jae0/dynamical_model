@@ -12,10 +12,10 @@ function size_structured_dde!( du, u, h, p, t)
   # this break down seems to speed it up a bit ... not sure why
   br =  f8 .* b
   tr =  v .* u1
-
-  # d: background mortality + d2: excess mortality due to habitat fluctuations 
-  dr = d .* u   + d2 .* u .* u ./ hf  
   
+  # d: background mortality + d2: excess mortality due to habitat fluctuations 
+  dr = d .* u  + d2 .* u .* u ./ hf      
+   
   a = K[2:6] ./ K[1:5]
 
   du[1] = tr[1] * a[1]            - dr[1]       # note:
@@ -48,28 +48,31 @@ end
     # biomass process model:
     K ~ filldist( TruncatedNormal( kmu, kmu*0.1, kmu/1000.0, kmu*1000.0), nS )  # kmu is max of a multiyear group , serves as upper bound for all
  
-    q ~ filldist( TruncatedNormal(  1.0, 0.1,  0.1, 10.0), nS )
+    q ~ filldist( TruncatedNormal(  1.0, 0.2,  0.1, 10.0), nS )
 
-    qc ~ arraydist([Normal(-SminFraction[i], 0.1) for i in 1:nS])  # informative prior on relative height 
+    qc ~ arraydist([Normal(-SminFraction[i], 0.2) for i in 1:nS])  # informative prior on relative height 
     # qc ~ filldist( TruncatedNormal( 0.0, 0.1, -10.0, 10.0), nS )  # uninformative
 
-    model_sd ~ filldist( TruncatedNormal( 0.1, 0.05, 0.01, 0.25 ), nS ) 
+    model_sd ~ filldist( TruncatedNormal( 0.1, 0.1, 0.01, 0.3 ), nS ) 
  
+    # # additional soft constraint givening more weight to fishable compoennt
+    # soft_constraint = model_sd[1]
+    # soft_constraint ~ Normal(0.0, 0.001)
     
     # "birth" rate from F(y - 8 to 10)  and for males m5 and femaless
-    b ~ filldist( TruncatedNormal(10.0, 0.1, 0.1, 100.0), 2 )  
+    b ~ filldist( TruncatedNormal(10.0, 1.0, 0.01, 1000.0), 2 )  
 
     # background mortality
-    d ~ filldist( TruncatedNormal(0.1, 0.1, 0.01, 0.99), nS )
+    d ~ filldist( TruncatedNormal(0.2, 0.1, 0.01, 0.99), nS )
 
     # excess mortality due to habitat (second order)
-    d2 ~ filldist( TruncatedNormal(0.4, 0.1, 0.01, 0.99), nS )
+    d2 ~ filldist( TruncatedNormal(0.4, 0.2, 0.01, 0.99), nS )
 
     # transition rates
-    v ~ filldist( TruncatedNormal(0.8, 0.1, 0.01, 0.99), 4 )
+    v ~ filldist( TruncatedNormal(0.8, 0.2, 0.01, 0.99), 4 )
 
     # initial conditions
-    u0 ~ filldist( TruncatedNormal(0.8, 0.1, 0.01, 0.99), nS )
+    u0 ~ filldist( TruncatedNormal(0.8, 0.2, 0.01, 0.99), nS )
 
     pm = ( b, K, d, d2, v, tau, hsa )
     # @show pm
