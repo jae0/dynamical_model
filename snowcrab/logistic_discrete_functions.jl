@@ -209,7 +209,7 @@ end
 
 
 
-@model function logistic_discrete_turing_basic_north_south( S, kmu, nT, nM, removed, ::Type{T} = Float64) where T
+@model function logistic_discrete_turing_basic_north_south( S, kmu, nT, nM, removed, ty = 6, ::Type{T} = Float64) where T
   # biomass process model: dn/dt = r n (1-n/K) - removed ; b, removed are not normalized by K  
   # priors 
 
@@ -243,11 +243,11 @@ end
    
   for i in iok
     if i < ty
-      S[i] ~ Normal( q * ( m[i] ) + qc, bosd )  ;  # spring survey
+      S[i] ~ Normal( q * ( m[i] ) , bosd )  ;  # spring survey
     elseif i == ty
-      S[i] ~ Normal( q * ( m[i] - (removed[i-1] + removed[i]) / (2.0*K ) )+ qc, bosd )  ;  # transition year 
+      S[i] ~ Normal( q * ( m[i] - (removed[i-1] + removed[i]) / (2.0*K ) ) , bosd )  ;  # transition year 
     else
-      S[i] ~ Normal( q * ( m[i] - removed[i]/K )+ qc, bosd )  ; # fall survey
+      S[i] ~ Normal( q * ( m[i] - removed[i]/K ) , bosd )  ; # fall survey
     end
   end
 

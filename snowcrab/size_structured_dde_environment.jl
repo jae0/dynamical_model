@@ -80,7 +80,7 @@ Y = o["Y"]
 
 Kmu = o["Kmu"]
 
-Kmu = [5.0, 60.0, 1.5]
+Kmu = [5.5, 50.0, 1.5]
 
 removals = o["L"]
 MW = o["M0_W"]
@@ -159,13 +159,14 @@ Srange = Smax .- Smin
 SminFraction = Smin ./ Srange  # used as informative prior mean in some runs
 
 
-if model_variation=="noscaling"
+if occursin( r"unnormalized", model_variation )
   # do nothing (no scaling)
 elseif occursin( r"scale_center", model_variation ) 
   for i in 1:nS
     S[:,i] = (S[:,i] .- Smean[i] ) ./ Sstd[i]    # scale to std and center to 0 
   end
 else 
+  # default is to normalize (min, max) to (0,1)
   for i in 1:nS
     S[:,i] = (S[:,i] .- Smin[i] ) ./ Srange[i]   # range from 0=min to 1=max
   end
@@ -286,7 +287,7 @@ end
 u0 = [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ]  .* k_mult; # generics to bootstrap the process
 
 # history function (prior to start)  defaults to values of 0.5*u before t0; note u = (0,1)
-h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS)  .* 0.9 .* k_mult
+h(p, t; idxs=nothing) = typeof(idxs) <: Number ? ones(nS) * k_mult : ones(nS)  .* k_mult
 
 
 tau = [1.0]  # delay resolution
@@ -317,7 +318,7 @@ n_chains=4
 # see write up here: https://turing.ml/dev/docs/using-turing/sampler-viz
 # rejection_rate = 0.65  ## too high and it become impossibly slow .. this is a good balance between variability and speed
 # max_depth=8  ## too high and it become impossibly slow
-init_ϵ=0.01 # step size (auto compute usually gives from 0.01 to 0.05)
+init_ϵ=0.05 # step size (auto compute usually gives from 0.01 to 0.05)
  
 
 rejection_rate = 
@@ -327,7 +328,7 @@ rejection_rate =
   0.65  # default
 
 max_depth=
-  aulab == "cfanorth" ? 8 :
-  aulab == "cfasouth" ? 8 :
-  aulab == "cfa4x"    ? 8 :
+  aulab == "cfanorth" ? 7 :
+  aulab == "cfasouth" ? 7 :
+  aulab == "cfa4x"    ? 7 :
   8  # default
