@@ -52,6 +52,8 @@
 # stan implementation:
 # https://mc-stan.org/users/documentation/case-studies/mbjoseph-CARStan.html
 # https://mc-stan.org/users/documentation/case-studies/icar_stan.html#auto-regressive-models-for-areal-data
+# https://www.sciencedirect.com/science/article/abs/pii/S1877584518301175
+# https://github.com/ConnorDonegan/Stan-IAR
 
 # data source:  
 # https://mc-stan.org/users/documentation/case-studies/icar_stan.html
@@ -84,6 +86,15 @@ x = [16,16,10,24,10,24,10, 7, 7,16,
 7,24,10, 7, 7, 0,10, 1,16, 0,
 1,16,16, 0, 1, 7, 1, 1, 0, 1,
 1, 0, 1, 1,16,10]
+
+# fake groups
+groups = [1, 1, 1,1 ,1,1,1, 1, 1,1, 
+1,1,1,2,2,2,2, 2, 2,1,
+3,3,3, 1, 1, 1, 1, 1,1,1,
+1,1,1, 1, 1, 1,1, 1,1, 1,
+1,1,2, 2, 1, 1, 1, 1, 3, 1,
+1, 1, 1, 1,3,2]
+
 
 adj = [ 5, 9,11,19,
 7,10,

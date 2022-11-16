@@ -167,9 +167,9 @@ end
      rho ~ Beta(0.5, 0.5);
 
      # variance of each component should be approximately equal to 1
-     convolved_re =  sqrt.(1 .- rho) .* theta .+ sqrt.(rho ./ scaling_factor) .* phi;
+     convolved_re =  sigma .*  ( sqrt.(1 .- rho) .* theta .+ sqrt.(rho ./ scaling_factor) .* phi );
    
-     lambda = exp.( X * beta .+ phi .*  sigma .* convolved_re .+ log_offset )
+     lambda = exp.( X * beta .+  convolved_re .+ log_offset )
   
      @. y ~ Poisson( lambda );
 
@@ -180,15 +180,13 @@ end
 end
  
 
-
-
-@model function turing_icar_direct_bym2_groups(X, log_offset, y, node1, node2, scaling_factor, groups,  nbeta=size(X)[2] )
+@model function turing_icar_direct_bym2_groups(X, log_offset, y, node1, node2, scaling_factor, groups, gi, nbeta=size(X)[2], ysd=std(y) )
     # BYM2
     # alpha ~ Uniform(0.0, 1.0); # alpha = 0.9 ; alpha==1 for BYM / iCAR
      # tau ~ Gamma(2.0, 1.0/2.0);  # tau=0.9
      beta ~ filldist( Normal(0.0, 5.0), nbeta);
      theta ~ filldist( Normal(0.0, 1.0), N)  # unstructured (heterogeneous effect)
-     phi ~ filldist( Uniform(-10, 10 ), N) # spatial effects: stan goes from -Inf to Inf .. 
+     phi ~ filldist(Normal(0.0, ysd), N) # spatial effects: stan goes from -Inf to Inf .. 
         
      # pairwise difference formulation ::  prior on phi on the unit scale with sd = 1
      # see (https://mc-stan.org/users/documentation/case-studies/icar_stan.html)
@@ -196,30 +194,29 @@ end
      lp_phi =  -0.5 * dot( dphi, dphi )
      Turing.@addlogprob! lp_phi
      
-     # soft sum-to-zero constraint on phi)
-     # equivalent to mean(phi) ~ normal(0, 0.001)
-     sum_phi = sum(phi)
-     sum_phi ~ Normal(0, 0.001 * N);  
-  
      sigma ~ truncated( Normal(0, 1.0), 0, Inf) ; 
      rho ~ Beta(0.5, 0.5);
+
+     convolved_re = zeros(N)
+
+     for j in 1:length(gi)
+         ic = gi[j] 
+        
+         # soft sum-to-zero constraint on phi)
+         # equivalent to mean(phi) ~ normal(0, 0.001)
+         sum_phi = sum(phi[ic])
+         sum_phi ~ Normal(0, 0.001 * N);  
+
+         if  length(ic) == 1 
+             convolved_re[ ic ] = sigma .* theta[ ic ];
+         else  
+             convolved_re[ ic ] = sigma .* ( sqrt.(1 .- rho) .* theta[ ic ]  +  sqrt(rho ./ scaling_factor[j] )  .* phi[ ic ] ) ;
+         end 
+     end
   
-    #  int pos=1;
-    
-    #  for j in 1:k 
-    #      ic = group_idx[ pos:(pos+group_size[j]-1) )
-    #      # ic = segment(group_idx, pos, group_size[j])
-    #      if  group_size[j] == 1 
-    #          convolution[ ic ] = spatial_scale * theta_tilde[ ic ];
-    #      else  
-    #          convolution[ ic ] = spatial_scale * (sqrt(rho) * inv_sqrt_scale_factor[j] * phi_tilde[ ic ] + sqrt(1 - rho) * theta_tilde[ ic ] );
-    #      end
-    #      pos += group_size[j];
-    #  end
-  
-     convolved_re =  sqrt.(1 .- rho) .* theta .+ sqrt.(rho ./ scaling_factor) .* phi;
+     # convolved_re =  sqrt.(1 .- rho) .* theta .+ sqrt.(rho ./ scaling_factor) .* phi;
    
-     lambda = exp.( X * beta .+ phi .*  sigma .* convolved_re .+ log_offset )
+     lambda = exp.( X * beta .+  convolved_re .+ log_offset )
    
      @. y ~ Poisson( lambda );
   
@@ -229,6 +226,7 @@ end
     #  vector[N] lambda = exp(eta);
 end
   
+
 function nodes( adj )
     N_edges = Integer( length(adj) / 2 );
     node1 =  fill(0, N_edges); 

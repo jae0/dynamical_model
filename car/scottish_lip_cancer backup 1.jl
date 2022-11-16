@@ -7,7 +7,7 @@
 
 
 # in REPL or VSCODE, this needs to be loaded first as "startup.jl" is skipped
-project_directory = joinpath(  @__DIR__(), "Documents", "GitHub", "dynamical_model", "car" ) #  same folder as the current file
+project_directory = @__DIR__() #  same folder as the current file
 push!(LOAD_PATH, project_directory)  # add the directory to the load path, so it can be found
 # include( "startup.jl" )
 
@@ -42,42 +42,22 @@ m = turing_icar_direct_test( node1, node2, std(y) )  # Morris' "simple_iar" test
 
 m = turing_icar_direct_bym(X, log_offset, y, node1, node2) # 13 sec
    
-# bym2 requires a "scaling factor" 
+# bym2 requires a "scaling factor"
 m = turing_icar_direct_bym2(X, log_offset, y, node1, node2, scaling_factor_bym2(W)) # W is adjacency matrix , 18 sec; 30min for full run
 
 
 # bym2 group model (multiple groups or disconnected groups): this is not finished 
+scaling_factor = scaling_factor_bym2_groups(node1, node2, groups)
+m = turing_icar_direct_bym2_groups(X, log_offset, y, node1, node2, scaling_factor, groups)
 
-if false
-  # testing with adj as group id
-   
-  groups_unique = unique(sort(groups))
-  gi = Vector{Vector{Int64}}()
-  for g in groups_unique
-      o =  findall(x -> x==g, groups) 
-      push!(gi, o)
-  end
-
-  scaling_factor = scaling_factor_bym2_groups(node1, node2, groups)
-  m = turing_icar_direct_bym2_groups(X, log_offset, y, node1, node2, scaling_factor, groups)
-
-end
-
-
-
-
-
-# check timings and accuracy
-n_samples, n_adapts, n_chains = 5000, 2000, 1
 
 # use NUTS: see write up here: https://turing.ml/dev/docs/using-turing/sampler-viz
+
+# check timings and accuracy
+n_samples, n_adapts, n_chains = 100, 100, 1
 target_acceptance, max_depth, init_ϵ = 0.65, 7, 0.05
 turing_sampler = Turing.NUTS(n_adapts, target_acceptance; max_depth=max_depth, init_ϵ=init_ϵ)
-
-# sample
 o = sample(m, turing_sampler, n_samples) 
-
-
 
 
 # larger runs (linux)
