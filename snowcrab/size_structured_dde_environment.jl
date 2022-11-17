@@ -77,14 +77,10 @@ Turing.setadbackend(:forwarddiff)  # only AD that works right now
 fndat = "/home/jae/bio.data/bio.snowcrab/modelled/1999_present_fb/fishery_model_results/turing1/biodyn_number_size_struct.RData"
 o = load( fndat, convert=true)
 Y = o["Y"]
-
-Kmu = o["Kmu"]
-
-Kmu = [5.5, 50.0, 1.5]
-
 removals = o["L"]
 MW = o["M0_W"]
 
+Kmu = [5.0, 60.0, 1.25]
 
     if false
         # alternatively, if running manually:
@@ -260,18 +256,14 @@ include( "size_structured_dde_normalized_functions.jl" )
 # DiffEq-model setup
 
 if model_variation=="size_structured_dde_normalized" 
-
-  k_mult = 1.0
-
+ 
   function affect_fishing!(integrator)
     i = findall(t -> t == integrator.t, fish_time)[1]
     integrator.u[1] -=  removed[ i ] / integrator.p[2][1]  # p[2] ==K divide by K[1]  .. keep unscaled to estimate magnitude of other components
   end
    
 elseif  model_variation=="size_structured_dde_unnormalized"
-
-  k_mult = kmu
-
+ 
   function affect_fishing!(integrator)
     i = findall(t -> t == integrator.t, fish_time)[1]
     integrator.u[1] -=  removed[ i[1] ]  # sol on same scale
@@ -283,16 +275,6 @@ else
 
 end
  
-
-u0 = [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ]  .* k_mult; # generics to bootstrap the process
-
-# history function (prior to start)  defaults to values of 0.5*u before t0; note u = (0,1)
-h(p, t; idxs=nothing) = typeof(idxs) <: Number ? ones(nS) * k_mult : ones(nS)  .* k_mult
-
-
-tau = [1.0]  # delay resolution
-p = dde_parameters() # dummy values needed to bootstrap DifferentialEquations/Turing initialization
-
 # callbacks for external perturbations to the system (deterministic fishing without error)
 cb = PresetTimeCallback( fish_time, affect_fishing! )
 # alternative formulation:
@@ -301,34 +283,58 @@ cb = PresetTimeCallback( fish_time, affect_fishing! )
 #   PositiveDomain()
 # );
 
-prob = DDEProblem( size_structured_dde!, u0, h, tspan, p, constant_lags=tau  )   
-
-# Turing-DiffEq model setup
-fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM, solver, dt )
-
-
+k_mult = 
+  model_variation=="size_structured_dde_unnormalized" ? kmu :
+  model_variation=="size_structured_dde_normalized"   ? 1.0 :
+  1.0
 
 
-# Turing sampling-specific
+u0 = [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ]  .* k_mult; # generics to bootstrap the process
+h(p, t; idxs=nothing) = typeof(idxs) <: Number ? ones(nS) * k_mult : ones(nS)  .* k_mult # history function (prior to start)  defaults to values of 0.5*u before t0; note u = (0,1)
+tau = [1.0]  # delay resolution
+p = dde_parameters() # dummy values needed to bootstrap DifferentialEquations/Turing initialization
+prob = DDEProblem( size_structured_dde!, u0, h, tspan, p, constant_lags=tau  )  # create container for problem definition 
+
+
+# Turing sampling-specific run options
 n_adapts=1000
 n_samples=1000
 n_chains=4
 
-# NUTS-specific
+
+# NUTS-specific run options
 # see write up here: https://turing.ml/dev/docs/using-turing/sampler-viz
-# rejection_rate = 0.65  ## too high and it become impossibly slow .. this is a good balance between variability and speed
-# max_depth=8  ## too high and it become impossibly slow
+rejection_rate = 0.65  ## too high and it become impossibly slow .. this is a good balance between variability and speed
+max_depth=8  ## too high and it become impossibly slow
 init_ϵ=0.05 # step size (auto compute usually gives from 0.01 to 0.05)
  
 
-rejection_rate = 
-  aulab == "cfanorth" ? 0.65 :
-  aulab == "cfasouth" ? 0.65 :
-  aulab == "cfa4x"    ? 0.65 :
-  0.65  # default
 
-max_depth=
-  aulab == "cfanorth" ? 7 :
-  aulab == "cfasouth" ? 7 :
-  aulab == "cfa4x"    ? 7 :
-  8  # default
+# choose model and over-rides if any
+if model_variation=="size_structured_dde_normalized" 
+
+  if aulab=="cfanorth"
+    fmod = size_structured_dde_turing_north( S, kmu, tspan, prob, nT, nS, nM, solver, dt )
+    rejection_rate = 0.65  
+    max_depth=8  
+
+  elseif aulab=="cfasouth" 
+    fmod = size_structured_dde_turing_south( S, kmu, tspan, prob, nT, nS, nM, solver, dt )  
+    rejection_rate = 0.75  
+    max_depth=8  
+
+  elseif aulab=="cfa4x" 
+    fmod = size_structured_dde_turing_4x( S, kmu, tspan, prob, nT, nS, nM, solver, dt )  
+    rejection_rate = 0.65  
+    max_depth=8  
+
+  end
+
+elseif  model_variation=="size_structured_dde_unnormalized"
+
+  fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM, solver, dt )
+
+end
+
+
+ 

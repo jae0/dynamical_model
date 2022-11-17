@@ -15,15 +15,15 @@ model_variations_implemented = [
  "size_structured_dde_normalized"  # default (for continuous)
 ]
 
-model_variation = "logistic_discrete_historical"   # Model 0 .. pre-2022 method 
+model_variation = "logistic_discrete_historical"   # Model 0 .. pre-2022 method  :: ~ 1 hr
 model_variation = "logistic_discrete_basic"  # Model 1
-model_variation = "logistic_discrete"        # Model 2
-model_variation = "size_structured_dde_normalized"  # Model 3
+model_variation = "logistic_discrete"        # Model 2 ~ 
+model_variation = "size_structured_dde_normalized"  # Model 3 ::  5 to 10 hrs
 
 # choose a region of interest"
-aulab ="cfanorth"  # about 5 hrs
-aulab ="cfasouth"  # about 5 hrs
-aulab ="cfa4x"     # up to 12 hrs
+aulab ="cfanorth"   
+aulab ="cfasouth"   
+aulab ="cfa4x"     
 
 
 yrs = 1999:2021  # <<<<<<<<-- change
@@ -95,7 +95,7 @@ if debugging
     end
 
 
-    res  =  sample( fmod, Turing.NUTS(30, 0.65; max_depth=7, init_ϵ=0.01), 30 ) # to see progress -- about 5 min
+    res  =  sample( fmod, Turing.NUTS(30, 0.65; max_depth=7, init_ϵ=0.05), 30 ) # to see progress -- about 5 min
     # res = fishery_model_inference( fmod, n_adapts=30, n_samples=30, n_chains=1, max_depth=7, init_ϵ=0.01  )
  
     (m, num, bio, pl)  = fishery_model_predictions(res; prediction_time=prediction_time, n_sample=30 )
@@ -174,14 +174,14 @@ plot( autocorplot(res) )
 # annual snapshots of biomass (kt); return m=normalized abundance, num=numbers, bio=biomass and pl=plot, where possible
 (m, num, bio, pl)  = fishery_model_predictions(res; prediction_time=prediction_time, n_sample=500)
 fb = bio[1:length(survey_time),:,1]  # the last 1 is for size struct; no effect in discrete
-pl = plot(pl, ylim=aulab=="cfanorth" ? (0, 6.5) : aulab=="cfasouth" ? (0, 80) : (0, 1.5))
+pl = plot(pl, ylim=aulab=="cfanorth" ? (0, 10.0) : aulab=="cfasouth" ? (0, 90) : (0, 1.5))
 savefig(pl, joinpath( directory_output, string("plot_predictions_", aulab, ".pdf") )  )
 
 # plot fishing mortality
 (Fkt, FR, FM, pl) = fishery_model_mortality( removed, fb, n_sample=500 ) 
-pl = plot(pl, ylim=(0, 1.5))
+pl = plot(pl, ylim=(0, 0.5))
 if occursin.( r"size_structured", model_variation )
-  pl = plot(pl, ylim=aulab=="cfanorth" ? (0, 1.5) : aulab=="cfasouth" ? (0, 0.6) : (0, 5))
+  pl = plot(pl, ylim=aulab=="cfanorth" ? (0, 1.0) : aulab=="cfasouth" ? (0, 0.4) : (0, 3.5))
 end
 savefig(pl, joinpath( directory_output, string("plot_fishing_mortality_", aulab, ".pdf") )  )
 
@@ -190,7 +190,7 @@ savefig(pl, joinpath( directory_output, string("plot_fishing_mortality_", aulab,
 (K, bi, fm, fmsy, pl) = fishery_model_harvest_control_rule(res, yrs; FM=FM, fb=fb, n_sample=500)
 pl = plot(pl, ylim=(0, 1.5))
 if occursin.( r"size_structured", model_variation )
-  pl = plot(pl, ylim=aulab=="cfanorth" ? (0, 1.5) : aulab=="cfasouth" ? (0, 0.6) : (0, 5))
+  pl = plot(pl, ylim=aulab=="cfanorth" ? (0, 1.0) : aulab=="cfasouth" ? (0, 0.5) : (0, 3))
 end
 savefig(pl, joinpath( directory_output, string("plot_hcr_", aulab, ".pdf") )  )
 
@@ -206,24 +206,33 @@ if occursin.( r"size_structured", model_variation )
   statevar = 1  # index of S
   (numS, pl)  = fishery_model_predictions_timeseries(num; prediction_time=prediction_time, plot_k=statevar )
   pl
+  savefig(pl, joinpath( directory_output, string("plot_predictions_timeseries_",  aulab, "_", statevar, ".pdf") )  )
+
   statevar = 2  # index of S
   (numS, pl)  = fishery_model_predictions_timeseries(num; prediction_time=prediction_time, plot_k=statevar )
   pl
+  savefig(pl, joinpath( directory_output, string("plot_predictions_timeseries_",  aulab, "_", statevar, ".pdf") )  )
+
   statevar = 3  # index of S
   (numS, pl)  = fishery_model_predictions_timeseries(num; prediction_time=prediction_time, plot_k=statevar )
   pl
+  savefig(pl, joinpath( directory_output, string("plot_predictions_timeseries_",  aulab, "_", statevar, ".pdf") )  )
+
   statevar = 4  # index of S
   (numS, pl)  = fishery_model_predictions_timeseries(num; prediction_time=prediction_time, plot_k=statevar )
   pl
+  savefig(pl, joinpath( directory_output, string("plot_predictions_timeseries_",  aulab, "_", statevar, ".pdf") )  )
+
   statevar = 5  # index of S
   (numS, pl)  = fishery_model_predictions_timeseries(num; prediction_time=prediction_time, plot_k=statevar )
   pl
+  savefig(pl, joinpath( directory_output, string("plot_predictions_timeseries_",  aulab, "_", statevar, ".pdf") )  )
   
   statevar = 6  # index of S
   (numS, pl)  = fishery_model_predictions_timeseries(num; prediction_time=prediction_time, plot_k=statevar )
   pl
-  
-  savefig(pl, joinpath( directory_output, string("plot_predictions_timeseries_", aulab, statevar, ".pdf") )  )
+  savefig(pl, joinpath( directory_output, string("plot_predictions_timeseries_",  aulab, "_", statevar, ".pdf") )  )
+
 end
 
 

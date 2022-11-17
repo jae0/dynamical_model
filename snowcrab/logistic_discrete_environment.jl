@@ -69,11 +69,9 @@ Turing.setadbackend(:forwarddiff)
 fndat = "/home/jae/bio.data/bio.snowcrab/modelled/1999_present_fb/fishery_model_results/turing1/biodyn_biomass.RData"
 o = load( fndat, convert=true)
 Y = o["Y"]
-Ksd = o["Ksd"]
-
-Kmu = o["Kmu"] 
-
 removals = o["L"] 
+
+Kmu = [5.0, 60.0, 1.25]
 
 
     if false
@@ -161,7 +159,6 @@ ki = aulab=="cfanorth" ? 1 :
      0  # default
 
 kmu = Kmu[ki]  
-ksd = Ksd[ki]
 
 survey_time = Y[:,:yrs]   # time of observations for survey
 prediction_time = floor.(vcat( survey_time, collect(1:nP) .+ maximum(survey_time) ) )     

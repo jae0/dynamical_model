@@ -5,16 +5,17 @@ function size_structured_dde!( du, u, h, p, t)
 
   (b, K, d, d2, v, tau, hsa)  = p
 
-  u1 = h(p, t-1.0)[2:5]    # no in previous years
-  f8 = h(p, t-8.0)[6]      # no mature fem 8  yrs ago
-  hf = hsa(t, 1:6)
+  # u1 = h(p, t-1.0)[2:5]    # no in previous years
+  # f8 = h(p, t-8.0)[6]      # no mature fem 8  yrs ago
+  # hf = hsa(t, 1:6)
 
   # this break down seems to speed it up a bit ... not sure why
-  br =  f8 .* b
-  tr =  v .* u1
+  br =  h(p, t-8.0)[6]  .* b
+  tr =  v .*  h(p, t-1.0)[2:5] 
   
   # d: background mortality + d2: excess mortality due to habitat fluctuations 
-  dr = d .* u  + d2 .* u .* u ./ hf      
+  # dr = d .* u  + d2 .* u .* u ./ hf   
+  dr = u .* ( d  + d2 .* u ./ hsa(t, 1:6) )  
    
   a = K[2:6] ./ K[1:5]
 
@@ -45,34 +46,32 @@ end
 @model function size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM,
     solver=MethodOfSteps(Tsit5()), dt = 0.01, ::Type{T} = Float64) where T
 
+    # basic template
+
     # biomass process model:
     K ~ filldist( TruncatedNormal( kmu, kmu*0.1, kmu/1000.0, kmu*1000.0), nS )  # kmu is max of a multiyear group , serves as upper bound for all
  
-    q ~ filldist( TruncatedNormal(  1.0, 0.2,  0.1, 10.0), nS )
+    q ~ filldist( TruncatedNormal(  1.0, 0.1,  0.1, 10.0), nS )
 
-    qc ~ arraydist([Normal(-SminFraction[i], 0.2) for i in 1:nS])  # informative prior on relative height 
+    qc ~ arraydist([Normal( -SminFraction[i], 0.1) for i in 1:nS])  # informative prior on relative height 
     # qc ~ filldist( TruncatedNormal( 0.0, 0.1, -10.0, 10.0), nS )  # uninformative
 
-    model_sd ~ filldist( TruncatedNormal( 0.1, 0.1, 0.01, 0.3 ), nS ) 
+    model_sd ~ filldist( TruncatedNormal( 0.1, 0.05, 0.01, 1.0 ), nS ) 
  
-    # # additional soft constraint givening more weight to fishable compoennt
-    # soft_constraint = model_sd[1]
-    # soft_constraint ~ Normal(0.0, 0.001)
-    
     # "birth" rate from F(y - 8 to 10)  and for males m5 and femaless
-    b ~ filldist( TruncatedNormal(10.0, 1.0, 0.01, 1000.0), 2 )  
+    b ~ filldist( TruncatedNormal(100.0, 1.0, 0.01, 1000.0), 2 )  
 
     # background mortality
     d ~ filldist( TruncatedNormal(0.2, 0.1, 0.01, 0.99), nS )
 
     # excess mortality due to habitat (second order)
-    d2 ~ filldist( TruncatedNormal(0.4, 0.2, 0.01, 0.99), nS )
+    d2 ~ filldist( TruncatedNormal(0.4, 0.1, 0.01, 0.99), nS )
 
     # transition rates
-    v ~ filldist( TruncatedNormal(0.8, 0.2, 0.01, 0.99), 4 )
+    v ~ filldist( TruncatedNormal(0.8, 0.1, 0.01, 0.99), 4 )
 
     # initial conditions
-    u0 ~ filldist( TruncatedNormal(0.8, 0.2, 0.01, 0.99), nS )
+    u0 ~ filldist( TruncatedNormal(0.8, 0.1, 0.01, 0.99), nS )
 
     pm = ( b, K, d, d2, v, tau, hsa )
     # @show pm
@@ -100,6 +99,180 @@ end
             S[Si[i],k] ~ Normal( msol.u[ii][k] * q[k] + qc[k], model_sd[k] )  # observation and process error combined
         end
     end
+
+end
+
+
+@model function size_structured_dde_turing_north( S, kmu, tspan, prob, nT, nS, nM,
+  solver=MethodOfSteps(Tsit5()), dt = 0.01, ::Type{T} = Float64) where T
+
+  # biomass process model:
+  K ~ filldist( TruncatedNormal( kmu, kmu*0.1, kmu/1000.0, kmu*1000.0), nS )  # kmu is max of a multiyear group , serves as upper bound for all
+
+  q ~ filldist( TruncatedNormal(  1.0, 0.1,  0.1, 10.0), nS )
+
+  qc ~ arraydist([TruncatedNormal( -SminFraction[i], 0.1, -10.0, 10.0) for i in 1:nS])  # informative prior on relative height 
+  # qc ~ filldist( TruncatedNormal( 0.0, 0.1, -10.0, 10.0), nS )  # uninformative
+
+  model_sd ~ filldist( TruncatedNormal( 0.1, 0.05, 0.01, 0.3 ), nS ) 
+
+  # "birth" rate from F(y - 8 to 10)  and for males m5 and femaless
+  b ~ filldist( TruncatedNormal(10.0, 0.5, 0.01, 100.0), 2 )  
+
+  # background mortality
+  d ~ filldist( TruncatedNormal(0.2, 0.1, 0.01, 0.99), nS )
+
+  # excess mortality due to habitat (second order)
+  d2 ~ filldist( TruncatedNormal(0.4, 0.1, 0.01, 0.99), nS )
+
+  # transition rates
+  v ~ filldist( TruncatedNormal(0.8, 0.1, 0.01, 0.99), 4 )
+
+  # initial conditions
+  u0 ~ filldist( TruncatedNormal(0.8, 0.1, 0.01, 0.99), nS )
+
+  pm = ( b, K, d, d2, v, tau, hsa )
+  # @show pm
+
+  # process model
+  msol = solve(
+      remake( prob; u0=u0, h=h, tspan=tspan, p=pm ),
+      solver,
+      callback=cb,
+      # isoutofdomain=(y,p,t)->any(x -> (x<0.0 || x>1.0), y) , # this constraint is too much as there are timeseries-lag effects
+      isoutofdomain=(y,p,t)->any(x -> (x<0.0), y),  # permit exceeding K
+      saveat=dt
+  )
+
+  # @show msol.retcode
+  if msol.retcode != :Success
+    Turing.@addlogprob! -Inf
+    return nothing
+  end
+
+  # likelihood of the data
+  for i in 1:nSI
+      ii = findall(x->x==survey_time[Si[i]], msol.t)[1]
+      for k in 1:nS
+          S[Si[i],k] ~ Normal( msol.u[ii][k] * q[k] + qc[k], model_sd[k] )  # observation and process error combined
+      end
+  end
+
+end
+
+
+@model function size_structured_dde_turing_south( S, kmu, tspan, prob, nT, nS, nM,
+  solver=MethodOfSteps(Tsit5()), dt=0.01, ::Type{T} = Float64) where {T}
+
+  # biomass process model:
+  K ~ filldist( TruncatedNormal( kmu, kmu*0.1, kmu/1000.0, kmu*1000.0), nS )  # kmu is max of a multiyear group , serves as upper bound for all
+
+  q ~ filldist( TruncatedNormal(  1.0, 0.05,  0.1, 10.0), nS )
+
+  qc ~ arraydist([TruncatedNormal( -SminFraction[i], 0.05, -10.0, 10.0) for i in 1:nS])  # informative prior on relative height 
+  # qc ~ filldist( TruncatedNormal( 0.0, 0.1, -10.0, 10.0), nS )  # uninformative
+
+  model_sd ~ filldist( TruncatedNormal( 0.0, 0.05, 0.01, 0.3 ), nS ) 
+
+  # "birth" rate from F(y - 8 to 10)  and for males m5 and femaless
+  b ~ filldist( TruncatedNormal(10.0, 1.0, 0.01, 100.0), 2 )  
+
+  # background mortality
+  d ~ filldist( TruncatedNormal(0.2, 0.1, 0.01, 0.99), nS )
+
+  # excess mortality due to habitat (second order)
+  d2 ~ filldist( TruncatedNormal(0.4, 0.1, 0.01, 0.99), nS )
+
+  # transition rates
+  v ~ filldist( TruncatedNormal(0.8, 0.1, 0.01, 0.99), 4 )
+
+  # initial conditions
+  u0 ~ filldist( TruncatedNormal(0.8, 0.1, 0.01, 0.99), nS )
+
+  pm = ( b, K, d, d2, v, tau, hsa )
+  # @show pm
+
+  # process model
+  msol = solve(
+      remake( prob; u0=u0, h=h, tspan=tspan, p=pm ),
+      solver,
+      callback=cb,
+      # isoutofdomain=(y,p,t)->any(x -> (x<0.0 || x>1.0), y) , # this constraint is too much as there are timeseries-lag effects
+      isoutofdomain=(y,p,t)->any(x -> (x<0.0), y),  # permit exceeding K
+      saveat=dt
+  )
+
+  # @show msol.retcode
+  if msol.retcode != :Success
+    Turing.@addlogprob! -Inf
+    return nothing
+  end
+
+  # likelihood of the data
+  for i in 1:nSI
+      ii = findall(x->x==survey_time[Si[i]], msol.t)[1]
+      for k in 1:nS
+          S[Si[i],k] ~ Normal( msol.u[ii][k] * q[k] + qc[k], model_sd[k] )  # observation and process error combined
+      end
+  end
+
+end
+
+
+@model function size_structured_dde_turing_4x( S, kmu, tspan, prob, nT, nS, nM,
+  solver=MethodOfSteps(Tsit5()), dt = 0.01, ::Type{T} = Float64) where T
+
+  # biomass process model:
+  K ~ filldist( TruncatedNormal( kmu, kmu*0.1, kmu/1000.0, kmu*1000.0), nS )  # kmu is max of a multiyear group , serves as upper bound for all
+
+  q ~ filldist( TruncatedNormal(  1.0, 0.05,  0.1, 10.0), nS )
+
+  qc ~ arraydist([TruncatedNormal( -SminFraction[i], 0.05, -10.0, 10.0) for i in 1:nS])  # informative prior on relative height 
+  # qc ~ filldist( TruncatedNormal( 0.0, 0.1, -10.0, 10.0), nS )  # uninformative
+
+  model_sd ~ filldist( TruncatedNormal( 0.1, 0.05, 0.01, 0.3 ), nS ) 
+
+  # "birth" rate from F(y - 8 to 10)  and for males m5 and femaless
+  b ~ filldist( TruncatedNormal(10.0, 0.5, 0.01, 100.0), 2 )  
+
+  # background mortality
+  d ~ filldist( TruncatedNormal(0.2, 0.1, 0.01, 0.99), nS )
+
+  # excess mortality due to habitat (second order)
+  d2 ~ filldist( TruncatedNormal(0.4, 0.1, 0.01, 0.99), nS )
+
+  # transition rates
+  v ~ filldist( TruncatedNormal(0.8, 0.1, 0.01, 0.99), 4 )
+
+  # initial conditions
+  u0 ~ filldist( TruncatedNormal(0.8, 0.1, 0.01, 0.99), nS )
+
+  pm = ( b, K, d, d2, v, tau, hsa )
+  # @show pm
+
+  # process model
+  msol = solve(
+      remake( prob; u0=u0, h=h, tspan=tspan, p=pm ),
+      solver,
+      callback=cb,
+      # isoutofdomain=(y,p,t)->any(x -> (x<0.0 || x>1.0), y) , # this constraint is too much as there are timeseries-lag effects
+      isoutofdomain=(y,p,t)->any(x -> (x<0.0), y),  # permit exceeding K
+      saveat=dt
+  )
+
+  # @show msol.retcode
+  if msol.retcode != :Success
+    Turing.@addlogprob! -Inf
+    return nothing
+  end
+
+  # likelihood of the data
+  for i in 1:nSI
+      ii = findall(x->x==survey_time[Si[i]], msol.t)[1]
+      for k in 1:nS
+          S[Si[i],k] ~ Normal( msol.u[ii][k] * q[k] + qc[k], model_sd[k] )  # observation and process error combined
+      end
+  end
 
 end
 
@@ -322,9 +495,11 @@ function fishery_model_predictions( res; prediction_time=prediction_time, n_samp
 
   # back transform S to normal scale .. do sims too (TODO)
   k = 1
-  yhat = ( S[:,k] .- mean(res[:,Symbol("qc[$k]"),:]  ) ) ./ mean(res[:,Symbol("q[$k]"),:]) .* mean(res[:,Symbol("K[$k]"),:]  )
-  # S[i,k] ~ TruncatedNormal( msol.u[ii][k] * q[k] + qc[k], bpsd, 0.0, 1.0)
-  # yhat = abundance_from_index( S[:,k], res, k ) 
+  qcm = mean(res[:,Symbol("qc[$k]"),:])
+  qm  = mean(res[:,Symbol("q[$k]"),:])
+  Km = mean(res[:,Symbol("K[$k]"),:]  )
+
+  yhat = ( S[:,k] .- qcm  ) ./ qm .* Km   # abundance_from_index S[:,1]  
 
   if nameof(typeof(mw)) == :ScaledInterpolation
     yhat = yhat .* mw(yrs) ./ 1000.0  ./ 1000.0
