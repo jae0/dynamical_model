@@ -1,0 +1,143 @@
+---
+title: "Snow crab model comparisons"
+author: "Jae S. Choi"
+date: "Document version timestamp `r format(Sys.time(), '%d %B, %Y')`"
+always_allow_html: true
+output: 
+  word_document:
+    # reference_docx: outputs/model_comparisons.docx
+# other outputs: html_document, pdf_document, ioslides_presentation, powerpoint_presentation
+# bibliography: media/snowcrab.bib 
+# csl: media/csas.csl
+# other outputs: html_document, pdf_document, ioslides_presentation, powerpoint_presentation
+# bibliography: media/snowcrab.bib 
+# csl: media/csas.csl
+# csl is citation style download from: https://www.zotero.org/styles
+# csas.csl copied from "csasdown"
+params:
+  year.assessment: 2021
+  bio.data.dir: "/home/jae/bio.data"
+  smd: "/home/jae/projects/dynamical_model/snowcrab"  
+  work_root: "/home/jae/projects/dynamical_model/snowcrab/outputs"
+
+# original version presented: 2020-02-25, Darthmouth, Nova Scotia
+# converted to markdown 2022-01-25
+---
+
+
+<!--- set up R-environment --->
+```{r setup, include=FALSE}
+  rmd_dir = getwd()
+
+  if (0) {
+    # To create the msword document from within R run this:
+    smd = "/home/jae/projects/dynamical_model/snowcrab"
+    setwd( smd )  # change to where the rmd file lives
+    rmarkdown::render( "model_comparisons.rmd", params=list(year.assessment=2021 ),  output_dir=work_root )
+    system( paste( "/usr/bin/zathura ", file.path( work_root, "model_comparisons.pdf") ) )
+  }
+
+  require(knitr)
+  knitr::opts_chunk$set( 
+    root.dir = data_root, 
+    echo = FALSE, 
+    # out.width="6.2in", 
+    dev.args = list(type = "cairo"), 
+    fig.retina = 2, 
+    dpi=192
+  )
+  # knitr::opts_knit$set( root.dir = data_root )  # data_root should be defined in your Rprofile
+
+  year.assessment = params$year.assessment
+  year_previous = year.assessment - 1
+  
+  p = bio.snowcrab::load.environment( year.assessment=year.assessment )
+  SCD = project.datadirectory("bio.snowcrab")
+  
+  
+  odir = file.path( smd, "outputs" )
+  om0 = file.path( odir, "logistic_discrete_historical" )
+  om1 = file.path( odir, "logistic_discrete_basic" )
+  om2 = file.path( odir, "logistic_discrete" )
+  om3 = file.path( odir, "size_structured_dde_normalized" )
+
+```
+
+
+Model 0
+
+```{r, out.width=520 }
+
+    include_graphics(  c(
+        file.path( om0, "plot_predictions_cfanorth.pdf" ), 
+        file.path( om0, "plot_predictions_cfasouth.pdf" ), 
+        file.path( om0, "plot_predictions_cfa4x.pdf" ), 
+        file.path( om0, "plot_fishing_mortality_cfanorth.pdf" ), 
+        file.path( om0, "plot_fishing_mortality_cfasouth.pdf" ), 
+        file.path( om0, "plot_fishing_mortality_cfa4x.pdf" ), 
+        file.path( om0, "plot_hcr_cfanorth.pdf" ), 
+        file.path( om0, "plot_hcr_cfasouth.pdf" ), 
+        file.path( om0, "plot_hcr_cfa4x.pdf" )
+ 
+    ) )
+
+```
+
+Model 1
+
+```{r, out.width=520 }
+
+    include_graphics(  c(
+        file.path( om1, "plot_predictions_cfanorth.pdf" ), 
+        file.path( om1, "plot_predictions_cfasouth.pdf" ), 
+        file.path( om1, "plot_predictions_cfa4x.pdf" ), 
+        file.path( om1, "plot_fishing_mortality_cfanorth.pdf" ), 
+        file.path( om1, "plot_fishing_mortality_cfasouth.pdf" ), 
+        file.path( om1, "plot_fishing_mortality_cfa4x.pdf" ), 
+        file.path( om1, "plot_hcr_cfanorth.pdf" ), 
+        file.path( om1, "plot_hcr_cfasouth.pdf" ), 
+        file.path( om1, "plot_hcr_cfa4x.pdf" )
+ 
+    ) )
+
+```
+
+Model 2
+
+```{r, out.width=520 }
+
+    include_graphics(  c(
+        file.path( om2, "plot_predictions_cfanorth.pdf" ), 
+        file.path( om2, "plot_predictions_cfasouth.pdf" ), 
+        file.path( om2, "plot_predictions_cfa4x.pdf" ), 
+        file.path( om2, "plot_fishing_mortality_cfanorth.pdf" ), 
+        file.path( om2, "plot_fishing_mortality_cfasouth.pdf" ), 
+        file.path( om2, "plot_fishing_mortality_cfa4x.pdf" ), 
+        file.path( om2, "plot_hcr_cfanorth.pdf" ), 
+        file.path( om2, "plot_hcr_cfasouth.pdf" ), 
+        file.path( om2, "plot_hcr_cfa4x.pdf" )
+ 
+    ) )
+
+```
+
+Model 3
+
+```{r, out.width=520 }
+
+    include_graphics(  c(
+        file.path( om3, "plot_predictions_cfanorth.pdf" ), 
+        file.path( om3, "plot_predictions_cfasouth.pdf" ), 
+        file.path( om3, "plot_predictions_cfa4x.pdf" ), 
+        file.path( om3, "plot_fishing_mortality_cfanorth.pdf" ), 
+        file.path( om3, "plot_fishing_mortality_cfasouth.pdf" ), 
+        file.path( om3, "plot_fishing_mortality_cfa4x.pdf" ), 
+        file.path( om3, "plot_hcr_cfanorth.pdf" ), 
+        file.path( om3, "plot_hcr_cfasouth.pdf" ), 
+        file.path( om3, "plot_hcr_cfa4x.pdf" )
+ 
+    ) )
+
+```
+
+

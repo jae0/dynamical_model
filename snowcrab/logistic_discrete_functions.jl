@@ -18,7 +18,7 @@ using Turing
   bosd ~  TruncatedNormal( 0.1, 0.05, 0.01, 0.5 )  ;  # slightly informative .. center of mass between (0,1)
 
   q ~ TruncatedNormal(  1.0, 0.1,  0.01, 10.0)    
-  qc ~ TruncatedNormal( SminFraction, 0.1, -1.0, 1.0) 
+  qc ~ TruncatedNormal( -SminFraction, 0.1, -1.0, 1.0) 
 
   m = TArray{T}( nM )
   m[1] ~  TruncatedNormal( 0.9, 0.2, 0.1, 1.0 )  ; # starting b prior to first catch event
@@ -92,7 +92,7 @@ end
   r ~  TruncatedNormal( 1.0, 0.1, 0.25, 2.0)   # (mu, sd)
 
   bpsd ~  truncated( Cauchy( 0, 0.1), 1.0e-9, 0.5 )  ;  # slightly informative .. center of mass between (0,1)
-  bosd ~  truncated( Cauchy( 0, 0.1), 1.0e-9, 0.5 )    ;  # slightly informative .. center of mass between (0,1)
+  bosd ~  truncated( Cauchy( 0, 0.1), 1.0e-9, Inf )    ;  # slightly informative .. center of mass between (0,1)
 
   q ~ TruncatedNormal(  1.0, 0.1,  1.0e-9, 10.0 )    
 
@@ -115,9 +115,8 @@ end
 
   # likelihood
   # observation model: Y = q X  ; X = (Y ) / q
-  s = S ./ K
   for i in iok
-    s[i] ~ Normal( q * ( m[i] - removed[i]/K ) , bosd )  ; # fall survey
+    S[i] ~ Normal( q * (K * m[i]  - removed[i]), bosd )  ; # fall survey
   end
 
 end
@@ -174,7 +173,7 @@ end
   bosd ~  TruncatedNormal( 0.1, 0.05, 0.01, 0.5 )  ;  # slightly informative .. center of mass between (0,1)
 
   q ~ TruncatedNormal(  1.0, 0.1,  0.01, 10.0)    
-  qc ~ TruncatedNormal( SminFraction, 0.1, -1.0, 1.0) 
+  qc ~ TruncatedNormal( -SminFraction, 0.1, -1.0, 1.0) 
 
   m = TArray{T}( nM )
   m[1] ~  TruncatedNormal( 0.9, 0.2, 0.1, 1.0 )  ; # starting b prior to first catch event
@@ -262,7 +261,7 @@ end
   r ~  TruncatedNormal( 1.0, 0.1, 0.25, 2.0)   # (mu, sd)
 
   bpsd ~  truncated( Cauchy( 0, 0.1), 1.0e-9, 0.5 )  ;  # slightly informative .. center of mass between (0,1)
-  bosd ~  truncated( Cauchy( 0, 0.1), 1.0e-9, 0.5 )     ;  # slightly informative .. center of mass between (0,1)
+  bosd ~  truncated( Cauchy( 0, 0.1), 1.0e-9, Inf )     ;  # slightly informative .. center of mass between (0,1)
 
   q ~ TruncatedNormal(  1.0, 0.1,  1.0e-9, 10.0 )    
 
@@ -293,16 +292,14 @@ end
   # in cfa4x fishery always after survey
   # m's are "postfishery"
   
-  s = S ./ K
-  
   for i in iok
 
     if  i < ty
-      s[i] ~ Normal( q * ( m[i] ), bosd )  ;  # spring survey
+      S[i] ~ Normal( q * K * m[i], bosd )  ;  # spring survey
     elseif i == ty
-      s[i] ~ Normal( q * ( m[i] - (removed[i-1] + removed[i]) / (K*2.0 ) ), bosd )  ;  # transition year 
+      S[i] ~ Normal( q * ( K * m[i] - (removed[i-1] + removed[i]) / 2.0), bosd )  ;  # transition year 
     else
-      s[i] ~ Normal( q * ( m[i] - removed[i] /K), bosd )  ; # fall survey
+      S[i] ~ Normal( q * ( K * m[i] - removed[i] ) , bosd )  ; # fall survey
     end
   end
     
