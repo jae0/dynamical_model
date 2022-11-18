@@ -56,7 +56,7 @@ end
     qc ~ arraydist([Normal( -SminFraction[i], 0.1) for i in 1:nS])  # informative prior on relative height 
     # qc ~ filldist( TruncatedNormal( 0.0, 0.1, -10.0, 10.0), nS )  # uninformative
 
-    model_sd ~ filldist( TruncatedNormal( 0.1, 0.05, 0.01, 1.0 ), nS ) 
+    model_sd ~ filldist( TruncatedNormal( 0.01, 0.05, 0.01, 1.0 ), nS ) 
  
     # "birth" rate from F(y - 8 to 10)  and for males m5 and femaless
     b ~ filldist( TruncatedNormal(100.0, 1.0, 0.01, 1000.0), 2 )  
@@ -114,7 +114,7 @@ end
   qc ~ arraydist([TruncatedNormal( -SminFraction[i], 0.1, -10.0, 10.0) for i in 1:nS])  # informative prior on relative height 
   # qc ~ filldist( TruncatedNormal( 0.0, 0.1, -10.0, 10.0), nS )  # uninformative
 
-  model_sd ~ filldist( TruncatedNormal( 0.1, 0.05, 0.01, 0.3 ), nS ) 
+  model_sd ~ filldist( TruncatedNormal( 0.0, 0.1, 0.01, 0.3 ), nS ) 
 
   # "birth" rate from F(y - 8 to 10)  and for males m5 and femaless
   b ~ filldist( TruncatedNormal(10.0, 0.5, 0.01, 100.0), 2 )  
@@ -167,15 +167,15 @@ end
   # biomass process model:
   K ~ filldist( TruncatedNormal( kmu, kmu*0.1, kmu/1000.0, kmu*1000.0), nS )  # kmu is max of a multiyear group , serves as upper bound for all
 
-  q ~ filldist( TruncatedNormal(  1.0, 0.05,  0.1, 10.0), nS )
+  q ~ filldist( TruncatedNormal(  1.0, 0.1,  0.1, 10.0), nS )
 
-  qc ~ arraydist([TruncatedNormal( -SminFraction[i], 0.05, -10.0, 10.0) for i in 1:nS])  # informative prior on relative height 
+  qc ~ arraydist([TruncatedNormal( -SminFraction[i], 0.1, -10.0, 10.0) for i in 1:nS])  # informative prior on relative height 
   # qc ~ filldist( TruncatedNormal( 0.0, 0.1, -10.0, 10.0), nS )  # uninformative
 
-  model_sd ~ filldist( TruncatedNormal( 0.0, 0.05, 0.01, 0.3 ), nS ) 
+  model_sd ~ filldist( TruncatedNormal( 0.0, 0.1, 0.01, 0.3 ), nS ) 
 
   # "birth" rate from F(y - 8 to 10)  and for males m5 and femaless
-  b ~ filldist( TruncatedNormal(10.0, 1.0, 0.01, 100.0), 2 )  
+  b ~ filldist( TruncatedNormal(10.0, 0.5, 0.01, 100.0), 2 )  
 
   # background mortality
   d ~ filldist( TruncatedNormal(0.2, 0.1, 0.01, 0.99), nS )
@@ -225,12 +225,12 @@ end
   # biomass process model:
   K ~ filldist( TruncatedNormal( kmu, kmu*0.1, kmu/1000.0, kmu*1000.0), nS )  # kmu is max of a multiyear group , serves as upper bound for all
 
-  q ~ filldist( TruncatedNormal(  1.0, 0.05,  0.1, 10.0), nS )
+  q ~ filldist( TruncatedNormal(  1.0, 0.1,  0.1, 10.0), nS )
 
-  qc ~ arraydist([TruncatedNormal( -SminFraction[i], 0.05, -10.0, 10.0) for i in 1:nS])  # informative prior on relative height 
+  qc ~ arraydist([TruncatedNormal( -SminFraction[i], 0.1, -10.0, 10.0) for i in 1:nS])  # informative prior on relative height 
   # qc ~ filldist( TruncatedNormal( 0.0, 0.1, -10.0, 10.0), nS )  # uninformative
 
-  model_sd ~ filldist( TruncatedNormal( 0.1, 0.05, 0.01, 0.3 ), nS ) 
+  model_sd ~ filldist( TruncatedNormal( 0.0, 0.1, 0.01, 0.3 ), nS ) 
 
   # "birth" rate from F(y - 8 to 10)  and for males m5 and femaless
   b ~ filldist( TruncatedNormal(10.0, 0.5, 0.01, 100.0), 2 )  
