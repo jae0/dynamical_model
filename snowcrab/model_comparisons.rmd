@@ -1,5 +1,5 @@
 ---
-title: "Snow crab model comparisons"
+title: "Snow crab # model comparisons"
 author: "Jae S. Choi"
 date: "Document version timestamp `r format(Sys.time(), '%d %B, %Y')`"
 always_allow_html: true
@@ -64,7 +64,7 @@ params:
 ```
 
 
-Model 0
+# Model 0
 
 ```{r, out.width=520 }
 
@@ -83,7 +83,7 @@ Model 0
 
 ```
 
-Model 1
+# Model 1
 
 ```{r, out.width=520 }
 
@@ -102,7 +102,7 @@ Model 1
 
 ```
 
-Model 2
+# Model 2
 
 ```{r, out.width=520 }
 
@@ -121,7 +121,7 @@ Model 2
 
 ```
 
-Model 3
+# Model 3
 
 ```{r, out.width=520 }
 
@@ -137,6 +137,57 @@ Model 3
         file.path( om3, "plot_hcr_cfa4x.pdf" )
  
     ) )
+
+
+    include_graphics(  c(
+        file.path( om3, "plot_predictions_trace_cfanorth.pdf" ), 
+        file.path( om3, "plot_predictions_trace_cfasouth.pdf" ), 
+        file.path( om3, "plot_predictions_trace_cfa4x.pdf" )
+    ) )
+
+
+    # include_graphics(  c(
+    #     file.path( om3, "plot_predictions_timeseries_cfanorth_1.pdf" ), 
+    #     file.path( om3, "plot_predictions_timeseries_cfasouth_1.pdf" ), 
+    #     file.path( om3, "plot_predictions_timeseries_cfa4x_1.pdf" )
+    # ) )
+
+
+    # include_graphics(  c(
+    #     file.path( om3, "plot_predictions_timeseries_cfanorth_2.pdf" ), 
+    #     file.path( om3, "plot_predictions_timeseries_cfasouth_2.pdf" ), 
+    #     file.path( om3, "plot_predictions_timeseries_cfa4x_2.pdf" )
+    # ) )
+
+
+    # include_graphics(  c(
+    #     file.path( om3, "plot_predictions_timeseries_cfanorth_3.pdf" ), 
+    #     file.path( om3, "plot_predictions_timeseries_cfasouth_3.pdf" ), 
+    #     file.path( om3, "plot_predictions_timeseries_cfa4x_3.pdf" )
+    # ) )
+
+
+    # include_graphics(  c(
+    #     file.path( om3, "plot_predictions_timeseries_cfanorth_4.pdf" ), 
+    #     file.path( om3, "plot_predictions_timeseries_cfasouth_4.pdf" ), 
+    #     file.path( om3, "plot_predictions_timeseries_cfa4x_4.pdf" )
+    # ) )
+
+
+    # include_graphics(  c(
+    #     file.path( om3, "plot_predictions_timeseries_cfanorth_5.pdf" ), 
+    #     file.path( om3, "plot_predictions_timeseries_cfasouth_5.pdf" ), 
+    #     file.path( om3, "plot_predictions_timeseries_cfa4x_5.pdf" )
+    # ) )
+
+
+    # include_graphics(  c(
+    #     file.path( om3, "plot_predictions_timeseries_cfanorth_6.pdf" ), 
+    #     file.path( om3, "plot_predictions_timeseries_cfasouth_6.pdf" ), 
+    #     file.path( om3, "plot_predictions_timeseries_cfa4x_6.pdf" )
+    # ) )
+
+
 
 ```
 

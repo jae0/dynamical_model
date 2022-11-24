@@ -25,7 +25,7 @@ end
 pkgs = [
   "Revise", "MKL", "Logging", "StatsBase", "Statistics", "Distributions", "Random",
   # "DynamicHMC", "AdvancedHMC",  "AdvancedMH",  "DynamicPPL",  "AbstractPPL",  "Memoization",
-  "ForwardDiff", "DataFrames", "JLD2", "PlotThemes", "Colors", "ColorSchemes", "RData",
+  "ForwardDiff", "DataFrames", "CSV", "JLD2", "PlotThemes", "Colors", "ColorSchemes", "RData",
   "Plots", "StatsPlots",  "MultivariateStats", "StaticArrays", "LazyArrays", "FillArrays",
   "Turing", "ModelingToolkit", "DifferentialEquations", "Interpolations", "LinearAlgebra"
 ]
@@ -69,7 +69,10 @@ solver = MethodOfSteps(Tsit5())   # faster
 
 Turing.setadbackend(:forwarddiff)  # only AD that works right now
 
-# Turing.setrdcache(true) # reverse diff not working right Newton
+# using ReverseDiff
+# Turing.setadbackend(:reversediff)  # only AD that works right now
+
+# Turing.setrdcache(true) # reverse diff not working right now
  
 
 # perpare dat for dde run of fishery model
@@ -80,7 +83,7 @@ Y = o["Y"]
 removals = o["L"]
 MW = o["M0_W"]
 
-Kmu = [5.0, 60.0, 1.25]
+Kmu = [5.0, 60.0, 1.5]
 
     if false
         # alternatively, if running manually:
@@ -305,8 +308,8 @@ n_chains=4
 # NUTS-specific run options
 # see write up here: https://turing.ml/dev/docs/using-turing/sampler-viz
 rejection_rate = 0.65  ## too high and it become impossibly slow .. this is a good balance between variability and speed
-max_depth=8  ## too high and it become impossibly slow
-init_ϵ=0.05 # step size (auto compute usually gives from 0.01 to 0.05)
+max_depth=7  ## too high and it become impossibly slow
+init_ϵ=0.01 # step size (auto compute usually gives from 0.01 to 0.05)
  
 
 
@@ -314,19 +317,33 @@ init_ϵ=0.05 # step size (auto compute usually gives from 0.01 to 0.05)
 if model_variation=="size_structured_dde_normalized" 
 
   if aulab=="cfanorth"
-    fmod = size_structured_dde_turing_north( S, kmu, tspan, prob, nT, nS, nM, solver, dt )
-    rejection_rate = 0.65  
-    max_depth=8  
+    fmod = size_structured_dde_turing_north( S, kmu, tspan, prob, nT, nS, nM, solver, dt)
+    rejection_rate = 0.65 # consider 0.8 
+    max_depth=7
+    init_ϵ=0.001 # step size (auto compute usually gives from 0.01 to 0.05)
+
+    # sampling and convergence is very fast and good: rhat == 1; ess~1000-2000; 
+    n_adapts=1000  # was 500 not sufficient in terms of rhat
+    n_samples=1000
+    n_chains=4
 
   elseif aulab=="cfasouth" 
-    fmod = size_structured_dde_turing_south( S, kmu, tspan, prob, nT, nS, nM, solver, dt )  
-    rejection_rate = 0.75  
-    max_depth=8  
+    fmod = size_structured_dde_turing_south( S, kmu, tspan, prob, nT, nS, nM, solver, dt)  
+    rejection_rate = 0.65
+    max_depth=7
+    init_ϵ=0.001 # step size (auto compute usually gives from 0.01 to 0.05)
 
+    n_adapts=1000
+    n_samples=1000
+    
   elseif aulab=="cfa4x" 
-    fmod = size_structured_dde_turing_4x( S, kmu, tspan, prob, nT, nS, nM, solver, dt )  
-    rejection_rate = 0.65  
-    max_depth=8  
+    fmod = size_structured_dde_turing_4x( S, kmu, tspan, prob, nT, nS, nM, solver, dt)  
+    rejection_rate = 0.65
+    max_depth=7
+    init_ϵ=0.001 # step size (auto compute usually gives from 0.01 to 0.05)
+ 
+    n_adapts=1000
+    n_samples=1000
 
   end
 

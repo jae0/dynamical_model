@@ -38,7 +38,7 @@ end
 
 pkgs = [
   "Revise", "MKL", "Logging", "StatsBase", "Statistics", "Distributions", "Random",
-  "ForwardDiff", "DataFrames", "JLD2", "PlotThemes", "Colors", "ColorSchemes", "RData",
+  "ForwardDiff", "DataFrames", "JLD2", "CSV", "PlotThemes", "Colors", "ColorSchemes", "RData",
   "Plots", "StatsPlots", "MultivariateStats", "StaticArrays", "LazyArrays", "FillArrays",
   "Turing", "ModelingToolkit", "DifferentialEquations", "Interpolations", "LinearAlgebra"
 ]

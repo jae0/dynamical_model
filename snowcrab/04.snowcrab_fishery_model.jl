@@ -18,7 +18,7 @@ model_variations_implemented = [
 model_variation = "logistic_discrete_historical"   # Model 0 .. pre-2022 method  :: ~ 1 hr
 model_variation = "logistic_discrete_basic"  # Model 1
 model_variation = "logistic_discrete"        # Model 2 ~ 
-model_variation = "size_structured_dde_normalized"  # Model 3 ::  5 to 10 hrs
+model_variation = "size_structured_dde_normalized"  # Model 3 ::  5 to 10 hrs,  24hrs, >24 hrs
 
 # choose a region of interest"
 aulab ="cfanorth"   
@@ -77,7 +77,7 @@ include( fn_env )
 debugging = false
 if debugging
     # if debugging/development:
-     
+      
     # to test dynamical model with generic/random parameters
     if @isdefined fishery_model_test  
       (test, pl) = fishery_model_test( "basic" )
@@ -92,10 +92,16 @@ if debugging
       (test, pl) = fishery_model_test( "nofishing" )
       pl
       showall( summarize( test ) )
+
+      using Plots, Distributions
+      plot(x->pdf(Beta(2, 2), x), xlim=(0,1))
+  
     end
 
 
-    res  =  sample( fmod, Turing.NUTS(30, 0.65; max_depth=7, init_ϵ=0.05), 30 ) # to see progress -- about 5 min
+    # include( fn_env )
+
+    res  =  sample( fmod, Turing.NUTS(30, 0.65; max_depth=7, init_ϵ=0.001), 30 ) # to see progress -- about 5 min
     # res = fishery_model_inference( fmod, n_adapts=30, n_samples=30, n_chains=1, max_depth=7, init_ϵ=0.01  )
  
     (m, num, bio, pl)  = fishery_model_predictions(res; prediction_time=prediction_time, n_sample=30 )
@@ -138,6 +144,9 @@ if false
   @load res_fn res
 end
 
+summary_fn = joinpath( directory_output, string("results_turing", "_", aulab, "_summary", ".csv" ) )  
+CSV.write( summary_fn,  summarize( res ) )
+ 
 
 # summaries and plots 
 
@@ -174,14 +183,14 @@ plot( autocorplot(res) )
 # annual snapshots of biomass (kt); return m=normalized abundance, num=numbers, bio=biomass and pl=plot, where possible
 (m, num, bio, pl)  = fishery_model_predictions(res; prediction_time=prediction_time, n_sample=500)
 fb = bio[1:length(survey_time),:,1]  # the last 1 is for size struct; no effect in discrete
-pl = plot(pl, ylim=aulab=="cfanorth" ? (0, 10.0) : aulab=="cfasouth" ? (0, 90) : (0, 1.5))
+pl = plot(pl, ylim=aulab=="cfanorth" ? (0, 6.0) : aulab=="cfasouth" ? (0, 90) : (0, 1.5))
 savefig(pl, joinpath( directory_output, string("plot_predictions_", aulab, ".pdf") )  )
 
 # plot fishing mortality
 (Fkt, FR, FM, pl) = fishery_model_mortality( removed, fb, n_sample=500 ) 
 pl = plot(pl, ylim=(0, 0.5))
 if occursin.( r"size_structured", model_variation )
-  pl = plot(pl, ylim=aulab=="cfanorth" ? (0, 1.0) : aulab=="cfasouth" ? (0, 0.4) : (0, 3.5))
+  pl = plot(pl, ylim=aulab=="cfanorth" ? (0, 1.25) : aulab=="cfasouth" ? (0, 0.7) : (0, 1.6))
 end
 savefig(pl, joinpath( directory_output, string("plot_fishing_mortality_", aulab, ".pdf") )  )
 
@@ -190,7 +199,7 @@ savefig(pl, joinpath( directory_output, string("plot_fishing_mortality_", aulab,
 (K, bi, fm, fmsy, pl) = fishery_model_harvest_control_rule(res, yrs; FM=FM, fb=fb, n_sample=500)
 pl = plot(pl, ylim=(0, 1.5))
 if occursin.( r"size_structured", model_variation )
-  pl = plot(pl, ylim=aulab=="cfanorth" ? (0, 1.0) : aulab=="cfasouth" ? (0, 0.5) : (0, 3))
+  pl = plot(pl, ylim=aulab=="cfanorth" ? (0, 1.0) : aulab=="cfasouth" ? (0, 0.75) : (0, 1.4))
 end
 savefig(pl, joinpath( directory_output, string("plot_hcr_", aulab, ".pdf") )  )
 

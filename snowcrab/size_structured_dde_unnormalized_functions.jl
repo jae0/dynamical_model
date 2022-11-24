@@ -76,6 +76,9 @@ end
         remake( prob; u0=u0 .* K, h=h, tspan=tspan, p=pm ),
         solver,
         callback=cb,
+        # maxiters=1e5,
+        # abstol = 1e-9, 
+        # reltol = 1e-9
         isoutofdomain=(y,p,t)->any(x -> (x<0.0), y),
         saveat=dt
     )
