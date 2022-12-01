@@ -333,7 +333,7 @@ if model_variation=="size_structured_dde_normalized"
     max_depth=7
     init_ϵ=0.001 # step size (auto compute usually gives from 0.01 to 0.05)
 
-    n_adapts=1000
+    n_adapts=1500
     n_samples=1000
     
   elseif aulab=="cfa4x" 

@@ -10,10 +10,64 @@ function size_structured_dde!( du, u, h, p, t)
   br =  h(p, t-8.0)[6]  .* b
   tr =  h(p, t-1.0)[2:5]  .*  v
    
- # d: background mortality + d2: excess mortality due to habitat fluctuations  
-  dh = u ./ hsa(t, 1:6)
-  dr = u .* ( d  .+ d2 .* dh )   
+  # d: first order mortality  
+  # d2: second order mortality
+
+  # run1: first order mortality  -- not useful
+  #   north: dampended and optimistic predictions, and flat
+  #   south:  flat .. only scale which is much higher than reasonable
+  #   4x: run through the middle (damped) -- not enough dynamic range, very optimistic 
+  #   dr = d .* u   
+
+  # run2: first order mortality with habitat  -- not useful
+  #   north: not functional exceeds reasonable upper bounds
+  #   south:   flat .. only scale which is much higher than reasonable
+  #   4x: not functional exceeds reasonable upper bounds
+  
+  #  dr = d .* u ./ hsa(t, 1:6)  
+  
+  # run3: second order mortality   
+  #   north: completely out of range
+  #   south:  flat; too optimistic; mixing ok
+  #   4x: run through middle similar to run 1 .. not enough dynamic range, even more optimistic than run 1
+  
+  #   dr = d2.* (u ).^2.0   
+  
+  # run4: second order mortality with habitat  -- rank 1 (simplest and reasonable)
+  #   north: good dynamic range .. reduced levels at start and end -- reasonable; poor mixing
+  #   south:  flat but  scale 40 to 60, mixing is reasonable; optimimistic
+  #   4x: dynamic range good, failed to match second mode -- reasonable solution
+  
+  dr = d2.* (u ./ hsa(t, 1:6) ).^2.0     
+
+  # run5: first order mortality with habitat and second order background 
+  #   north: similar to run4 but damped prior to 2004 -- no mixing
+  #   south:  flat, scale 35:50, mixing reasonable, optimistic,
+  #   4x: single mode solution 
+  
+  # dr = d .* u ./ hsa(t, 1:6)  .+ d2.* (u ).^2.0   
+  
+  # run 6: first order mortality with habitat and second order background  with habitat (rank2)
+  #   north: good dynamic range .. divergence pre-2005 and post-2018 -- reasonable -- similar to run 4, 5; no mixing
+  #   south:  flat scale 30:50, reasonable mixing, recent eriod is pessimistic, similar to run 7
+  #   4x: single mode solution -- similar to run 5 but more pessimistic
+  
+  # uh = u ./ hsa(t, 1:6)  
+  # dr = d .* uh .+ d2.* ( uh ).^2.0   
+
+  # run 7: first order mortality background and second order habitat 
+  #   north: good dynamic range, overall amplitude is smaller .. divergence post-2019 -- reasonable -- similar to run 6; no mixing
+  #   south:  flat, 40 to 35, reasonable mixing; very similar to run 6
+  #   4x: single mode solution -- bimodal similar to run 4 missing second mode 
+  
+  #  uh = u ./ hsa(t, 1:6)  
+  #  dr = d .* u .+ d2.* ( uh ).^2.0   
+    
+  # run 8: hybrid
+    # dh = u ./ hsa(t, 1:6)
+    # dr = u .*  d  .+ d2 .* dh .* u )   
    
+
   du[1] = tr[1] * K[2] / K[1]            - dr[1]       # note:
   du[2] = tr[2] * K[3] / K[2]   - tr[1]  - dr[2]
   du[3] = tr[3] * K[4] / K[3]   - tr[2]  - dr[3]
@@ -42,31 +96,27 @@ end
 
   # biomass process model:
   K ~ filldist( TruncatedNormal( kmu, kmu*0.1, kmu/1000.0, kmu*1000.0), nS )  # kmu is max of a multiyear group , serves as upper bound for all
-  q ~ filldist( TruncatedNormal(  1.0, 0.1,  0.1, 2.0), nS )
-  qc ~ arraydist([TruncatedNormal( -SminFraction[i], 0.1, -1.0, 1.0) for i in 1:nS])  # informative prior on relative height 
+  
+  q ~ filldist( Normal(  1.0, 0.1 ), nS )
+  qc ~ arraydist([Normal( -SminFraction[i], 0.1) for i in 1:nS])  # informative prior on relative height 
 
-  # model_sd ~ filldist( TruncatedNormal( 0.0, 0.1, 0.0, 0.5 ), nS ) 
-  model_sd ~ filldist( Beta( 2.0, 20.0), nS ) 
+  model_sd ~ filldist( Beta(2, 9), nS ) 
 
   # "birth" rate from F(y - 8 to 10)  and for males m5 and femaless
-  b ~ filldist( TruncatedNormal(10.0, 10.0, 0.0, 100.0), 2 )  
-
+  b ~ filldist( Chisq(3), 2 )   # centered on 1
+  # plot(x->pdf(Chisq(3), x), xlim=(0,10))
+  
   # background mortality
-  # d ~ filldist( TruncatedNormal(0.2, 0.1, 0.0, 1.0), nS )
-  d ~ filldist( Beta(2.0, 10.0), nS )
+  d ~ filldist( Beta(3, 9), nS )
 
-  # excess mortality due to habitat (second order)
-  # d2 ~ filldist( TruncatedNormal(0.4, 0.1, 0.0, 1.0), nS )
-  d2 ~ filldist( Beta(7.0, 10.0), nS )
+  # second order 
+  d2 ~ filldist( Beta(3, 9), nS )
 
   # transition rates
-  # v ~ filldist( TruncatedNormal(0.8, 0.1, 0.0, 1.0), 4 )
-  v ~ filldist( Beta(10.0, 3.0), 4 )
+  v ~ filldist( Beta(9, 3), 4 )
   
-  # initial conditions
-  # u0 ~ filldist( TruncatedNormal(0.8, 0.2, 0.0, 1.0), nS )
-  u0 ~ filldist( Beta(10.0, 6.0), nS )
-
+  # initial conditions 
+  u0 ~ filldist( Beta(6, 3), nS ) # plot(x->pdf(Beta(4, 2), x), xlim=(0,1))
 
   pm = ( b, K, d, d2, v, tau, hsa )
   # @show pm
@@ -102,31 +152,26 @@ end
 
   # biomass process model:
   K ~ filldist( TruncatedNormal( kmu, kmu*0.1, kmu/1000.0, kmu*1000.0), nS )  # kmu is max of a multiyear group , serves as upper bound for all
-  q ~ filldist( TruncatedNormal(  1.0, 0.1,  0.1, 2.0), nS )
-  qc ~ arraydist([TruncatedNormal( -SminFraction[i], 0.1, -1.0, 1.0) for i in 1:nS])  # informative prior on relative height 
+  
+  q ~ filldist( Normal(  1.0, 0.1 ), nS )
+  qc ~ arraydist([Normal( -SminFraction[i], 0.1) for i in 1:nS])  # informative prior on relative height 
 
-  # model_sd ~ filldist( TruncatedNormal( 0.0, 0.1, 0.0, 0.5 ), nS ) 
-  model_sd ~ filldist( Beta( 2.0, 20.0), nS )  # plot(x->pdf(Beta(2, 20), x), xlim=(0,1))
-
+  model_sd ~ filldist( Beta(2, 9), nS )  # plot(x->pdf(Beta(2, 30), x), xlim=(0,1))
+ 
   # "birth" rate from F(y - 8 to 10)  and for males m5 and femaless
-  b ~ filldist( TruncatedNormal(10.0, 10.0, 0.0, 100.0), 2 )  
+  b ~ filldist( Chisq(3), 2 )   # centered on 1
 
   # background mortality
-  # d ~ filldist( TruncatedNormal(0.2, 0.1, 0.0, 1.0), nS )
-  d ~ filldist( Beta(2.0, 20.0), nS )
+  d ~ filldist( Beta(3, 9), nS )
 
-  # excess mortality due to habitat (second order)
-  # d2 ~ filldist( TruncatedNormal(0.4, 0.1, 0.0, 1.0), nS )
-  d2 ~ filldist( Beta(7.0, 10.0), nS )
+  # second order
+  d2 ~ filldist( Beta(3, 9), nS )
 
   # transition rates
-  # v ~ filldist( TruncatedNormal(0.8, 0.1, 0.0, 1.0), 4 )
-  v ~ filldist( Beta(10.0, 3.0), 4 )
+  v ~ filldist( Beta(9, 3), 4 )
   
-  # initial conditions
-  # u0 ~ filldist( TruncatedNormal(0.8, 0.2, 0.0, 1.0), nS )
-  u0 ~ filldist( Beta(10.0, 6.0), nS )
-
+  # initial conditions 
+  u0 ~ filldist( Beta(6, 3), nS ) # plot(x->pdf(Beta(6, 3), x), xlim=(0,1))
 
   pm = ( b, K, d, d2, v, tau, hsa )
   # @show pm
@@ -162,32 +207,25 @@ end
   # biomass process model:
   K ~ filldist( TruncatedNormal( kmu, kmu*0.1, kmu/1000.0, kmu*1000.0), nS )  # kmu is max of a multiyear group , serves as upper bound for all
  
-  q ~ filldist( TruncatedNormal(  1.0, 0.1,  0.5, 2.0), nS )
-  qc ~ arraydist([TruncatedNormal( -SminFraction[i], 0.1, -1.0, 1.0) for i in 1:nS])  # informative prior on relative height 
+  q ~ filldist( Normal(  1.0, 0.1 ), nS )
+  qc ~ arraydist([Normal( -SminFraction[i], 0.1) for i in 1:nS])  # informative prior on relative height 
+ 
+  model_sd ~ filldist( Beta(3, 9), nS )  # plot(x->pdf(Beta(2, 20), x), xlim=(0,1))
 
-  # model_sd ~ filldist( TruncatedNormal( 0.01, 0.1, 0.01, 1.0 ), nS ) 
-  # model_sd ~ filldist( truncated(Laplace( 0.0, 0.1), 0.0, 0.5 ), nS ) 
-  model_sd ~ filldist( Beta( 2.0, 25.0), nS )  # plot(x->pdf(Beta(2, 20), x), xlim=(0,1))
-
-  # "birth" rate from F(y - 8 to 10)  and for males m5 and femaless
-  b ~ filldist( TruncatedNormal(10.0, 10.0, 0.01, 100.0), 2 )   # was 10,1
+  # "birth" rate from F(y - 8 to 10)  ansd for males m5 and femaless 
+  b ~ filldist( Chisq(3), 2 )   # centered on 1
 
   # background mortality
-  # d ~ filldist( TruncatedNormal(0.2, 0.1, 0.0, 1.0), nS )
-  d ~ filldist( Beta(3.0, 10.0), nS )
+  d ~ filldist( Beta(3, 9), nS )
 
-  # excess mortality due to habitat (second order)
-  # d2 ~ filldist( TruncatedNormal(0.4, 0.1, 0.0, 1.0), nS )
-  d2 ~ filldist( Beta(7.0, 10.0), nS )
+  # second order 
+  d2 ~ filldist( Beta(3, 9), nS )
 
   # transition rates
-  # v ~ filldist( TruncatedNormal(0.8, 0.1, 0.0, 1.0), 4 )
-  v ~ filldist( Beta(10.0, 2.0), 4 )
+  v ~ filldist( Beta(9, 3), 4 )
   
-  # initial conditions
-  # u0 ~ filldist( TruncatedNormal(0.8, 0.2, 0.0, 1.0), nS )
-  u0 ~ filldist( Beta(10.0, 8.0), nS )
-
+  # initial conditions 
+  u0 ~ filldist( Beta(6, 3), nS ) # plot(x->pdf(Beta(4, 2), x), xlim=(0,1))
 
   pm = ( b, K, d, d2, v, tau, hsa )
   # @show pm

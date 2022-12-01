@@ -99,7 +99,7 @@ if debugging
     end
 
 
-    # include( fn_env )
+    include( fn_env )
 
     res  =  sample( fmod, Turing.NUTS(30, 0.65; max_depth=7, init_ϵ=0.001), 30 ) # to see progress -- about 5 min
     # res = fishery_model_inference( fmod, n_adapts=30, n_samples=30, n_chains=1, max_depth=7, init_ϵ=0.01  )

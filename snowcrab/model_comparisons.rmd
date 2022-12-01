@@ -34,7 +34,7 @@ params:
     smd = "/home/jae/projects/dynamical_model/snowcrab"
     setwd( smd )  # change to where the rmd file lives
     rmarkdown::render( "model_comparisons.rmd", params=list(year.assessment=2021 ),  output_dir=work_root )
-    system( paste( "/usr/bin/zathura ", file.path( work_root, "model_comparisons.pdf") ) )
+    system( paste( "/usr/bin/libreoffice ", file.path( work_root, "model_comparisons.docx") ) )
   }
 
   require(knitr)
