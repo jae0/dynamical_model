@@ -56,15 +56,7 @@ gr()
 # gr(size=(1000,1000),legend=false,markerstrokewidth=0,markersize=4)
 
 # allsavetimes = unique( vcat( survey_time, prediction_time  ) )
-  
- # Turing.setadbackend(:zygote)
-Turing.setadbackend(:forwarddiff)
-# Turing.setadbackend(:reversediff)
-# Turing.setadbackend(:tracker)
  
-# Turing.setrdcache(true) # reverse diff not working right Newton
-
-
  
 fndat = "/home/jae/bio.data/bio.snowcrab/modelled/1999_present_fb/fishery_model_results/turing1/biodyn_biomass.RData"
 o = load( fndat, convert=true)
@@ -228,10 +220,9 @@ n_chains=4
 
 # NUTS-specific
 # see write up here: https://turing.ml/dev/docs/using-turing/sampler-viz
-rejection_rate = 0.65  ## too high and it become impossibly slow .. this is a good balance between variability and speed
+rejection_rate = 0.9  ## too high and it become impossibly slow .. this is a good balance between variability and speed
 max_depth=9  ## too high and it become impossibly slow
-init_ϵ=0.01 # step size (auto compute usually gives from 0.01 to 0.05)
-
+ 
 if model_variation=="logistic_discrete_historical"   # pre-2022, mimic STAN defaults
   n_adapts=10000
   n_samples=2000

@@ -24,7 +24,8 @@ end
 
 pkgs = [
   "Revise", "MKL", "Logging", "StatsBase", "Statistics", "Distributions", "Random",
-  # "DynamicHMC", "AdvancedHMC",  "AdvancedMH",  "DynamicPPL",  "AbstractPPL",  "Memoization",
+  "MCMCChains", "DynamicPPL", "AdvancedHMC", "DistributionsAD", "Bijectors",  
+  "DynamicHMC", "AbstractPPL", "Memoization",
   "ForwardDiff", "DataFrames", "CSV", "JLD2", "PlotThemes", "Colors", "ColorSchemes", "RData",
   "Plots", "StatsPlots",  "MultivariateStats", "StaticArrays", "LazyArrays", "FillArrays",
   "Turing", "ModelingToolkit", "DifferentialEquations", "Interpolations", "LinearAlgebra"
@@ -64,17 +65,9 @@ gr()
 # solver = MethodOfSteps(KenCarp4())  # 139.88
 
 
-solver = MethodOfSteps(Tsit5())   # faster
-# solver = MethodOfSteps(Rodas5())  # safer
-
-Turing.setadbackend(:forwarddiff)  # only AD that works right now
-
-# using ReverseDiff
-# Turing.setadbackend(:reversediff)  # only AD that works right now
-
-# Turing.setrdcache(true) # reverse diff not working right now
+# solver = MethodOfSteps(Tsit5())   # faster
+solver = MethodOfSteps(Rodas5())  # safer
  
-
 # perpare dat for dde run of fishery model
 
 fndat = "/home/jae/bio.data/bio.snowcrab/modelled/1999_present_fb/fishery_model_results/turing1/biodyn_number_size_struct.RData"
@@ -190,7 +183,7 @@ ki = aulab == "cfanorth" ? 1 :
 
 kmu  =  Kmu[ki] / mean(scale_factor)
 
-smallnumber = 1.0 / kmu / 10.0  # floating point value of sufficient to assume 0 valued
+smallnumber = 1.0 / kmu  # floating point value of sufficient to assume 0 valued
 
 no_digits = 3  # time floating point rounding
 
@@ -201,7 +194,7 @@ dt =  aulab == "cfanorth" ? 0.05 :
       0.1   # default
 
 # spin up time of ~ 1 cycle prior to start of dymamics and project nP years into the future
-tspan = (minimum(yrs) - 8.1, maximum(yrs) + nP + 1.1 )
+tspan = (minimum(yrs) - 10.1, maximum(yrs) + nP + 1.1 )
 
 
 survey_time =  round.( round.( Y[:,:yrs] ./ dt; digits=0 ) .* dt ; digits=no_digits)    # time of observations for survey
@@ -287,12 +280,12 @@ cb = PresetTimeCallback( fish_time, affect_fishing! )
 # );
 
 k_mult = 
-  model_variation=="size_structured_dde_unnormalized" ? kmu :
-  model_variation=="size_structured_dde_normalized"   ? 1.0 :
+  model_variation=="size_structured_dde_unnormalized" ? kmu * 0.5 :
+  model_variation=="size_structured_dde_normalized"   ? 0.5 :
   1.0
 
 
-u0 = [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ]  .* k_mult; # generics to bootstrap the process
+u0 = [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ] .* k_mult; # generics to bootstrap the process
 h(p, t; idxs=nothing) = typeof(idxs) <: Number ? ones(nS) * k_mult : ones(nS)  .* k_mult # history function (prior to start)  defaults to values of 0.5*u before t0; note u = (0,1)
 tau = [1.0]  # delay resolution
 p = dde_parameters() # dummy values needed to bootstrap DifferentialEquations/Turing initialization
@@ -307,49 +300,29 @@ n_chains=4
 
 # NUTS-specific run options
 # see write up here: https://turing.ml/dev/docs/using-turing/sampler-viz
-rejection_rate = 0.65  ## too high and it become impossibly slow .. this is a good balance between variability and speed
-max_depth=7  ## too high and it become impossibly slow
-init_ϵ=0.01 # step size (auto compute usually gives from 0.01 to 0.05)
+rejection_rate = 0.8  ## too high and it become impossibly slow .. this is a good balance between variability and speed
+max_depth=8  ## too high and it become impossibly slow
  
-
-
+ 
 # choose model and over-rides if any
 if model_variation=="size_structured_dde_normalized" 
+  
+  dt_ss = 0.01 # note dt of data should be greater or equal to this 
 
   if aulab=="cfanorth"
-    fmod = size_structured_dde_turing_north( S, kmu, tspan, prob, nT, nS, nM, solver, dt)
-    rejection_rate = 0.65 # consider 0.8 
-    max_depth=7
-    init_ϵ=0.001 # step size (auto compute usually gives from 0.01 to 0.05)
-
-    # sampling and convergence is very fast and good: rhat == 1; ess~1000-2000; 
-    n_adapts=1000  # was 500 not sufficient in terms of rhat
-    n_samples=1000
-    n_chains=4
-
+    fmod = size_structured_dde_turing_north( S, kmu, tspan, prob,  nS,  solver, dt )
+  
   elseif aulab=="cfasouth" 
-    fmod = size_structured_dde_turing_south( S, kmu, tspan, prob, nT, nS, nM, solver, dt)  
-    rejection_rate = 0.65
-    max_depth=7
-    init_ϵ=0.001 # step size (auto compute usually gives from 0.01 to 0.05)
-
-    n_adapts=1500
-    n_samples=1000
-    
+    fmod = size_structured_dde_turing_south( S, kmu, tspan, prob,  nS,  solver, dt )  
+        
   elseif aulab=="cfa4x" 
-    fmod = size_structured_dde_turing_4x( S, kmu, tspan, prob, nT, nS, nM, solver, dt)  
-    rejection_rate = 0.65
-    max_depth=7
-    init_ϵ=0.001 # step size (auto compute usually gives from 0.01 to 0.05)
- 
-    n_adapts=1000
-    n_samples=1000
-
+    fmod = size_structured_dde_turing_4x( S, kmu, tspan, prob,  nS,  solver, dt )  
+    
   end
 
 elseif  model_variation=="size_structured_dde_unnormalized"
 
-  fmod = size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM, solver, dt )
+  fmod = size_structured_dde_turing( S, kmu, tspan, prob, nS,  solver, dt )
 
 end
 

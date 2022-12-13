@@ -40,7 +40,7 @@ end
 
  
 
-@model function size_structured_dde_turing( S, kmu, tspan, prob, nT, nS, nM,
+@model function size_structured_dde_turing( S, kmu, tspan, prob,  nS,  
     solver=MethodOfSteps(Tsit5()), dt = 0.01, ::Type{T} = Float64) where T
 
     # biomass process model:

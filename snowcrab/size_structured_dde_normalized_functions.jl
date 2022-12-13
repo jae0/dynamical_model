@@ -1,80 +1,82 @@
 using Turing
   
 
-function size_structured_dde!( du, u, h, p, t)
+function size_structured_dde!( du, u, h, p, t )
   # here u, du are actual numbers .. not normalized by K due to use of callbacks
 
   (b, K, d, d2, v, tau, hsa)  = p
  
-  # this break down seems to speed it up a bit ... not sure why
-  br =  h(p, t-8.0)[6]  .* b
-  tr =  h(p, t-1.0)[2:5]  .*  v
-   
-  # d: first order mortality  
-  # d2: second order mortality
+  @inbounds begin
 
-  # run1: first order mortality  -- not useful
-  #   north: dampended and optimistic predictions, and flat
-  #   south:  flat .. only scale which is much higher than reasonable
-  #   4x: run through the middle (damped) -- not enough dynamic range, very optimistic 
-  #   dr = d .* u   
+      # this break down seems to speed it up a bit ... not sure why
+      br =  h(p, t-8.0)[6]  .* b
+      tr =  h(p, t-1.0)[2:5]  .*  v
+      
+      # d: first order mortality  
+      # d2: second order mortality
 
-  # run2: first order mortality with habitat  -- not useful
-  #   north: not functional exceeds reasonable upper bounds
-  #   south:   flat .. only scale which is much higher than reasonable
-  #   4x: not functional exceeds reasonable upper bounds
-  
-  #  dr = d .* u ./ hsa(t, 1:6)  
-  
-  # run3: second order mortality   
-  #   north: completely out of range
-  #   south:  flat; too optimistic; mixing ok
-  #   4x: run through middle similar to run 1 .. not enough dynamic range, even more optimistic than run 1
-  
-  #   dr = d2.* (u ).^2.0   
-  
-  # run4: second order mortality with habitat  -- rank 1 (simplest and reasonable)
-  #   north: good dynamic range .. reduced levels at start and end -- reasonable; poor mixing
-  #   south:  flat but  scale 40 to 60, mixing is reasonable; optimimistic
-  #   4x: dynamic range good, failed to match second mode -- reasonable solution
-  
-  dr = d2.* (u ./ hsa(t, 1:6) ).^2.0     
+      # run1: first order mortality  -- not useful
+      #   north: dampended and optimistic predictions, and flat
+      #   south:  flat .. only scale which is much higher than reasonable
+      #   4x: run through the middle (damped) -- not enough dynamic range, very optimistic 
+      #   dr = d .* u   
 
-  # run5: first order mortality with habitat and second order background 
-  #   north: similar to run4 but damped prior to 2004 -- no mixing
-  #   south:  flat, scale 35:50, mixing reasonable, optimistic,
-  #   4x: single mode solution 
-  
-  # dr = d .* u ./ hsa(t, 1:6)  .+ d2.* (u ).^2.0   
-  
-  # run 6: first order mortality with habitat and second order background  with habitat (rank2)
-  #   north: good dynamic range .. divergence pre-2005 and post-2018 -- reasonable -- similar to run 4, 5; no mixing
-  #   south:  flat scale 30:50, reasonable mixing, recent eriod is pessimistic, similar to run 7
-  #   4x: single mode solution -- similar to run 5 but more pessimistic
-  
-  # uh = u ./ hsa(t, 1:6)  
-  # dr = d .* uh .+ d2.* ( uh ).^2.0   
+      # run2: first order mortality with habitat  -- not useful
+      #   north: not functional exceeds reasonable upper bounds
+      #   south:   flat .. only scale which is much higher than reasonable
+      #   4x: not functional exceeds reasonable upper bounds
+      
+      #  dr = d .* u ./ hsa(t, 1:6)  
+      
+      # run3: second order mortality   
+      #   north: completely out of range
+      #   south:  flat; too optimistic; mixing ok
+      #   4x: run through middle similar to run 1 .. not enough dynamic range, even more optimistic than run 1
+      
+      #   dr = d2.* (u ).^2.0   
+      
+      # run4: second order mortality with habitat  -- rank 1 (simplest and reasonable)
+      #   north: good dynamic range .. reduced levels at start and end -- reasonable; poor mixing
+      #   south:  flat but  scale 40 to 60, mixing is reasonable; optimimistic
+      #   4x: dynamic range good, failed to match second mode -- reasonable solution
+      
+      # dr = d2.* (u ./ hsa(t, 1:6) ).^2.0     
 
-  # run 7: first order mortality background and second order habitat 
-  #   north: good dynamic range, overall amplitude is smaller .. divergence post-2019 -- reasonable -- similar to run 6; no mixing
-  #   south:  flat, 40 to 35, reasonable mixing; very similar to run 6
-  #   4x: single mode solution -- bimodal similar to run 4 missing second mode 
-  
-  #  uh = u ./ hsa(t, 1:6)  
-  #  dr = d .* u .+ d2.* ( uh ).^2.0   
-    
-  # run 8: hybrid
-    # dh = u ./ hsa(t, 1:6)
-    # dr = u .*  d  .+ d2 .* dh .* u )   
-   
+      # run5: first order mortality with habitat and second order background 
+      #   north: similar to run4 but damped prior to 2004 -- no mixing
+      #   south:  flat, scale 35:50, mixing reasonable, optimistic,
+      #   4x: single mode solution 
+      
+      # dr = d .* u ./ hsa(t, 1:6)  .+ d2.* (u ).^2.0   
+      
+      # run 6: first order mortality with habitat and second order background  with habitat (rank2)
+      #   north: good dynamic range .. divergence pre-2005 and post-2018 -- reasonable -- similar to run 4, 5; no mixing
+      #   south:  flat scale 30:50, reasonable mixing, recent eriod is pessimistic, similar to run 7
+      #   4x: single mode solution -- similar to run 5 but more pessimistic
+      
+      # uh = u ./ hsa(t, 1:6)  
+      # dr = d .* uh .+ d2.* ( uh ).^2.0   
 
-  du[1] = tr[1] * K[2] / K[1]            - dr[1]       # note:
-  du[2] = tr[2] * K[3] / K[2]   - tr[1]  - dr[2]
-  du[3] = tr[3] * K[4] / K[3]   - tr[2]  - dr[3]
-  du[4] = tr[4] * K[5] / K[4]   - tr[3]  - dr[4]
-  du[5] = br[1] * K[6] / K[5]   - tr[4]  - dr[5]
-  du[6] = br[2]                          - dr[6]      # fem mat simple logistic with lag tau and density dep on present numbers
- 
+      # run 7: first order mortality background and second order habitat 
+      #   north: good dynamic range, overall amplitude is smaller .. divergence post-2019 -- reasonable -- similar to run 6; no mixing
+      #   south:  flat, 40 to 35, reasonable mixing; very similar to run 6
+      #   4x: single mode solution -- bimodal similar to run 4 missing second mode 
+      
+      #  uh = u ./ hsa(t, 1:6)  
+      #  dr = d .* u .+ d2.* ( uh ).^2.0   
+        
+      # run 8: hybrid
+      uh = u ./ hsa(t, 1:6)
+      dr = d .* u .+ d2 .* uh .^ 2.0    
+       
+      du[1] = tr[1] * K[2] / K[1]            - dr[1]       # note:
+      du[2] = tr[2] * K[3] / K[2]   - tr[1]  - dr[2]
+      du[3] = tr[3] * K[4] / K[3]   - tr[2]  - dr[3]
+      du[4] = tr[4] * K[5] / K[4]   - tr[3]  - dr[4]
+      du[5] = br[1] * K[6] / K[5]   - tr[4]  - dr[5]
+      du[6] = br[2]                          - dr[6]      # fem mat simple logistic with lag tau and density dep on present numbers
+    end
+
 end
   
 
@@ -89,45 +91,35 @@ function dde_parameters()
     return params
 end
 
+ 
 
-  
-@model function size_structured_dde_turing_north( S, kmu, tspan, prob, nT, nS, nM,
-  solver=MethodOfSteps(Tsit5()), dt = 0.01, ::Type{T} = Float64) where T
-
-  # biomass process model:
-  K ~ filldist( TruncatedNormal( kmu, kmu*0.1, kmu/1000.0, kmu*1000.0), nS )  # kmu is max of a multiyear group , serves as upper bound for all
-  
-  q ~ filldist( Normal(  1.0, 0.1 ), nS )
+@model function size_structured_dde_turing_north( S, kmu, tspan, prob, nS, 
+  solver=MethodOfSteps(Tsit5()), dt = 0.01, ::Type{T} = Float64) where {T}
+ 
+  # plot(x->pdf(LogNormal(log(kmu),0.25), x), xlim=(0,kmu*5))
+  K ~ filldist( LogNormal(log(kmu), 0.5), nS )  # kmu is max of a multiyear group , serves as upper bound for all
+ 
+  q ~ filldist( Normal( 1.0, 0.1 ), nS )
   qc ~ arraydist([Normal( -SminFraction[i], 0.1) for i in 1:nS])  # informative prior on relative height 
 
-  model_sd ~ filldist( Beta(2, 9), nS ) 
+  model_sd ~ filldist( truncated( Gamma(2.0, 0.05), 0.001, 0.5), nS ) # Beta( mode/sd, (1.0-mode)/sd )
+ 
+  b ~ filldist( Chi(1), 2 )   # centered on 1
 
-  # "birth" rate from F(y - 8 to 10)  and for males m5 and femaless
-  b ~ filldist( Chisq(3), 2 )   # centered on 1
-  # plot(x->pdf(Chisq(3), x), xlim=(0,10))
-  
-  # background mortality
-  d ~ filldist( Beta(3, 9), nS )
+  d ~   filldist( Beta(0.2/0.05, (1.0-0.2)/0.05), nS ) # Beta( mode/sd, (1.0-mode)/sd )
+  d2 ~  filldist( Beta(0.3/0.05, (1.0-0.3)/0.05), nS ) # Beta( mode/sd, (1.0-mode)/sd )
+  v ~   filldist( Beta(0.9/0.05, (1.0-0.9)/0.05),  4 ) # transition rates # Beta( mode/sd, (1.0-mode)/sd )
+  u0 ~  filldist( Beta(0.8/0.10, (1.0-0.8)/0.10), nS ) # plot(x->pdf(Beta(4, 2), x), xlim=(0,1)) # Beta( mode/sd, (1.0-mode)/sd )
 
-  # second order 
-  d2 ~ filldist( Beta(3, 9), nS )
-
-  # transition rates
-  v ~ filldist( Beta(9, 3), 4 )
-  
-  # initial conditions 
-  u0 ~ filldist( Beta(6, 3), nS ) # plot(x->pdf(Beta(4, 2), x), xlim=(0,1))
 
   pm = ( b, K, d, d2, v, tau, hsa )
-  # @show pm
 
   # process model
   msol = solve(
       remake( prob; u0=u0, h=h, tspan=tspan, p=pm ),
-      solver,
-      callback=cb,
-      isoutofdomain=(y,p,t)->any(x -> (x<0.0), y),  # permit exceeding K
-      saveat=dt
+      solver, callback=cb,
+      isoutofdomain=(y,p,t)->any(x -> (x<0), y),  # permit exceeding K
+      saveat=dt, dt=dt * 0.1
   )
 
   # @show msol.retcode
@@ -147,42 +139,31 @@ end
 end
 
 
-@model function size_structured_dde_turing_south( S, kmu, tspan, prob, nT, nS, nM,
+
+@model function size_structured_dde_turing_south( S, kmu, tspan, prob,   nS,  
   solver=MethodOfSteps(Tsit5()), dt=0.01, ::Type{T} = Float64) where {T}
-
-  # biomass process model:
-  K ~ filldist( TruncatedNormal( kmu, kmu*0.1, kmu/1000.0, kmu*1000.0), nS )  # kmu is max of a multiyear group , serves as upper bound for all
-  
-  q ~ filldist( Normal(  1.0, 0.1 ), nS )
+ 
+  K ~ filldist( LogNormal(log(kmu), 0.25), nS )  # kmu is max of a multiyear group , serves as upper bound for all
+  q ~ filldist( Normal( 1.0, 0.1 ), nS )
   qc ~ arraydist([Normal( -SminFraction[i], 0.1) for i in 1:nS])  # informative prior on relative height 
 
-  model_sd ~ filldist( Beta(2, 9), nS )  # plot(x->pdf(Beta(2, 30), x), xlim=(0,1))
+  model_sd ~ filldist( truncated( Gamma(2.0, 0.1), 0.001, 0.5), nS ) # Beta( mode/sd, (1.0-mode)/sd )
  
-  # "birth" rate from F(y - 8 to 10)  and for males m5 and femaless
-  b ~ filldist( Chisq(3), 2 )   # centered on 1
+  b ~ filldist( Chi(1), 2 )   # centered on 1
 
-  # background mortality
-  d ~ filldist( Beta(3, 9), nS )
-
-  # second order
-  d2 ~ filldist( Beta(3, 9), nS )
-
-  # transition rates
-  v ~ filldist( Beta(9, 3), 4 )
-  
-  # initial conditions 
-  u0 ~ filldist( Beta(6, 3), nS ) # plot(x->pdf(Beta(6, 3), x), xlim=(0,1))
+  d ~   filldist( Beta(0.2/0.2, (1.0-0.2)/0.2), nS ) # Beta( mode/sd, (1.0-mode)/sd )
+  d2 ~  filldist( Beta(0.4/0.2, (1.0-0.4)/0.2), nS ) # Beta( mode/sd, (1.0-mode)/sd )
+  v ~   filldist( Beta(0.9/0.2, (1.0-0.9)/0.2),  4 ) # transition rates # Beta( mode/sd, (1.0-mode)/sd )
+  u0 ~  filldist( Beta(0.8/0.2, (1.0-0.8)/0.2), nS ) # plot(x->pdf(Beta(4, 2), x), xlim=(0,1)) # Beta( mode/sd, (1.0-mode)/sd )
 
   pm = ( b, K, d, d2, v, tau, hsa )
-  # @show pm
-
+  
   # process model
   msol = solve(
       remake( prob; u0=u0, h=h, tspan=tspan, p=pm ),
-      solver,
-      callback=cb, 
-      isoutofdomain=(y,p,t)->any(x -> (x<0.0), y),   
-      saveat=dt
+      solver, callback=cb, 
+      isoutofdomain=(y,p,t)->any(x -> (x<0), y),   
+      saveat=dt, dt=dt*0.1
   )
 
   # @show msol.retcode
@@ -202,41 +183,30 @@ end
 end
 
 
-@model function size_structured_dde_turing_4x( S, kmu, tspan, prob, nT, nS, nM,
-  solver=MethodOfSteps(Tsit5()), dt = 0.01, ::Type{T} = Float64) where T
-  # biomass process model:
-  K ~ filldist( TruncatedNormal( kmu, kmu*0.1, kmu/1000.0, kmu*1000.0), nS )  # kmu is max of a multiyear group , serves as upper bound for all
- 
-  q ~ filldist( Normal(  1.0, 0.1 ), nS )
-  qc ~ arraydist([Normal( -SminFraction[i], 0.1) for i in 1:nS])  # informative prior on relative height 
- 
-  model_sd ~ filldist( Beta(3, 9), nS )  # plot(x->pdf(Beta(2, 20), x), xlim=(0,1))
-
-  # "birth" rate from F(y - 8 to 10)  ansd for males m5 and femaless 
-  b ~ filldist( Chisq(3), 2 )   # centered on 1
-
-  # background mortality
-  d ~ filldist( Beta(3, 9), nS )
-
-  # second order 
-  d2 ~ filldist( Beta(3, 9), nS )
-
-  # transition rates
-  v ~ filldist( Beta(9, 3), 4 )
+@model function size_structured_dde_turing_4x( S, kmu, tspan, prob, nS,  
+  solver=MethodOfSteps(Tsit5()), dt = 0.01, ::Type{T} = Float64) where {T}
   
-  # initial conditions 
-  u0 ~ filldist( Beta(6, 3), nS ) # plot(x->pdf(Beta(4, 2), x), xlim=(0,1))
+  K ~ filldist( LogNormal(log(kmu), 0.25), nS )  # kmu is max of a multiyear group , serves as upper bound for all
+  q ~ filldist( Normal( 1.0, 0.1 ), nS )
+  qc ~ arraydist([Normal( -SminFraction[i], 0.1) for i in 1:nS])  # informative prior on relative height 
+  
+  model_sd ~ filldist( truncated( Gamma(2.0, 0.1), 0.001, 0.9), nS ) # Beta( mode/sd, (1.0-mode)/sd )
+ 
+  b ~ filldist( Chi(1), 2 )   # centered on 1
+
+  d ~   filldist( Beta(0.2/0.2, (1.0-0.2)/0.2), nS ) # Beta( mode/sd, (1.0-mode)/sd )
+  d2 ~  filldist( Beta(0.4/0.2, (1.0-0.4)/0.2), nS ) # Beta( mode/sd, (1.0-mode)/sd )
+  v ~   filldist( Beta(0.9/0.2, (1.0-0.9)/0.2),  4 ) # transition rates # Beta( mode/sd, (1.0-mode)/sd )
+  u0 ~  filldist( Beta(0.8/0.2, (1.0-0.8)/0.2), nS ) # plot(x->pdf(Beta(4, 2), x), xlim=(0,1)) # Beta( mode/sd, (1.0-mode)/sd )
 
   pm = ( b, K, d, d2, v, tau, hsa )
-  # @show pm
-
+  
   # process model
   msol = solve(
       remake( prob; u0=u0, h=h, tspan=tspan, p=pm ),
-      solver,
-      callback=cb,
-      isoutofdomain=(y,p,t)->any(x -> (x<0.0), y),   
-      saveat=dt
+      solver, callback=cb,
+      isoutofdomain=(y,p,t)->any(x -> (x<0), y), 
+      saveat=dt, dt=dt*0.1
   )
 
   # @show msol.retcode
@@ -252,6 +222,7 @@ end
           S[Si[i],k] ~ Normal( msol.u[ii][k] * q[k] + qc[k], model_sd[k] )  # observation and process error combined
       end
   end
+  
 
 end
 
@@ -270,13 +241,14 @@ function fishery_model_test( test=("basic", "random_external_forcing", "fishing"
     ##  h, hsa, cb, tau, etc. are defined in the *_environment.jl file
     b=[0.8, 0.5]
     K=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0] .* kmu;
-    d=[0.15, 0.11, 0.14, 0.17, 0.16, 0.19];
     v=[0.65, 0.68, 0.61, 0.79];
+    d=[0.15, 0.11, 0.14, 0.17, 0.16, 0.19];
     d2 =[0.5, 0.5, 0.5, 0.5, 0.5, 0.5] 
     
     u0 = [ 0.65, 0.6, 0.52, 0.62, 0.58, 0.32 ]  ; 
     tau=[1.0] 
-    params = ( b, K, d, d2, v, tau, hsa)
+    params = ( b, K, d, d2, v, tau, hsa )
+ 
     prob1 = DDEProblem( size_structured_dde!, u0, h, tspan, params, constant_lags=tau  )  # tau=[1]
     out = msol1 =  solve( prob1,  solver, callback=cb, saveat=dt )
     pl = plot()
@@ -302,8 +274,9 @@ function fishery_model_test( test=("basic", "random_external_forcing", "fishing"
     
     efc = extrapolate( interpolate( external_forcing, (BSpline(Linear()), NoInterp()) ), Interpolations.Flat() )
     hsa = Interpolations.scale(efc, 1999:2021, 1:6 )
-  
+    
     p = ( b, K, d, d2, v, tau, hsa )   
+    
     tspan = (1990.0, 2050.0)
     nS = length(u0)  # n components
     
@@ -325,8 +298,8 @@ function fishery_model_test( test=("basic", "random_external_forcing", "fishing"
     K=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0] .* ks;
     u0 = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5];
     b=[0.6, 0.4]
-    d=[0.20223639702656727, 0.18864211980978104, 0.18063928527606177, 0.23030220100440996, 0.19713968752681676, 0.40151610614035915]
     v=[0.8066539263878958, 0.7165358852484025, 0.8341124383106499, 0.7857601054678678]
+    d=[0.20223639702656727, 0.18864211980978104, 0.18063928527606177, 0.23030220100440996, 0.19713968752681676, 0.40151610614035915]
     d2=[0.6, 0.6, 0.6, 0.6, 0.6, 0.6] 
     tau=[1.0] 
 
@@ -340,8 +313,9 @@ function fishery_model_test( test=("basic", "random_external_forcing", "fishing"
     external_forcing = ones(length(survey_time),6)  # turn off external forcing  (wrt viable habitat)
     efc1 = extrapolate( interpolate( external_forcing, (BSpline(Linear()), NoInterp()) ), Interpolations.Flat() )
     hsa = Interpolations.scale(efc1, 1999:2021, 1:6 )
+    
     p = ( b, K, d, d2, v, tau, hsa )   
-  
+    
     prob3 = DDEProblem( size_structured_dde!, u0, h, tspan, p; constant_lags=tau )
     out = msol3 =  solve( prob3,  solver, saveat=dt  ) #, isoutofdomain=(y,p,t)->any(x->(x<0)|(x>1), y) )
     pl = plot()
@@ -361,8 +335,8 @@ function fishery_model_test( test=("basic", "random_external_forcing", "fishing"
     K = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0] .* ks;
     u0 = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5];
     b=[0.8, 0.5]
-    d=[0.20223639702656727, 0.18864211980978104, 0.18063928527606177, 0.23030220100440996, 0.19713968752681676, 0.40151610614035915]
     v=[0.8066539263878958, 0.7165358852484025, 0.8341124383106499, 0.7857601054678678]
+    d=[0.20223639702656727, 0.18864211980978104, 0.18063928527606177, 0.23030220100440996, 0.19713968752681676, 0.40151610614035915]
     d2=[0.4, 0.4, 0.4, 0.4, 0.4, 0.4] 
     tau=[1.0] 
 
@@ -379,7 +353,7 @@ function fishery_model_test( test=("basic", "random_external_forcing", "fishing"
     hsa = Interpolations.scale(efc2, 1999:2021, 1:6 )
    
     p = ( b, K, d, d2, v, tau, hsa)   
-  
+    
     prob4 = DDEProblem( size_structured_dde!, u0, h, tspan, p; constant_lags=tau )
     # prob4 = remake( prob; u0=u0, h=h, tspan=tspan, p=p )
       
@@ -415,49 +389,48 @@ function fishery_model_predictions( res; prediction_time=prediction_time, n_samp
   md = zeros(nM, nS, nZ, 2)  # number normalized
   mn = zeros(nM, nS, nZ, 2)  # numbers
   mb = mn[:,1,:,:]  # biomass of first class
+  ntries = 0
   z = 0
+  while z <= n_sample 
+    ntries += 1
+    ntries > n_sample*5 && break
+    z == n_sample && break
 
-  for j in 1:nsims  # nsims
-  for l in 1:nchains #nchains
-    z += 1
-    
-    b = [ res[j, Symbol("b[$k]"), l] for k in 1:2]
-    K = [ res[j, Symbol("K[$k]"), l] for k in 1:nS]
-    d = [ res[j, Symbol("d[$k]"), l] for k in 1:nS]
-    v = [ res[j, Symbol("v[$k]"), l] for k in 1:4]
-    d2=[ res[j, Symbol("d2[$k]"), l] for k in 1:nS]
-
-    u0 = [ res[j, Symbol("u0[$k]"), l] for k in 1:nS]
-
-    pm = ( b, K, d, d2, v, tau, hsa )
-
-    prb = remake( prob; u0=u0 , h=h, tspan=tspan, p=pm )
-
-    msol = solve( prb, solver, callback=cb, saveat=dt )
-    msol2 = solve( prb, solver, saveat=dt ) # no call backs
-
-    
-    for i in 1:nM
-      
-        ii = findall(x->x==prediction_time[i], msol.t) 
-        jj = findall(x->x==prediction_time[i], msol2.t)
-        
-        if length(ii) > 0 && length(jj) > 0 
-          ii = ii[1]
-          jj = jj[1]
-          sf  = nameof(typeof(mw)) == :ScaledInterpolation ? mw(msol.t[ii])  ./ 1000.0 ./ 1000.0  :  scale_factor   # n to kt
-          sf2 = nameof(typeof(mw)) == :ScaledInterpolation ? mw(msol2.t[jj]) ./ 1000.0 ./ 1000.0  :  scale_factor   # n to kt
-          md[i,:,z,1] = msol.u[ii]   # with fishing
-          md[i,:,z,2] = msol2.u[jj]  # no fishing
-          mn[i,:,z,1] = msol.u[ii]   .* K  # with fishing
-          mn[i,:,z,2] = msol2.u[jj]   .* K # no fishing
-          mb[i,z,1] = mn[i,1,z,1]  .* sf
-          mb[i,z,2] = mn[i,1,z,2]  .* sf2
-        end
-
-    end
-
-  end
+      j = rand(1:nsims)  # nsims
+      l = rand(1:nchains) #nchains
+      b = [ res[j, Symbol("b[$k]"), l] for k in 1:2]
+      K = [ res[j, Symbol("K[$k]"), l] for k in 1:nS]
+      v = [ res[j, Symbol("v[$k]"), l] for k in 1:4]
+      d = [ res[j, Symbol("d[$k]"), l] for k in 1:nS]
+      d2=[ res[j, Symbol("d2[$k]"), l] for k in 1:nS]
+      u0 = [ res[j, Symbol("u0[$k]"), l] for k in 1:nS]
+      pm = ( b, K, d, d2, v, tau, hsa )
+      prb = remake( prob; u0=u0 , h=h, tspan=tspan, p=pm )
+      msol = solve( prb, solver, callback=cb, saveat=dt, dt=dt , isoutofdomain=(y,p,t)->any(x -> (x<0), y) )
+      msol2 = solve( prb, solver, saveat=dt, dt=dt , isoutofdomain=(y,p,t)->any(x -> (x<0), y) ) # no call backs
+      if msol.retcode == :Success && msol2.retcode == :Success
+        z += 1
+        for i in 1:nM
+            ii = findall(x->x==prediction_time[i], msol.t) 
+            jj = findall(x->x==prediction_time[i], msol2.t)
+            if length(ii) > 0 && length(jj) > 0 
+              ii = ii[1]
+              jj = jj[1]
+              sf  = nameof(typeof(mw)) == :ScaledInterpolation ? mw(msol.t[ii])  ./ 1000.0 ./ 1000.0  :  scale_factor   # n to kt
+              sf2 = nameof(typeof(mw)) == :ScaledInterpolation ? mw(msol2.t[jj]) ./ 1000.0 ./ 1000.0  :  scale_factor   # n to kt
+              md[i,:,z,1] = msol.u[ii]   # with fishing
+              md[i,:,z,2] = msol2.u[jj]  # no fishing
+              mn[i,:,z,1] = msol.u[ii]   .* K  # with fishing
+              mn[i,:,z,2] = msol2.u[jj]   .* K # no fishing
+              mb[i,z,1] = mn[i,1,z,1]  .* sf
+              mb[i,z,2] = mn[i,1,z,2]  .* sf2
+            end
+        end  # end for
+      end # if
+  end  # while
+ 
+  if z < n_sample 
+    @warn  "Insufficient number of solutions" 
   end
 
   # extract sims (with fishing)
@@ -514,9 +487,6 @@ function fishery_model_predictions_trace( res; n_sample=10, plot_k=1, alpha=0.02
     nZ = nchains*nsims
     nI = Int( min( nZ , n_sample ) )
     
-    jj = sample( 1:nsims, nI )  # to plot
-    ll = sample( 1:nchains, nI )  # to plot
-   
     out = Vector{Vector{Float64}}()
     out2 = Vector{Vector{Float64}}()
 
@@ -524,52 +494,67 @@ function fishery_model_predictions_trace( res; n_sample=10, plot_k=1, alpha=0.02
     theme(:default)
     pl =plot()
 
-    for z in 1:nI  # nsims
-        j = jj[z]
-        l = ll[z]
+    ntries = 0
+    z = 0
+    while z <= n_sample 
+      ntries += 1
+      ntries > n_sample*5 && break
+      z == n_sample && break
+    
+      j = rand(1:nsims)  # nsims
+      l = rand(1:nchains) #nchains
+      b = [ res[j, Symbol("b[$k]"), l] for k in 1:2]
+      K = [ res[j, Symbol("K[$k]"), l] for k in 1:nS]
+      v = [ res[j, Symbol("v[$k]"), l] for k in 1:4]
+      d = [ res[j, Symbol("d[$k]"), l] for k in 1:nS]
+      d2=[ res[j, Symbol("d2[$k]"), l] for k in 1:nS]
+      u0 = [ res[j, Symbol("u0[$k]"), l] for k in 1:nS]
+      pm = ( b, K, d, d2, v, tau, hsa )
+      prb = remake( prob; u0=u0, h=h, tspan=tspan, p=pm )
 
-        b = [ res[j, Symbol("b[$k]"), l] for k in 1:2]
-        K = [ res[j, Symbol("K[$k]"), l] for k in 1:nS]
-        d = [ res[j, Symbol("d[$k]"), l] for k in 1:nS]
-        v = [ res[j, Symbol("v[$k]"), l] for k in 1:4]
-        d2=[ res[j, Symbol("d2[$k]"), l] for k in 1:nS]
-
-        u0 = [ res[j, Symbol("u0[$k]"), l] for k in 1:nS]
-
-        pm = ( b, K, d, d2, v, tau, hsa )
-
-        prb = remake( prob; u0=u0, h=h, tspan=tspan, p=pm )
-
-        if plot_k==1
+      if plot_k==1
             # do fishing and nonfishing
 
-            msol = solve( prb, solver, callback=cb, saveat=dt )
-            msol2 = solve( prb, solver, saveat=dt ) # no call backs
+            msol = solve( prb, solver, callback=cb, saveat=dt, dt=dt , isoutofdomain=(y,p,t)->any(x -> (x<0), y)  )
+            msol2 = solve( prb, solver, saveat=dt , dt=dt , isoutofdomain=(y,p,t)->any(x -> (x<0), y) ) # no call backs
+            
+            if msol.retcode == :Success && msol2.retcode == :Success
+              z += 1
 
-            sf = nameof(typeof(mw)) == :ScaledInterpolation ? mw(msol.t) ./ 1000.0 ./ 1000.0 :  scale_factor
-            sf2 = nameof(typeof(mw)) == :ScaledInterpolation ? mw(msol2.t) ./ 1000.0 ./ 1000.0  :  scale_factor   # n to kt
+              sf = nameof(typeof(mw)) == :ScaledInterpolation ? mw(msol.t) ./ 1000.0 ./ 1000.0 :  scale_factor
+              sf2 = nameof(typeof(mw)) == :ScaledInterpolation ? mw(msol2.t) ./ 1000.0 ./ 1000.0  :  scale_factor   # n to kt
 
-            yval2 = vec( reduce(hcat, msol2.u)'[:,plot_k]) .* K[plot_k] .* sf2
-            yval = vec( reduce(hcat, msol.u)'[:,plot_k] ) .* K[plot_k] .* sf
+              yval2 = vec( reduce(hcat, msol2.u)'[:,plot_k]) .* K[plot_k] .* sf2
+              yval = vec( reduce(hcat, msol.u)'[:,plot_k] ) .* K[plot_k] .* sf
 
-            pl = plot!( pl, msol.t, yval, alpha=alpha, lw=1, color=:orange )
-            if !plot_only_fishing
-              pl = plot!( pl, msol2.t, yval2, alpha=alpha*2.0, lw=1, color=:lime )
+              pl = plot!( pl, msol.t, yval, alpha=alpha, lw=1, color=:orange )
+              if !plot_only_fishing
+                pl = plot!( pl, msol2.t, yval2, alpha=alpha*2.0, lw=1, color=:lime )
+              end
+
+              push!(out, yval)
+              push!(out2, yval2)
             end
 
-            push!(out, yval)
-            push!(out2, yval2)
-
         else
-            msol2 = solve( prb, solver, saveat=dt ) # no call backs
-            yval2 = vec( reduce(hcat, msol2.u)'[:,plot_k]) .* K[plot_k]
-            pl = plot!( pl, msol2.t, yval2, alpha=alpha, lw=1, color=:lime )
+            msol2 = solve( prb, solver, saveat=dt , dt=dt , isoutofdomain=(y,p,t)->any(x -> (x<0), y) ) # no call backs
+             
+            if msol.retcode == :Success && msol2.retcode == :Success
+              z += 1
 
-            push!(out2, yval2)
+              yval2 = vec( reduce(hcat, msol2.u)'[:,plot_k]) .* K[plot_k]
+              pl = plot!( pl, msol2.t, yval2, alpha=alpha, lw=1, color=:lime )
+
+              push!(out2, yval2)
+            end
         end
  
     end
 
+    if z < n_sample 
+      @warn  "Insufficient number of solutions" 
+    end
+  
     pl =  plot!(pl; xlim=(minimum(yrs)-0.5, maximum(yrs)+1.5  ) )
     # pl =  plot!(pl; ylim=(0, maximum(m[:,:,2,z])*1.1 ) )
     pl =  plot!(pl; legend=false )
@@ -703,22 +688,21 @@ function plots_diagnostic( res, vn="K" )
 end
 
 
-
 # ----------
 
 
-function fishery_model_inference( fmod; rejection_rate=0.65, n_adapts=1000, n_samples=1000, n_chains=1, max_depth=7, init_ϵ=0.05, 
-  turing_sampler = Turing.NUTS(n_adapts, rejection_rate; max_depth=max_depth, init_ϵ=init_ϵ), seed=1  )
-   
-  Logging.disable_logging(Logging.Warn) # or e.g. Logging.Info
-  
+function fishery_model_inference( fmod; rejection_rate=0.65, n_adapts=1000, n_samples=1000, n_chains=1, max_depth=7, 
+  turing_sampler=Turing.NUTS(n_adapts, rejection_rate; max_depth=max_depth ),   
+  seed=1 
+)
+
   Random.seed!(seed)
   
   # 1000 -> ? hrs (Tsit5);  500 -> 6 hrs;; 29hrs 100/100 cfasouth
   #   # n_chains = Threads.nthreads()
-  # turing_sampler = Turing.NUTS(n_adapts, rejection_rate; max_depth=max_depth, init_ϵ=init_ϵ)  ;# stepsize based upon previous experience
+  # turing_sampler = Turing.NUTS(n_adapts, rejection_rate; max_depth=max_depth )  ;# stepsize based upon previous experience
   
-  res  =  sample( fmod, turing_sampler, MCMCThreads(), n_samples, n_chains )
+  res  =  sample( fmod, turing_sampler, MCMCThreads(), n_samples, n_chains  )
   # if on windows and threads are not working, use single processor mode:
   # res = mapreduce(c -> sample(fmod, turing_sampler, n_samples), chainscat, 1:n_chains)
 
@@ -758,4 +742,5 @@ function fishery_model_mortality( removed, fb; n_sample=100 )
   pl = plot!(pl ; legend=false )
   return ( Fkt, FR, FM, pl )
 end
+
 

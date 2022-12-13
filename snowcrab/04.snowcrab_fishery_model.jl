@@ -54,8 +54,7 @@ if false
   push!(LOAD_PATH, project_directory)  # add the directory to the load path, so it can be found
   include( "startup.jl" )
 
-      
-      
+
 end
 
 
@@ -95,24 +94,47 @@ if debugging
 
       using Plots, Distributions
       plot(x->pdf(Beta(2, 2), x), xlim=(0,1))
-  
+      
+      using ForwardDiff
+      Turing.setadbackend(:forwarddiff)  # only AD that works right now
+
+      using ReverseDiff # fails
+      Turing.setadbackend(:reversediff)  # only AD that works right now
+      Turing.setrdcache(true)
+
+      using Tracker  # work ok with discrete models
+      Turing.setadbackend(:tracker)  # only AD that works right now
+      
+      using Zygote # fails
+      Turing.setadbackend(:zygote)  # only AD that works right now
+   
     end
 
 
-    include( fn_env )
+    Logging.disable_logging(Logging.Debug-2000)  # force re-enable logging
 
-    res  =  sample( fmod, Turing.NUTS(30, 0.65; max_depth=7, init_ϵ=0.001), 30 ) # to see progress -- about 5 min
-    # res = fishery_model_inference( fmod, n_adapts=30, n_samples=30, n_chains=1, max_depth=7, init_ϵ=0.01  )
+    include( fn_env )
  
+    #  Run sampler, collect results.
+ 
+    tsampler = Turing.NUTS(30, 0.8; max_depth=8 ) # , init_ϵ=0.001
+    # tsampler = Turing.HMC(0.01, 7)
+    # tsampler = Turing.SMC()
+    # tsampler = Turing.MH()
+        
+    res  =  sample( fmod, tsampler, 30) # to see progress -- about 5 min
+    # res  =  sample( fmod, tsampler, MCMCThreads(), 100, 4 )
+    # res = fishery_model_inference( fmod, n_adapts=30, n_samples=30, n_chains=1, max_depth=7  )
+  
     (m, num, bio, pl)  = fishery_model_predictions(res; prediction_time=prediction_time, n_sample=30 )
-    fb = bio[1:length(survey_time),:,1]  # the last 1 is for size struct; no effect in discrete
     (pl)
- 
+    
     # trace plot .. only useful in continuous models, otherwise identical to predictions
     (trace_nofishing, trace_fishing, pl) = fishery_model_predictions_trace( res; n_sample=50, plot_k=1, alpha=0.1, plot_only_fishing=false )  # model traces
     (pl)
-
+    
     # plot fishing mortality
+    fb = bio[1:length(survey_time),:,1]  # the last 1 is for size struct; no effect in discrete
     (Fkt, FR, FM, pl) = fishery_model_mortality( removed, fb, n_sample=500 ) 
     pl
 
@@ -121,17 +143,18 @@ if debugging
     pl
    
     showall( summarize( res ) )
- 
+
     # describe(res)
     # plot(res)
     # summarystats(res)
 end
 
+Logging.disable_logging(Logging.Warn) # or e.g. Logging.Info
 
 # params defined in environments .. about 3-5 hrs each
 res = fishery_model_inference( fmod, 
   rejection_rate=rejection_rate, n_adapts=n_adapts, n_samples=n_samples, 
-  n_chains=n_chains, max_depth=max_depth, init_ϵ=init_ϵ )
+  n_chains=n_chains, max_depth=max_depth  )
 
 
 # save results to (directory_output) as a hdf5  # directory location is created in environment
@@ -179,28 +202,29 @@ plot( autocorplot(res) )
 
 # labels = [:b[1], :b[2]]; corner(res, :b)
 
+#  pl = plot(pl, ylim=(0, 0.65))
 
 # annual snapshots of biomass (kt); return m=normalized abundance, num=numbers, bio=biomass and pl=plot, where possible
 (m, num, bio, pl)  = fishery_model_predictions(res; prediction_time=prediction_time, n_sample=500)
 fb = bio[1:length(survey_time),:,1]  # the last 1 is for size struct; no effect in discrete
-pl = plot(pl, ylim=aulab=="cfanorth" ? (0, 6.0) : aulab=="cfasouth" ? (0, 90) : (0, 1.5))
+# if occursin.( r"size_structured", model_variation )
+#   pl = plot(pl, ylim=aulab=="cfanorth" ? (0, 6.0) : aulab=="cfasouth" ? (0, 90) : (0, 1.5))
+# end
 savefig(pl, joinpath( directory_output, string("plot_predictions_", aulab, ".pdf") )  )
 
 # plot fishing mortality
 (Fkt, FR, FM, pl) = fishery_model_mortality( removed, fb, n_sample=500 ) 
-pl = plot(pl, ylim=(0, 0.5))
-if occursin.( r"size_structured", model_variation )
-  pl = plot(pl, ylim=aulab=="cfanorth" ? (0, 1.25) : aulab=="cfasouth" ? (0, 0.7) : (0, 1.6))
-end
+# if occursin.( r"size_structured", model_variation )
+#   pl = plot(pl, ylim=aulab=="cfanorth" ? (0, 1.25) : aulab=="cfasouth" ? (0, 0.7) : (0, 1.6))
+# end
 savefig(pl, joinpath( directory_output, string("plot_fishing_mortality_", aulab, ".pdf") )  )
 
 
 # HCR plot
 (K, bi, fm, fmsy, pl) = fishery_model_harvest_control_rule(res, yrs; FM=FM, fb=fb, n_sample=500)
-pl = plot(pl, ylim=(0, 1.5))
-if occursin.( r"size_structured", model_variation )
-  pl = plot(pl, ylim=aulab=="cfanorth" ? (0, 1.0) : aulab=="cfasouth" ? (0, 0.75) : (0, 1.4))
-end
+# if occursin.( r"size_structured", model_variation )
+#   pl = plot(pl, ylim=aulab=="cfanorth" ? (0, 1.0) : aulab=="cfasouth" ? (0, 0.75) : (0, 1.4))
+# end
 savefig(pl, joinpath( directory_output, string("plot_hcr_", aulab, ".pdf") )  )
 
 

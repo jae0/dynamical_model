@@ -84,21 +84,21 @@ end
 end
   
 
-@model function logistic_discrete_turing_historical( S, kmu, nT, nM, removed, ::Type{T} = Float64) where T
+@model function logistic_discrete_turing_historical( S, kmu, nT, nM, removed, ::Type{T} = Float64) where {T}
   # biomass process model: dn/dt = r n (1-n/K) - removed ; b, removed are not normalized by K  
   # priors 
 
-  K ~  TruncatedNormal( kmu, kmu*0.25, kmu/5.0, kmu*5.0 )   
+  K ~  TruncatedNormal( kmu, kmu*0.1, kmu/5.0, kmu*5.0 )   
   r ~  TruncatedNormal( 1.0, 0.1, 0.25, 2.0)   # (mu, sd)
 
   bpsd ~  truncated( Cauchy( 0, 0.1), 1.0e-9, 0.5 )  ;  # slightly informative .. center of mass between (0,1)
-  bosd ~  truncated( Cauchy( 0, 0.1), 1.0e-9, Inf )    ;  # slightly informative .. center of mass between (0,1)
+  bosd ~  truncated( Cauchy( 0, kmu*0.1), 1.0e-9, kmu/2.0 )    ;  # slightly informative .. center of mass between (0,1)
 
-  q ~ TruncatedNormal(  1.0, 0.1,  1.0e-9, 10.0 )    
+  q ~ TruncatedNormal(  1.0, 0.1,  1.0e-1, 10.0 )    
 
   # m's are "total avaialble for fishery"
   m = TArray{T}( nM )
-  m[1] ~ truncated( Beta( 8, 2) )  ; # starting b prior to first catch event
+  m[1] ~ truncated( Beta(5, 5) )  ; # starting b prior to first catch event
 
   for i in 2:nT
     m[i] ~ TruncatedNormal( m[i-1] + r * m[i-1] * ( 1.0 - m[i-1] ) - removed[i-1]/K, bpsd, 0.0, 1.25)  ;
@@ -257,13 +257,13 @@ end
   # biomass process model: dn/dt = r n (1-n/K) - removed ; b, removed are not normalized by K  
   # priors 
 
-  K ~  TruncatedNormal( kmu, kmu*0.25, kmu/5.0, kmu*5.0 )   
+  K ~  TruncatedNormal( kmu, kmu*0.1, kmu/5.0, kmu*5.0 )   
   r ~  TruncatedNormal( 1.0, 0.1, 0.25, 2.0)   # (mu, sd)
 
   bpsd ~  truncated( Cauchy( 0, 0.1), 1.0e-9, 0.5 )  ;  # slightly informative .. center of mass between (0,1)
-  bosd ~  truncated( Cauchy( 0, 0.1), 1.0e-9, Inf )     ;  # slightly informative .. center of mass between (0,1)
+  bosd ~  truncated( Cauchy( 0, kmu*0.1), 1.0e-9, kmu/2.0 )    ;  # slightly informative .. center of mass between (0,1)
 
-  q ~ TruncatedNormal(  1.0, 0.1,  1.0e-9, 10.0 )    
+  q ~ TruncatedNormal(  1.0, 0.1,  1.0e-1, 10.0 )    
 
   # m = total available biomass
   m = TArray{T}( nM )
@@ -373,7 +373,7 @@ function fishery_model_predictions( res; prediction_time=prediction_time, n_samp
   if model_variation=="logistic_discrete_basic"  
     yhat = S ./ mean(res[:,Symbol("q"),:]) .* mean(res[:,Symbol("K"),:]  )
   elseif model_variation=="logistic_discrete_historical"  
-    yhat = ( S ) ./ mean(res[:,Symbol("q"),:]) .* mean(res[:,Symbol("K"),:]  )
+    yhat = ( S ) ./ mean(res[:,Symbol("q"),:]) # .* mean(res[:,Symbol("K"),:]  )
   elseif model_variation=="logistic_discrete"  
     yhat = ( S .- mean(res[:,Symbol("qc"),:] ) ) ./ mean(res[:,Symbol("q"),:]) .* mean(res[:,Symbol("K"),:]  )
   elseif model_variation=="logistic_discrete_map"  
@@ -516,8 +516,8 @@ end
 # ----------
 
 
-function fishery_model_inference( fmod; rejection_rate=0.65, n_adapts=1000, n_samples=1000, n_chains=1, max_depth=7, init_ϵ=0.05, 
-  turing_sampler = Turing.NUTS(n_adapts, rejection_rate; max_depth=max_depth, init_ϵ=init_ϵ), seed=1  )
+function fishery_model_inference( fmod; rejection_rate=0.65, n_adapts=1000, n_samples=1000, n_chains=1, max_depth=7, 
+  turing_sampler = Turing.NUTS(n_adapts, rejection_rate; max_depth=max_depth), seed=1  )
    
   Logging.disable_logging(Logging.Warn) # or e.g. Logging.Info
   
@@ -525,7 +525,7 @@ function fishery_model_inference( fmod; rejection_rate=0.65, n_adapts=1000, n_sa
   
   # 1000 -> ? hrs (Tsit5);  500 -> 6 hrs;; 29hrs 100/100 cfasouth
   #   # n_chains = Threads.nthreads()
-  # turing_sampler = Turing.NUTS(n_adapts, rejection_rate; max_depth=max_depth, init_ϵ=init_ϵ)  ;# stepsize based upon previous experience
+  # turing_sampler = Turing.NUTS(n_adapts, rejection_rate; max_depth=max_depth )  ;# stepsize based upon previous experience
   
   res  =  sample( fmod, turing_sampler, MCMCThreads(), n_samples, n_chains )
   # if on windows and threads are not working, use single processor mode:
