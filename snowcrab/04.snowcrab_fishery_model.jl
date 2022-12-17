@@ -69,9 +69,7 @@ elseif  occursin( r"logistic_discrete", model_variation )
 end
 
 include( fn_env )
-
-
-
+ 
 
 debugging = false
 if debugging
@@ -91,6 +89,8 @@ if debugging
       (test, pl) = fishery_model_test( "nofishing" )
       pl
       showall( summarize( test ) )
+      
+      using SciMLSensitivity
 
       using Plots, Distributions
       plot(x->pdf(Beta(2, 2), x), xlim=(0,1))
@@ -107,39 +107,50 @@ if debugging
       
       using Zygote # fails
       Turing.setadbackend(:zygote)  # only AD that works right now
-   
+
     end
 
 
     Logging.disable_logging(Logging.Debug-2000)  # force re-enable logging
 
     include( fn_env )
- 
+    
     #  Run sampler, collect results.
- 
-    tsampler = Turing.NUTS(30, 0.8; max_depth=8 ) # , init_ϵ=0.001
+    n_sample = 30
+    
+    # first test with SGLD as it is fast and provides behavioural range
+    # ensure basic solutions are within range .. testing balance of parameter effects (positive, follows data, etc)
+    # tsampler = Turing.SGLD()   # Stochastic Gradient Langevin Dynamics (SGLD)
+
+    # then choose from the following (NUTS is probably the simplest choice):
     # tsampler = Turing.HMC(0.01, 7)
-    # tsampler = Turing.SMC()
-    # tsampler = Turing.MH()
-        
-    res  =  sample( fmod, tsampler, 30) # to see progress -- about 5 min
-    # res  =  sample( fmod, tsampler, MCMCThreads(), 100, 4 )
-    # res = fishery_model_inference( fmod, n_adapts=30, n_samples=30, n_chains=1, max_depth=7  )
-  
-    (m, num, bio, pl)  = fishery_model_predictions(res; prediction_time=prediction_time, n_sample=30 )
+    # tsampler = Turing.HMCDA(0.15, 0.65)  #  total leapfrog length, target accept ratio.
+    # tsampler = Turing.NUTS(n_sample, 0.65; max_depth=7, init_ϵ=0.001 )
+    # tsampler = Turing.NUTS{Turing.ForwardDiffAD{true}}( n_sample, 0.65 ) # , init_ϵ=0.001
+
+    res  =  sample( fmod, tsampler, n_sample  ) # to see progress -- about 5 min
+    
+    # res  =  sample( fmod, tsampler, n_sample, thinning=5, discard_initial=30 ) # to see progress -- about 5 min
+      
+    # res = sample( fmod, tsampler, MCMCThreads(), n_sample, 4, 10 ) # MCMCThreads(), n_samples, n_chains, n_adapts
+    # res = fishery_model_inference( fmod, n_adapts=10, n_samples=n_sample, n_chains=1, max_depth=7  ) # same thing
+    
+    (m, num, bio, pl)  = fishery_model_predictions(res; prediction_time=prediction_time, n_sample=n_sample )
     (pl)
     
     # trace plot .. only useful in continuous models, otherwise identical to predictions
-    (trace_nofishing, trace_fishing, pl) = fishery_model_predictions_trace( res; n_sample=50, plot_k=1, alpha=0.1, plot_only_fishing=false )  # model traces
+    (trace_nofishing, trace_fishing, pl) = fishery_model_predictions_trace( res; n_sample=n_sample, plot_k=1, alpha=0.1, plot_only_fishing=false )  # model traces
     (pl)
     
+    showall( summarize( res ) )
+
     # plot fishing mortality
     fb = bio[1:length(survey_time),:,1]  # the last 1 is for size struct; no effect in discrete
-    (Fkt, FR, FM, pl) = fishery_model_mortality( removed, fb, n_sample=500 ) 
-    pl
+    (Fkt, FR, FM, pl) = fishery_model_mortality( removed, fb, n_sample=n_sample ) 
+    (pl)
 
     # HCR plot
-    (K, bi, fm, fmsy, pl) = fishery_model_harvest_control_rule(res, yrs; FM=FM, fb=fb, n_sample=500)
+    (K, bi, fm, fmsy, pl) = fishery_model_harvest_control_rule(res, yrs; FM=FM, fb=fb, n_sample=n_sample)
     pl
    
     showall( summarize( res ) )
@@ -152,9 +163,11 @@ end
 Logging.disable_logging(Logging.Warn) # or e.g. Logging.Info
 
 # params defined in environments .. about 3-5 hrs each
-res = fishery_model_inference( fmod, 
-  rejection_rate=rejection_rate, n_adapts=n_adapts, n_samples=n_samples, 
-  n_chains=n_chains, max_depth=max_depth  )
+tsampler = Turing.NUTS(n_samples, 0.65; max_depth=7, init_ϵ=0.001 )
+res = fishery_model_inference( 
+  fmod, turing_sampler=tsampler, 
+  n_adapts=n_adapts, n_samples=n_samples, n_chains=n_chains,
+  thinning=5, discard_initial=30  )
 
 
 # save results to (directory_output) as a hdf5  # directory location is created in environment

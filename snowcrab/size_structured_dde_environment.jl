@@ -286,10 +286,13 @@ k_mult =
 
 
 u0 = [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ] .* k_mult; # generics to bootstrap the process
-h(p, t; idxs=nothing) = typeof(idxs) <: Number ? ones(nS) * k_mult : ones(nS)  .* k_mult # history function (prior to start)  defaults to values of 0.5*u before t0; note u = (0,1)
+
+# history function (prior to start)  defaults to values of kmu / 1 before t0;  
+h(p, t; idxs=nothing) = typeof(idxs) <: Number ? ones(nS) .* k_mult : ones(nS)  .* k_mult 
+
 tau = [1.0]  # delay resolution
 p = dde_parameters() # dummy values needed to bootstrap DifferentialEquations/Turing initialization
-prob = DDEProblem( size_structured_dde!, u0, h, tspan, p, constant_lags=tau  )  # create container for problem definition 
+prob = DDEProblem{true}( size_structured_dde!, u0, h, tspan, p, constant_lags=tau  )  # create container for problem definition 
 
 
 # Turing sampling-specific run options
@@ -300,20 +303,22 @@ n_chains=4
 
 # NUTS-specific run options
 # see write up here: https://turing.ml/dev/docs/using-turing/sampler-viz
-rejection_rate = 0.8  ## too high and it become impossibly slow .. this is a good balance between variability and speed
-max_depth=8  ## too high and it become impossibly slow
+rejection_rate = 0.65  ## too high and it become impossibly slow .. this is a good balance between variability and speed
+max_depth=7  ## too high and it become impossibly slow
  
  
 # choose model and over-rides if any
 if model_variation=="size_structured_dde_normalized" 
   
   dt_ss = 0.01 # note dt of data should be greater or equal to this 
-
+   
   if aulab=="cfanorth"
-    fmod = size_structured_dde_turing_north( S, kmu, tspan, prob,  nS,  solver, dt )
-  
+    # fmod = size_structured_dde_turing_north( S, kmu, tspan, prob,  nS,  solver, dt )
+    fmod = size_structured_dde_turing_north( S, kmu, tspan, prob,  nS,  solver, dt_ss )  
+
   elseif aulab=="cfasouth" 
-    fmod = size_structured_dde_turing_south( S, kmu, tspan, prob,  nS,  solver, dt )  
+    # fmod = size_structured_dde_turing_south( S, kmu, tspan, prob,  nS,  solver, dt )  
+    fmod = size_structured_dde_turing_south( S, kmu, tspan, prob,  nS,  solver, dt_ss )  
         
   elseif aulab=="cfa4x" 
     fmod = size_structured_dde_turing_4x( S, kmu, tspan, prob,  nS,  solver, dt )  

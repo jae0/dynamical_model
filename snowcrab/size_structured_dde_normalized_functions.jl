@@ -92,25 +92,31 @@ function dde_parameters()
 end
 
  
+ 
+function β( mode, conc )
+  # alternate parameterization of beta distribution 
+  # conc = α + β     https://en.wikipedia.org/wiki/Beta_distribution
+  beta1 = mode *( conc− 2  ) + 1.0
+  beta2 = (1.0 - mode) * ( conc− 2  ) + 1.0
+  Beta( beta1, beta2 ) 
+end 
 
+ 
+
+ 
 @model function size_structured_dde_turing_north( S, kmu, tspan, prob, nS, 
   solver=MethodOfSteps(Tsit5()), dt = 0.01, ::Type{T} = Float64) where {T}
  
   # plot(x->pdf(LogNormal(log(kmu),0.25), x), xlim=(0,kmu*5))
-  K ~ filldist( LogNormal(log(kmu), 0.5), nS )  # kmu is max of a multiyear group , serves as upper bound for all
- 
+  K ~ filldist( truncated( LogNormal(log(kmu), 0.25), kmu/1000, kmu*1000), nS )  # kmu is max of a multiyear group , serves as upper bound for all
   q ~ filldist( Normal( 1.0, 0.1 ), nS )
   qc ~ arraydist([Normal( -SminFraction[i], 0.1) for i in 1:nS])  # informative prior on relative height 
-
-  model_sd ~ filldist( truncated( Gamma(2.0, 0.05), 0.001, 0.5), nS ) # Beta( mode/sd, (1.0-mode)/sd )
- 
-  b ~ filldist( Chi(1), 2 )   # centered on 1
-
-  d ~   filldist( Beta(0.2/0.05, (1.0-0.2)/0.05), nS ) # Beta( mode/sd, (1.0-mode)/sd )
-  d2 ~  filldist( Beta(0.3/0.05, (1.0-0.3)/0.05), nS ) # Beta( mode/sd, (1.0-mode)/sd )
-  v ~   filldist( Beta(0.9/0.05, (1.0-0.9)/0.05),  4 ) # transition rates # Beta( mode/sd, (1.0-mode)/sd )
-  u0 ~  filldist( Beta(0.8/0.10, (1.0-0.8)/0.10), nS ) # plot(x->pdf(Beta(4, 2), x), xlim=(0,1)) # Beta( mode/sd, (1.0-mode)/sd )
-
+  model_sd ~ filldist( β(0.1, 6.0), nS ) # #  working: β(0.1, 10.0);  plot(x->pdf(β(0.01, 8), x), xlim=(0,1)) # uniform 
+  b ~ filldist( truncated(Chisq( 3 ), 0.1, 10),  2 )   # centered on 1; plot(x->pdf(Chisq(7), x), xlim=(0,10)) # mode of 5
+  d ~   filldist( β(0.1, 14.0), nS ) # 
+  d2 ~  filldist( β(0.3, 14.0), nS ) # plot(x->pdf(β(0.5, 30), x), xlim=(0,1))  
+  v ~   filldist( β(0.9,  8.0),  4 ) # transition rates # plot(x->pdf(β(0.99, 10), x), xlim=(0,1))  
+  u0 ~  filldist( β(0.5,  2.0), nS )  # plot(x->pdf(β(0.5, 2), x), xlim=(0,1)) # uniform 
 
   pm = ( b, K, d, d2, v, tau, hsa )
 
@@ -118,8 +124,8 @@ end
   msol = solve(
       remake( prob; u0=u0, h=h, tspan=tspan, p=pm ),
       solver, callback=cb,
-      isoutofdomain=(y,p,t)->any(x -> (x<0), y),  # permit exceeding K
-      saveat=dt, dt=dt * 0.1
+      isoutofdomain=(y,p,t)->any(x -> (x<smallnumber), y),  # permit exceeding K
+      saveat=dt, dt=dt
   )
 
   # @show msol.retcode
@@ -139,74 +145,28 @@ end
 end
 
 
-
-@model function size_structured_dde_turing_south( S, kmu, tspan, prob,   nS,  
-  solver=MethodOfSteps(Tsit5()), dt=0.01, ::Type{T} = Float64) where {T}
- 
-  K ~ filldist( LogNormal(log(kmu), 0.25), nS )  # kmu is max of a multiyear group , serves as upper bound for all
-  q ~ filldist( Normal( 1.0, 0.1 ), nS )
-  qc ~ arraydist([Normal( -SminFraction[i], 0.1) for i in 1:nS])  # informative prior on relative height 
-
-  model_sd ~ filldist( truncated( Gamma(2.0, 0.1), 0.001, 0.5), nS ) # Beta( mode/sd, (1.0-mode)/sd )
- 
-  b ~ filldist( Chi(1), 2 )   # centered on 1
-
-  d ~   filldist( Beta(0.2/0.2, (1.0-0.2)/0.2), nS ) # Beta( mode/sd, (1.0-mode)/sd )
-  d2 ~  filldist( Beta(0.4/0.2, (1.0-0.4)/0.2), nS ) # Beta( mode/sd, (1.0-mode)/sd )
-  v ~   filldist( Beta(0.9/0.2, (1.0-0.9)/0.2),  4 ) # transition rates # Beta( mode/sd, (1.0-mode)/sd )
-  u0 ~  filldist( Beta(0.8/0.2, (1.0-0.8)/0.2), nS ) # plot(x->pdf(Beta(4, 2), x), xlim=(0,1)) # Beta( mode/sd, (1.0-mode)/sd )
-
-  pm = ( b, K, d, d2, v, tau, hsa )
-  
-  # process model
-  msol = solve(
-      remake( prob; u0=u0, h=h, tspan=tspan, p=pm ),
-      solver, callback=cb, 
-      isoutofdomain=(y,p,t)->any(x -> (x<0), y),   
-      saveat=dt, dt=dt*0.1
-  )
-
-  # @show msol.retcode
-  if msol.retcode != :Success
-    Turing.@addlogprob! -Inf
-    return nothing
-  end
-
-  # likelihood of the data
-  for i in 1:nSI
-      ii = findall(x->x==survey_time[Si[i]], msol.t)[1]
-      for k in 1:nS
-          S[Si[i],k] ~ Normal( msol.u[ii][k] * q[k] + qc[k], model_sd[k] )  # observation and process error combined
-      end
-  end
-
-end
-
-
-@model function size_structured_dde_turing_4x( S, kmu, tspan, prob, nS,  
+@model function size_structured_dde_turing_south( S, kmu, tspan, prob, nS, 
   solver=MethodOfSteps(Tsit5()), dt = 0.01, ::Type{T} = Float64) where {T}
-  
-  K ~ filldist( LogNormal(log(kmu), 0.25), nS )  # kmu is max of a multiyear group , serves as upper bound for all
+ 
+  # plot(x->pdf(LogNormal(log(kmu),0.25), x), xlim=(0,kmu*5))
+  K ~ filldist( truncated( LogNormal(log(kmu), 0.25), kmu/1000, kmu*1000), nS )  # kmu is max of a multiyear group , serves as upper bound for all
   q ~ filldist( Normal( 1.0, 0.1 ), nS )
   qc ~ arraydist([Normal( -SminFraction[i], 0.1) for i in 1:nS])  # informative prior on relative height 
-  
-  model_sd ~ filldist( truncated( Gamma(2.0, 0.1), 0.001, 0.9), nS ) # Beta( mode/sd, (1.0-mode)/sd )
- 
-  b ~ filldist( Chi(1), 2 )   # centered on 1
-
-  d ~   filldist( Beta(0.2/0.2, (1.0-0.2)/0.2), nS ) # Beta( mode/sd, (1.0-mode)/sd )
-  d2 ~  filldist( Beta(0.4/0.2, (1.0-0.4)/0.2), nS ) # Beta( mode/sd, (1.0-mode)/sd )
-  v ~   filldist( Beta(0.9/0.2, (1.0-0.9)/0.2),  4 ) # transition rates # Beta( mode/sd, (1.0-mode)/sd )
-  u0 ~  filldist( Beta(0.8/0.2, (1.0-0.8)/0.2), nS ) # plot(x->pdf(Beta(4, 2), x), xlim=(0,1)) # Beta( mode/sd, (1.0-mode)/sd )
+  model_sd ~ filldist( β(0.1, 6.0), nS ) # #  working: β(0.1, 10.0);  plot(x->pdf(β(0.01, 8), x), xlim=(0,1)) # uniform 
+  b ~ filldist( truncated(Chisq( 3 ), 0.1, 10),  2 )   # centered on 1; plot(x->pdf(Chisq(7), x), xlim=(0,10)) # mode of 5
+  d ~   filldist( β(0.1, 16.0), nS ) # 
+  d2 ~  filldist( β(0.3, 16.0), nS ) # plot(x->pdf(β(0.5, 30), x), xlim=(0,1))  
+  v ~   filldist( β(0.9,  8.0),  4 ) # transition rates # plot(x->pdf(β(0.99, 10), x), xlim=(0,1))  
+  u0 ~  filldist( β(0.5,  2.0), nS )  # plot(x->pdf(β(0.5, 2), x), xlim=(0,1)) # uniform 
 
   pm = ( b, K, d, d2, v, tau, hsa )
-  
+
   # process model
   msol = solve(
       remake( prob; u0=u0, h=h, tspan=tspan, p=pm ),
       solver, callback=cb,
-      isoutofdomain=(y,p,t)->any(x -> (x<0), y), 
-      saveat=dt, dt=dt*0.1
+      isoutofdomain=(y,p,t)->any(x -> (x<smallnumber), y),  # permit exceeding K
+      saveat=dt, dt=dt*0.1  
   )
 
   # @show msol.retcode
@@ -222,9 +182,50 @@ end
           S[Si[i],k] ~ Normal( msol.u[ii][k] * q[k] + qc[k], model_sd[k] )  # observation and process error combined
       end
   end
-  
 
 end
+
+ 
+@model function size_structured_dde_turing_4x( S, kmu, tspan, prob, nS, 
+  solver=MethodOfSteps(Tsit5()), dt = 0.01, ::Type{T} = Float64) where {T}
+ 
+  # plot(x->pdf(LogNormal(log(kmu),0.25), x), xlim=(0,kmu*5))
+  K ~ filldist( truncated( LogNormal(log(kmu), 0.25), kmu/1000, kmu*1000), nS )  # kmu is max of a multiyear group , serves as upper bound for all
+  q ~ filldist( Normal( 1.0, 0.1 ), nS )
+  qc ~ arraydist([Normal( -SminFraction[i], 0.1) for i in 1:nS])  # informative prior on relative height 
+  model_sd ~ filldist( β(0.1, 6.0), nS ) # #  working: β(0.1, 10.0);  plot(x->pdf(β(0.01, 8), x), xlim=(0,1)) # uniform 
+  b ~ filldist( truncated(Chisq( 3 ), 0.1, 10),  2 )   # centered on 1; plot(x->pdf(Chisq(7), x), xlim=(0,10)) # mode of 5
+  d ~   filldist( β(0.1, 16.0), nS ) # 
+  d2 ~  filldist( β(0.3,  8.0), nS ) # plot(x->pdf(β(0.5, 30), x), xlim=(0,1))  
+  v ~   filldist( β(0.9,  8.0),  4 ) # transition rates # plot(x->pdf(β(0.99, 10), x), xlim=(0,1))  
+  u0 ~  filldist( β(0.5,  2.0), nS )  # plot(x->pdf(β(0.5, 2), x), xlim=(0,1)) # uniform 
+
+  pm = ( b, K, d, d2, v, tau, hsa )
+
+  # process model
+  msol = solve(
+      remake( prob; u0=u0, h=h, tspan=tspan, p=pm ),
+      solver, callback=cb,
+      isoutofdomain=(y,p,t)->any(x -> (x<smallnumber), y),  # permit exceeding K
+      saveat=dt, dt=dt
+  )
+
+  # @show msol.retcode
+  if msol.retcode != :Success
+    Turing.@addlogprob! -Inf
+    return nothing
+  end
+
+  # likelihood of the data
+  for i in 1:nSI
+      ii = findall(x->x==survey_time[Si[i]], msol.t)[1]
+      for k in 1:nS
+          S[Si[i],k] ~ Normal( msol.u[ii][k] * q[k] + qc[k], model_sd[k] )  # observation and process error combined
+      end
+  end
+
+end
+
 
 
 # ------------------------------
@@ -317,7 +318,7 @@ function fishery_model_test( test=("basic", "random_external_forcing", "fishing"
     p = ( b, K, d, d2, v, tau, hsa )   
     
     prob3 = DDEProblem( size_structured_dde!, u0, h, tspan, p; constant_lags=tau )
-    out = msol3 =  solve( prob3,  solver, saveat=dt  ) #, isoutofdomain=(y,p,t)->any(x->(x<0)|(x>1), y) )
+    out = msol3 =  solve( prob3,  solver, saveat=dt  ) #, isoutofdomain=(y,p,t)->any(x->(x<smallnumber)|(x>1), y) )
     pl = plot()
 
     pl = plot!( pl, msol3, title="dde, with random hsa, with fishing") 
@@ -375,40 +376,37 @@ function fishery_model_test( test=("basic", "random_external_forcing", "fishing"
   return (msol, pl) 
 
 end
-
-  
+ 
 
 function fishery_model_predictions( res; prediction_time=prediction_time, n_sample=100 )
 
   nchains = size(res)[3]
   nsims = size(res)[1]
-
-  nZ = nchains*nsims
-  nI = Int( min( nZ , n_sample ) )
- 
-  md = zeros(nM, nS, nZ, 2)  # number normalized
-  mn = zeros(nM, nS, nZ, 2)  # numbers
+  
+  md = zeros(nM, nS, n_sample, 2)  # number normalized
+  mn = zeros(nM, nS, n_sample, 2)  # numbers
   mb = mn[:,1,:,:]  # biomass of first class
   ntries = 0
   z = 0
   while z <= n_sample 
     ntries += 1
-    ntries > n_sample*5 && break
-    z == n_sample && break
+    ntries > n_sample*10 && break
+    z >= n_sample && break
 
-      j = rand(1:nsims)  # nsims
-      l = rand(1:nchains) #nchains
-      b = [ res[j, Symbol("b[$k]"), l] for k in 1:2]
-      K = [ res[j, Symbol("K[$k]"), l] for k in 1:nS]
-      v = [ res[j, Symbol("v[$k]"), l] for k in 1:4]
-      d = [ res[j, Symbol("d[$k]"), l] for k in 1:nS]
-      d2=[ res[j, Symbol("d2[$k]"), l] for k in 1:nS]
-      u0 = [ res[j, Symbol("u0[$k]"), l] for k in 1:nS]
-      pm = ( b, K, d, d2, v, tau, hsa )
-      prb = remake( prob; u0=u0 , h=h, tspan=tspan, p=pm )
-      msol = solve( prb, solver, callback=cb, saveat=dt, dt=dt , isoutofdomain=(y,p,t)->any(x -> (x<0), y) )
-      msol2 = solve( prb, solver, saveat=dt, dt=dt , isoutofdomain=(y,p,t)->any(x -> (x<0), y) ) # no call backs
-      if msol.retcode == :Success && msol2.retcode == :Success
+    j = rand(1:nsims)  # nsims
+    l = rand(1:nchains) #nchains
+    b = [ res[j, Symbol("b[$k]"), l] for k in 1:2]
+    K = [ res[j, Symbol("K[$k]"), l] for k in 1:nS]
+    v = [ res[j, Symbol("v[$k]"), l] for k in 1:4]
+    d = [ res[j, Symbol("d[$k]"), l] for k in 1:nS]
+    d2=[ res[j, Symbol("d2[$k]"), l] for k in 1:nS]
+    u0 = [ res[j, Symbol("u0[$k]"), l] for k in 1:nS]
+    pm = ( b, K, d, d2, v, tau, hsa )
+    prb = remake( prob; u0=u0 , h=h, tspan=tspan, p=pm )
+    msol = solve( prb, solver, callback=cb, saveat=dt, dt=dt  )
+    msol2 = solve( prb, solver, saveat=dt , dt=dt ) # no call backs
+    
+    if msol.retcode == :Success && msol2.retcode == :Success
         z += 1
         for i in 1:nM
             ii = findall(x->x==prediction_time[i], msol.t) 
@@ -440,7 +438,7 @@ function fishery_model_predictions( res; prediction_time=prediction_time, n_samp
   # plot biomass
   gr()
   pl = plot()
-  pl = plot!(pl, prediction_time, g[:,sample(1:nZ, nI)];  alpha=0.02, color=:lightslateblue)
+  pl = plot!(pl, prediction_time, g ;  alpha=0.02, color=:lightslateblue)
   pl = plot!(pl, prediction_time, mean(g, dims=2);  alpha=0.8, color=:darkslateblue, lw=4)
   pl = plot!(pl; legend=false )
   pl = plot!(pl; ylim=(0, maximum(g)*1.01 ) )
@@ -476,6 +474,7 @@ function abundance_from_index( aindex, res, k )
   return yhat'
 end
 
+
 # -----------
 
 
@@ -483,10 +482,7 @@ function fishery_model_predictions_trace( res; n_sample=10, plot_k=1, alpha=0.02
 
     nchains = size(res)[3]
     nsims = size(res)[1]
-
-    nZ = nchains*nsims
-    nI = Int( min( nZ , n_sample ) )
-    
+  
     out = Vector{Vector{Float64}}()
     out2 = Vector{Vector{Float64}}()
 
@@ -498,7 +494,7 @@ function fishery_model_predictions_trace( res; n_sample=10, plot_k=1, alpha=0.02
     z = 0
     while z <= n_sample 
       ntries += 1
-      ntries > n_sample*5 && break
+      ntries > n_sample*10 && break
       z == n_sample && break
     
       j = rand(1:nsims)  # nsims
@@ -515,8 +511,8 @@ function fishery_model_predictions_trace( res; n_sample=10, plot_k=1, alpha=0.02
       if plot_k==1
             # do fishing and nonfishing
 
-            msol = solve( prb, solver, callback=cb, saveat=dt, dt=dt , isoutofdomain=(y,p,t)->any(x -> (x<0), y)  )
-            msol2 = solve( prb, solver, saveat=dt , dt=dt , isoutofdomain=(y,p,t)->any(x -> (x<0), y) ) # no call backs
+            msol = solve( prb, solver, callback=cb, saveat=dt, dt=dt )
+            msol2 = solve( prb, solver, saveat=dt, dt=dt ) # no call backs
             
             if msol.retcode == :Success && msol2.retcode == :Success
               z += 1
@@ -537,9 +533,8 @@ function fishery_model_predictions_trace( res; n_sample=10, plot_k=1, alpha=0.02
             end
 
         else
-            msol2 = solve( prb, solver, saveat=dt , dt=dt , isoutofdomain=(y,p,t)->any(x -> (x<0), y) ) # no call backs
-             
-            if msol.retcode == :Success && msol2.retcode == :Success
+            msol2 = solve( prb, solver, saveat=dt, dt=dt ) # no call backs
+            if msol2.retcode == :Success
               z += 1
 
               yval2 = vec( reduce(hcat, msol2.u)'[:,plot_k]) .* K[plot_k]
@@ -691,8 +686,9 @@ end
 # ----------
 
 
-function fishery_model_inference( fmod; rejection_rate=0.65, n_adapts=1000, n_samples=1000, n_chains=1, max_depth=7, 
-  turing_sampler=Turing.NUTS(n_adapts, rejection_rate; max_depth=max_depth ),   
+function fishery_model_inference( fmod; rejection_rate=0.65, 
+  n_adapts=1000, n_samples=1000, n_chains=1, max_depth=7, thinning=1, discard_initial=0, 
+  turing_sampler=Turing.NUTS(n_adapts, rejection_rate; max_depth=max_depth ),    
   seed=1 
 )
 
@@ -702,7 +698,10 @@ function fishery_model_inference( fmod; rejection_rate=0.65, n_adapts=1000, n_sa
   #   # n_chains = Threads.nthreads()
   # turing_sampler = Turing.NUTS(n_adapts, rejection_rate; max_depth=max_depth )  ;# stepsize based upon previous experience
   
-  res  =  sample( fmod, turing_sampler, MCMCThreads(), n_samples, n_chains  )
+  res  =  sample( fmod, turing_sampler, MCMCThreads(), 
+    n_samples, n_chains, thinning=thinning, discard_initial=discard_initial  
+  )
+  
   # if on windows and threads are not working, use single processor mode:
   # res = mapreduce(c -> sample(fmod, turing_sampler, n_samples), chainscat, 1:n_chains)
 
@@ -729,13 +728,9 @@ function fishery_model_mortality( removed, fb; n_sample=100 )
   o[isnan.(o)] .= zero(eltype(FM))
  
   ub = maximum(o) * 1.1
-  nchains = size(res)[3]
-  nsims = size(res)[1]
-  nZ = nchains*nsims
-  nI = Int( min( nZ , n_sample ) )
 
   pl = plot()
-  pl = plot!(pl, survey_time, FM[:,sample(1:nZ, nI)] ;  alpha=0.02, color=:lightslateblue)
+  pl = plot!(pl, survey_time, FM ;  alpha=0.02, color=:lightslateblue)
   pl = plot!(pl, survey_time, o ;  alpha=0.8, color=:slateblue, lw=4)
   pl = plot!(pl, xlim=(minimum(yrs)-0.5, maximum(yrs)+1.5  ) )
   pl = plot!(pl, ylim=(0, ub ) )
