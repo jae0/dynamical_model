@@ -23,7 +23,7 @@ end
 # add Turing@v0.21.10  # to add a particular version
 
 pkgs = [
-  "Revise", "MKL", "Logging", "StatsBase", "Statistics", "Distributions", "Random",
+  "Revise", "MKL", "Logging", "StatsBase", "Statistics", "Distributions", "Random", "QuadGK",
   "MCMCChains", "DynamicPPL", "AdvancedHMC", "DistributionsAD", "Bijectors",  
   "DynamicHMC", "AbstractPPL", "Memoization",
   "ForwardDiff", "DataFrames", "CSV", "JLD2", "PlotThemes", "Colors", "ColorSchemes", "RData",
@@ -181,17 +181,12 @@ ki = aulab == "cfanorth" ? 1 :
      aulab == "cfa4x"    ? 3 :
      0  # default
 
-kmu  =  Kmu[ki] / mean(scale_factor)
-
-smallnumber = 1.0 / kmu  # floating point value of sufficient to assume 0 valued
 
 no_digits = 3  # time floating point rounding
 
 
-dt =  aulab == "cfanorth" ? 0.05 :
-      aulab == "cfasouth" ? 0.05 :
-      aulab == "cfa4x"    ? 0.05  :   # long fishing seasons .. aggregate landings more stable
-      0.1   # default
+dt = (0.05, 0.05, 0.05)[ki]    # long fishing seasons .. aggregate landings more stable
+
 
 # spin up time of ~ 1 cycle prior to start of dymamics and project nP years into the future
 tspan = (minimum(yrs) - 10.1, maximum(yrs) + nP + 1.1 )
@@ -224,10 +219,7 @@ hsa = Interpolations.scale(efc, yrs .+ predtime, 1:nS )
 
 fish_time =  round.( round.( removals[:,:ts]  ./ dt; digits=0 ) .* dt; digits=no_digits)    # time of observations for survey
 
-ys =  aulab == "cfanorth" ? "yrs" :
-      aulab == "cfasouth" ? "yrs" :
-      aulab == "cfa4x"    ? "yrs_4x"  :
-      "yrs"   # default
+ys = ( "yrs", "yrs", "yrs_4x")[ki]
 
 fish_year =  round.( round.( removals[:,Symbol(ys)] ./ dt; digits=0 ) .* dt; digits=no_digits)    # time of observations for survey
  
@@ -246,12 +238,12 @@ mkpath(directory_output)
 
 
 # model-specifics functions and data
-include( "size_structured_dde_normalized_functions.jl" )  
 
 
 # DiffEq-model setup
 
 if model_variation=="size_structured_dde_normalized" 
+  include( "size_structured_dde_normalized_functions.jl" )  
  
   function affect_fishing!(integrator)
     i = findall(t -> t == integrator.t, fish_time)[1]
@@ -259,6 +251,7 @@ if model_variation=="size_structured_dde_normalized"
   end
    
 elseif  model_variation=="size_structured_dde_unnormalized"
+  include( "size_structured_dde_unnormalized_functions.jl" )  
  
   function affect_fishing!(integrator)
     i = findall(t -> t == integrator.t, fish_time)[1]
@@ -279,21 +272,19 @@ cb = PresetTimeCallback( fish_time, affect_fishing! )
 #   PositiveDomain()
 # );
 
-k_mult = 
-  model_variation=="size_structured_dde_unnormalized" ? kmu * 0.5 :
-  model_variation=="size_structured_dde_normalized"   ? 0.5 :
-  1.0
-
-
-u0 = [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ] .* k_mult; # generics to bootstrap the process
+# generics to bootstrap the process; initial conditions
+u0 = 
+  model_variation=="size_structured_dde_unnormalized" ? ones(nS) .* kmu .* 0.5 :
+  model_variation=="size_structured_dde_normalized"   ? ones(nS) .* 0.5 :
+  0.5
 
 # history function (prior to start)  defaults to values of kmu / 1 before t0;  
-h(p, t; idxs=nothing) = typeof(idxs) <: Number ? ones(nS) .* k_mult : ones(nS)  .* k_mult 
+# h(p, t; idxs=nothing) = typeof(idxs) <: Number ? u0 : u0 
+h(p, t) = u0 
 
 tau = [1.0]  # delay resolution
 p = dde_parameters() # dummy values needed to bootstrap DifferentialEquations/Turing initialization
 prob = DDEProblem{true}( size_structured_dde!, u0, h, tspan, p, constant_lags=tau  )  # create container for problem definition 
-
 
 # Turing sampling-specific run options
 n_adapts=1000
@@ -305,29 +296,43 @@ n_chains=4
 # see write up here: https://turing.ml/dev/docs/using-turing/sampler-viz
 rejection_rate = 0.65  ## too high and it become impossibly slow .. this is a good balance between variability and speed
 max_depth=7  ## too high and it become impossibly slow
+init_ϵ=0.01 
  
- 
+kmu  =  Kmu[ki] / mean(scale_factor)
+
+smallnumber = 1.0 / kmu  # floating point value of sufficient to assume 0 valued
+
 # choose model and over-rides if any
 if model_variation=="size_structured_dde_normalized" 
-  
-  dt_ss = 0.01 # note dt of data should be greater or equal to this 
-   
-  if aulab=="cfanorth"
-    # fmod = size_structured_dde_turing_north( S, kmu, tspan, prob,  nS,  solver, dt )
-    fmod = size_structured_dde_turing_north( S, kmu, tspan, prob,  nS,  solver, dt_ss )  
+  n_adapts=500
+  n_samples=1500
+  n_chains=4
 
+  rejection_rate = 0.65
+  max_depth = 7
+  init_ϵ = 0.001
+
+  turing_sampler = Turing.NUTS(n_samples, rejection_rate; max_depth=max_depth, init_ϵ=init_ϵ )
+  fmod = size_structured_dde_turing( S, kmu, tspan, prob, nS,  solver, dt )
+  
+  if aulab=="cfanorth"
+  #  turing_sampler = Turing.NUTS(n_samples, rejection_rate; max_depth=max_depth, init_ϵ=init_ϵ )
+    fmod = size_structured_dde_turing_north( S, kmu, tspan, prob, nS, solver, dt )
+  
   elseif aulab=="cfasouth" 
-    # fmod = size_structured_dde_turing_south( S, kmu, tspan, prob,  nS,  solver, dt )  
-    fmod = size_structured_dde_turing_south( S, kmu, tspan, prob,  nS,  solver, dt_ss )  
+  #  turing_sampler = Turing.NUTS(n_samples, rejection_rate; max_depth=max_depth, init_ϵ=init_ϵ )
+    fmod = size_structured_dde_turing_south( S, kmu, tspan, prob, nS, solver, dt )  
         
   elseif aulab=="cfa4x" 
-    fmod = size_structured_dde_turing_4x( S, kmu, tspan, prob,  nS,  solver, dt )  
+  #  turing_sampler = Turing.NUTS(n_samples, rejection_rate; max_depth=max_depth, init_ϵ=init_ϵ )
+    fmod = size_structured_dde_turing_4x( S, kmu, tspan, prob, nS, solver, dt )  
     
   end
 
 elseif  model_variation=="size_structured_dde_unnormalized"
 
-  fmod = size_structured_dde_turing( S, kmu, tspan, prob, nS,  solver, dt )
+  turing_sampler = Turing.NUTS(n_samples, rejection_rate ) #; max_depth=max_depth, init_ϵ=init_ϵ )
+  fmod = size_structured_dde_turing( S, kmu, tspan, prob, nS, solver, dt )
 
 end
 

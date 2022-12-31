@@ -4,77 +4,25 @@ using Turing
 function size_structured_dde!( du, u, h, p, t )
   # here u, du are actual numbers .. not normalized by K due to use of callbacks
 
-  (b, K, d, d2, v, tau, hsa)  = p
+  b, K, d, d2, v, tau, hsa  = p
  
   @inbounds begin
 
       # this break down seems to speed it up a bit ... not sure why
-      br =  h(p, t-8.0)[6]  .* b
-      tr =  h(p, t-1.0)[2:5]  .*  v
+      br =  b .* h(p, t-8.0)[6]  
+      tr =  v .* h(p, t-1.0)[2:5]
       
       # d: first order mortality  
       # d2: second order mortality
-
-      # run1: first order mortality  -- not useful
-      #   north: dampended and optimistic predictions, and flat
-      #   south:  flat .. only scale which is much higher than reasonable
-      #   4x: run through the middle (damped) -- not enough dynamic range, very optimistic 
-      #   dr = d .* u   
-
-      # run2: first order mortality with habitat  -- not useful
-      #   north: not functional exceeds reasonable upper bounds
-      #   south:   flat .. only scale which is much higher than reasonable
-      #   4x: not functional exceeds reasonable upper bounds
-      
-      #  dr = d .* u ./ hsa(t, 1:6)  
-      
-      # run3: second order mortality   
-      #   north: completely out of range
-      #   south:  flat; too optimistic; mixing ok
-      #   4x: run through middle similar to run 1 .. not enough dynamic range, even more optimistic than run 1
-      
-      #   dr = d2.* (u ).^2.0   
-      
-      # run4: second order mortality with habitat  -- rank 1 (simplest and reasonable)
-      #   north: good dynamic range .. reduced levels at start and end -- reasonable; poor mixing
-      #   south:  flat but  scale 40 to 60, mixing is reasonable; optimimistic
-      #   4x: dynamic range good, failed to match second mode -- reasonable solution
-      
-      # dr = d2.* (u ./ hsa(t, 1:6) ).^2.0     
-
-      # run5: first order mortality with habitat and second order background 
-      #   north: similar to run4 but damped prior to 2004 -- no mixing
-      #   south:  flat, scale 35:50, mixing reasonable, optimistic,
-      #   4x: single mode solution 
-      
-      # dr = d .* u ./ hsa(t, 1:6)  .+ d2.* (u ).^2.0   
-      
-      # run 6: first order mortality with habitat and second order background  with habitat (rank2)
-      #   north: good dynamic range .. divergence pre-2005 and post-2018 -- reasonable -- similar to run 4, 5; no mixing
-      #   south:  flat scale 30:50, reasonable mixing, recent eriod is pessimistic, similar to run 7
-      #   4x: single mode solution -- similar to run 5 but more pessimistic
-      
-      # uh = u ./ hsa(t, 1:6)  
-      # dr = d .* uh .+ d2.* ( uh ).^2.0   
-
-      # run 7: first order mortality background and second order habitat 
-      #   north: good dynamic range, overall amplitude is smaller .. divergence post-2019 -- reasonable -- similar to run 6; no mixing
-      #   south:  flat, 40 to 35, reasonable mixing; very similar to run 6
-      #   4x: single mode solution -- bimodal similar to run 4 missing second mode 
-      
-      #  uh = u ./ hsa(t, 1:6)  
-      #  dr = d .* u .+ d2.* ( uh ).^2.0   
-        
-      # run 8: hybrid
-      uh = u ./ hsa(t, 1:6)
-      dr = d .* u .+ d2 .* uh .^ 2.0    
-       
+      dr = d .* u  .+  d2 .* u ./ hsa(t, 1:6) .* u
+ 
       du[1] = tr[1] * K[2] / K[1]            - dr[1]       # note:
       du[2] = tr[2] * K[3] / K[2]   - tr[1]  - dr[2]
       du[3] = tr[3] * K[4] / K[3]   - tr[2]  - dr[3]
       du[4] = tr[4] * K[5] / K[4]   - tr[3]  - dr[4]
       du[5] = br[1] * K[6] / K[5]   - tr[4]  - dr[5]
       du[6] = br[2]                          - dr[6]      # fem mat simple logistic with lag tau and density dep on present numbers
+    
     end
 
 end
@@ -91,32 +39,37 @@ function dde_parameters()
     return params
 end
 
- 
- 
+
+
 function β( mode, conc )
   # alternate parameterization of beta distribution 
   # conc = α + β     https://en.wikipedia.org/wiki/Beta_distribution
-  beta1 = mode *( conc− 2  ) + 1.0
-  beta2 = (1.0 - mode) * ( conc− 2  ) + 1.0
+  beta1 = mode *( conc - 2  ) + 1.0
+  beta2 = (1.0 - mode) * ( conc - 2  ) + 1.0
   Beta( beta1, beta2 ) 
 end 
 
- 
 
+
+@model function size_structured_dde_turing( S, kmu, tspan, prob, nS, 
+  solver=MethodOfSteps(Tsit5()), dt = 0.01)
  
-@model function size_structured_dde_turing_north( S, kmu, tspan, prob, nS, 
-  solver=MethodOfSteps(Tsit5()), dt = 0.01, ::Type{T} = Float64) where {T}
- 
-  # plot(x->pdf(LogNormal(log(kmu),0.25), x), xlim=(0,kmu*5))
-  K ~ filldist( truncated( LogNormal(log(kmu), 0.25), kmu/1000, kmu*1000), nS )  # kmu is max of a multiyear group , serves as upper bound for all
+  # plot(x->pdf(LogNormal(log(kmu),0.2), x), xlim=(0,kmu*5))
+  K ~ filldist( LogNormal(log(kmu), 0.2), nS )  # kmu is max of a multiyear group , serves as upper bound for all
   q ~ filldist( Normal( 1.0, 0.1 ), nS )
   qc ~ arraydist([Normal( -SminFraction[i], 0.1) for i in 1:nS])  # informative prior on relative height 
-  model_sd ~ filldist( β(0.1, 6.0), nS ) # #  working: β(0.1, 10.0);  plot(x->pdf(β(0.01, 8), x), xlim=(0,1)) # uniform 
+  
+  model_sd ~ filldist( β(0.1, 10.0), nS ) # #  working: β(0.1, 10.0);  plot(x->pdf(β(0.01, 8), x), xlim=(0,1)) # uniform 
+  # model_sd ~ filldist( β(0.1, 16.0), nS ) # #  working: β(0.1, 10.0);  plot(x->pdf(β(0.01, 8), x), xlim=(0,1)) # uniform 
+  # model_sd ~ filldist( Gamma(2.0, 0.02), nS ) # #  working: β(0.1, 10.0);  plot(x->pdf( Gamma(2.0, 0.05), x), xlim=(0,1)) # uniform 
+  
+  # b ~   filldist( LogNormal( 0.0, 0.25),  2 )   # centered on 1; plot(x->pdf(LogNormal(0.0, 0.25), x), xlim=(0,10)) # mode of 5
   b ~ filldist( truncated(Chisq( 3 ), 0.1, 10),  2 )   # centered on 1; plot(x->pdf(Chisq(7), x), xlim=(0,10)) # mode of 5
-  d ~   filldist( β(0.1, 14.0), nS ) # 
+
+  d ~   filldist( β(0.1, 30.0), nS ) # 
   d2 ~  filldist( β(0.3, 14.0), nS ) # plot(x->pdf(β(0.5, 30), x), xlim=(0,1))  
-  v ~   filldist( β(0.9,  8.0),  4 ) # transition rates # plot(x->pdf(β(0.99, 10), x), xlim=(0,1))  
-  u0 ~  filldist( β(0.5,  2.0), nS )  # plot(x->pdf(β(0.5, 2), x), xlim=(0,1)) # uniform 
+  v ~   filldist( β(0.9, 30.0),  4 ) # transition rates # plot(x->pdf(β(0.99, 10), x), xlim=(0,1))  
+  u0 ~  filldist( β(0.5,  6.0), nS )  # plot(x->pdf(β(0.5, 2), x), xlim=(0,1)) # uniform 
 
   pm = ( b, K, d, d2, v, tau, hsa )
 
@@ -124,8 +77,57 @@ end
   msol = solve(
       remake( prob; u0=u0, h=h, tspan=tspan, p=pm ),
       solver, callback=cb,
-      isoutofdomain=(y,p,t)->any(x -> (x<smallnumber), y),  # permit exceeding K
-      saveat=dt, dt=dt
+      isoutofdomain=(y,p,t)->any(x -> x<0, y),  # permit exceeding K
+      saveat=dt # , dt=dt, abstol=1e-9 # , maxiters=1e9
+  )
+
+  # @show msol.retcode
+  if msol.retcode != :Success
+    Turing.@addlogprob! -Inf
+    return nothing
+  end
+
+  # likelihood of the data
+  for i in 1:nSI
+      ii = findall(x->x==survey_time[Si[i]], msol.t)[1]
+      for k in 1:nS
+          S[Si[i],k] ~ Normal( msol.u[ii][k] * q[k] + qc[k], model_sd[k] )  # observation and process error combined
+      end
+  end
+
+end
+
+
+
+@model function size_structured_dde_turing_north( S, kmu, tspan, prob, nS, 
+  solver=MethodOfSteps(Tsit5()), dt = 0.01)
+ 
+  # plot(x->pdf(LogNormal(log(kmu),0.2), x), xlim=(0,kmu*5))
+  K ~ filldist( LogNormal(log(kmu), 0.2), nS )  # kmu is max of a multiyear group , serves as upper bound for all
+  q ~ filldist( Normal( 1.0, 0.1 ), nS )
+  qc ~ arraydist([Normal( -SminFraction[i], 0.1) for i in 1:nS])  # informative prior on relative height 
+
+  model_sd ~ filldist( β(0.1, 10.0), nS ) # #  working: β(0.1, 10.0);  plot(x->pdf(β(0.01, 8), x), xlim=(0,1)) # uniform 
+  # model_sd ~ filldist( β(0.1, 16.0), nS ) # #  working: β(0.1, 10.0);  plot(x->pdf(β(0.01, 8), x), xlim=(0,1)) # uniform 
+  # model_sd ~ filldist( Gamma(2.0, 0.02), nS ) # #  working: β(0.1, 10.0);  plot(x->pdf( Gamma(2.0, 0.05), x), xlim=(0,1)) # uniform 
+  
+  # b ~   filldist( LogNormal( 0.0, 0.25),  2 )   # centered on 1; plot(x->pdf(LogNormal(0.0, 0.25), x), xlim=(0,10)) # mode of 5
+  b ~ filldist( truncated(Chisq( 3 ), 0.1, 10),  2 )   # centered on 1; plot(x->pdf(Chisq(7), x), xlim=(0,10)) # mode of 5
+
+  d ~   filldist( β(0.1, 16.0), nS ) # 
+  d2 ~  filldist( β(0.3,  8.0), nS ) # plot(x->pdf(β(0.5, 30), x), xlim=(0,1))  
+  v ~   filldist( β(0.9, 24.0),  4 ) # transition rates # plot(x->pdf(β(0.99, 10), x), xlim=(0,1))  
+  u0 ~  filldist( β(0.5,  2.0), nS )  # plot(x->pdf(β(0.5, 2), x), xlim=(0,1)) # uniform 
+
+ 
+  pm = ( b, K, d, d2, v, tau, hsa )
+
+  # process model
+  msol = solve(
+      remake( prob; u0=u0, h=h, tspan=tspan, p=pm ),
+      solver, callback=cb,
+      isoutofdomain=(y,p,t)->any(x -> (x<0), y),  # permit exceeding K
+      saveat=dt, dt=dt*0.1, abstol=1e-9 # , maxiters=1e9
   )
 
   # @show msol.retcode
@@ -146,17 +148,23 @@ end
 
 
 @model function size_structured_dde_turing_south( S, kmu, tspan, prob, nS, 
-  solver=MethodOfSteps(Tsit5()), dt = 0.01, ::Type{T} = Float64) where {T}
+  solver=MethodOfSteps(Tsit5()), dt = 0.01)
  
-  # plot(x->pdf(LogNormal(log(kmu),0.25), x), xlim=(0,kmu*5))
-  K ~ filldist( truncated( LogNormal(log(kmu), 0.25), kmu/1000, kmu*1000), nS )  # kmu is max of a multiyear group , serves as upper bound for all
+  # plot(x->pdf(LogNormal(log(kmu),0.2), x), xlim=(0,kmu*5))
+  K ~ filldist( LogNormal(log(kmu), 0.2), nS )  # kmu is max of a multiyear group , serves as upper bound for all
   q ~ filldist( Normal( 1.0, 0.1 ), nS )
   qc ~ arraydist([Normal( -SminFraction[i], 0.1) for i in 1:nS])  # informative prior on relative height 
-  model_sd ~ filldist( β(0.1, 6.0), nS ) # #  working: β(0.1, 10.0);  plot(x->pdf(β(0.01, 8), x), xlim=(0,1)) # uniform 
+
+  model_sd ~ filldist( β(0.1, 10.0), nS ) # #  working: β(0.1, 10.0);  plot(x->pdf(β(0.01, 8), x), xlim=(0,1)) # uniform 
+  # model_sd ~ filldist( β(0.1, 16.0), nS ) # #  working: β(0.1, 10.0);  plot(x->pdf(β(0.01, 8), x), xlim=(0,1)) # uniform 
+  # model_sd ~ filldist( Gamma(2.0, 0.02), nS ) # #  working: β(0.1, 10.0);  plot(x->pdf( Gamma(2.0, 0.05), x), xlim=(0,1)) # uniform 
+  
+  # b ~   filldist( LogNormal( 0.0, 0.25),  2 )   # centered on 1; plot(x->pdf(LogNormal(0.0, 0.25), x), xlim=(0,10)) # mode of 5
   b ~ filldist( truncated(Chisq( 3 ), 0.1, 10),  2 )   # centered on 1; plot(x->pdf(Chisq(7), x), xlim=(0,10)) # mode of 5
+
   d ~   filldist( β(0.1, 16.0), nS ) # 
-  d2 ~  filldist( β(0.3, 16.0), nS ) # plot(x->pdf(β(0.5, 30), x), xlim=(0,1))  
-  v ~   filldist( β(0.9,  8.0),  4 ) # transition rates # plot(x->pdf(β(0.99, 10), x), xlim=(0,1))  
+  d2 ~  filldist( β(0.4,  8.0), nS ) # plot(x->pdf(β(0.5, 8), x), xlim=(0,1))  
+  v ~   filldist( β(0.9, 24.0),  4 ) # transition rates # plot(x->pdf(β(0.99, 10), x), xlim=(0,1))  
   u0 ~  filldist( β(0.5,  2.0), nS )  # plot(x->pdf(β(0.5, 2), x), xlim=(0,1)) # uniform 
 
   pm = ( b, K, d, d2, v, tau, hsa )
@@ -165,8 +173,8 @@ end
   msol = solve(
       remake( prob; u0=u0, h=h, tspan=tspan, p=pm ),
       solver, callback=cb,
-      isoutofdomain=(y,p,t)->any(x -> (x<smallnumber), y),  # permit exceeding K
-      saveat=dt, dt=dt*0.1  
+      isoutofdomain=(y,p,t)->any(x -> (x<0), y),  # permit exceeding K
+      saveat=dt# , dt=dt*0.1, abstol=1e-10 # , maxiters=1e9
   )
 
   # @show msol.retcode
@@ -185,29 +193,36 @@ end
 
 end
 
- 
+
 @model function size_structured_dde_turing_4x( S, kmu, tspan, prob, nS, 
-  solver=MethodOfSteps(Tsit5()), dt = 0.01, ::Type{T} = Float64) where {T}
+  solver=MethodOfSteps(Tsit5()), dt = 0.01)
  
-  # plot(x->pdf(LogNormal(log(kmu),0.25), x), xlim=(0,kmu*5))
-  K ~ filldist( truncated( LogNormal(log(kmu), 0.25), kmu/1000, kmu*1000), nS )  # kmu is max of a multiyear group , serves as upper bound for all
+  # plot(x->pdf(LogNormal(log(kmu),0.2), x), xlim=(0,kmu*5))
+  K ~ filldist( LogNormal(log(kmu), 0.2), nS )  # kmu is max of a multiyear group , serves as upper bound for all
   q ~ filldist( Normal( 1.0, 0.1 ), nS )
   qc ~ arraydist([Normal( -SminFraction[i], 0.1) for i in 1:nS])  # informative prior on relative height 
-  model_sd ~ filldist( β(0.1, 6.0), nS ) # #  working: β(0.1, 10.0);  plot(x->pdf(β(0.01, 8), x), xlim=(0,1)) # uniform 
+
+  model_sd ~ filldist( β(0.1, 10.0), nS ) # #  working: β(0.1, 10.0);  plot(x->pdf(β(0.01, 8), x), xlim=(0,1)) # uniform 
+  # model_sd ~ filldist( β(0.1, 16.0), nS ) # #  working: β(0.1, 10.0);  plot(x->pdf(β(0.01, 8), x), xlim=(0,1)) # uniform 
+  # model_sd ~ filldist( Gamma(2.0, 0.02), nS ) # #  working: β(0.1, 10.0);  plot(x->pdf( Gamma(2.0, 0.05), x), xlim=(0,1)) # uniform 
+  
+  # b ~   filldist( LogNormal( 0.0, 0.25),  2 )   # centered on 1; plot(x->pdf(LogNormal(0.0, 0.25), x), xlim=(0,10)) # mode of 5
   b ~ filldist( truncated(Chisq( 3 ), 0.1, 10),  2 )   # centered on 1; plot(x->pdf(Chisq(7), x), xlim=(0,10)) # mode of 5
+
   d ~   filldist( β(0.1, 16.0), nS ) # 
-  d2 ~  filldist( β(0.3,  8.0), nS ) # plot(x->pdf(β(0.5, 30), x), xlim=(0,1))  
-  v ~   filldist( β(0.9,  8.0),  4 ) # transition rates # plot(x->pdf(β(0.99, 10), x), xlim=(0,1))  
+  d2 ~  filldist( β(0.4,  8.0), nS ) # plot(x->pdf(β(0.5, 30), x), xlim=(0,1))  
+  v ~   filldist( β(0.9, 24.0),  4 ) # transition rates # plot(x->pdf(β(0.99, 10), x), xlim=(0,1))  
   u0 ~  filldist( β(0.5,  2.0), nS )  # plot(x->pdf(β(0.5, 2), x), xlim=(0,1)) # uniform 
 
+ 
   pm = ( b, K, d, d2, v, tau, hsa )
 
   # process model
   msol = solve(
       remake( prob; u0=u0, h=h, tspan=tspan, p=pm ),
       solver, callback=cb,
-      isoutofdomain=(y,p,t)->any(x -> (x<smallnumber), y),  # permit exceeding K
-      saveat=dt, dt=dt
+      isoutofdomain=(y,p,t)->any(x -> (x<0), y),  # permit exceeding K
+      saveat=dt# , dt=dt*0.1, abstol=1e-9 # , maxiters=1e9
   )
 
   # @show msol.retcode
@@ -318,7 +333,7 @@ function fishery_model_test( test=("basic", "random_external_forcing", "fishing"
     p = ( b, K, d, d2, v, tau, hsa )   
     
     prob3 = DDEProblem( size_structured_dde!, u0, h, tspan, p; constant_lags=tau )
-    out = msol3 =  solve( prob3,  solver, saveat=dt  ) #, isoutofdomain=(y,p,t)->any(x->(x<smallnumber)|(x>1), y) )
+    out = msol3 =  solve( prob3,  solver, saveat=dt  ) #, isoutofdomain=(y,p,t)->any(x->(x<0)|(x>1), y) )
     pl = plot()
 
     pl = plot!( pl, msol3, title="dde, with random hsa, with fishing") 
@@ -378,7 +393,7 @@ function fishery_model_test( test=("basic", "random_external_forcing", "fishing"
 end
  
 
-function fishery_model_predictions( res; prediction_time=prediction_time, n_sample=100 )
+function fishery_model_predictions_old( res; prediction_time=prediction_time, n_sample=100 )
 
   nchains = size(res)[3]
   nsims = size(res)[1]
@@ -478,7 +493,7 @@ end
 # -----------
 
 
-function fishery_model_predictions_trace( res; n_sample=10, plot_k=1, alpha=0.02, plot_only_fishing=true )
+function fishery_model_predictions_trace_old( res; n_sample=10, plot_k=1, alpha=0.02, plot_only_fishing=true )
 
     nchains = size(res)[3]
     nsims = size(res)[1]
@@ -582,58 +597,6 @@ end
 
 
 
-function fishery_model_harvest_control_rule(res, yrs; FM=FM, fb=fb, n_sample=500 )
-
-  fmsy = nothing
-
-  pl = plot()
-
-  # mean weight by year
-  sf = nameof(typeof(mw)) == :ScaledInterpolation ?  mw(yrs) ./ 1000.0  ./ 1000.0 : scale_factor
-
-  # sample and plot posterior K
-  K = vec( Array(res[:, Symbol("K[1]"), :]) ) .* mean(sf)  # convert to biomass 
-
-  o = sample(K, n_sample)
-  pl = vline!(pl, o;  alpha=0.05, color=:limegreen )
-  pl = vline!(pl, o./2;  alpha=0.05, color=:darkkhaki )
-  pl = vline!(pl, o./4;  alpha=0.05, color=:darkred )
-
-  pl = vline!(pl, [mean(K)];  alpha=0.6, color=:chartreuse4, lw=5 )
-  pl = vline!(pl, [quantile(K, 0.975)];  alpha=0.5, color=:chartreuse4, lw=2, line=:dash )
-  pl = vline!(pl, [quantile(K, 0.025)];  alpha=0.5, color=:chartreuse4, lw=2, line=:dash )
-
-  pl = vline!(pl, [mean(K)/2.0];  alpha=0.6, color=:darkkhaki, lw=5 )
-  pl = vline!(pl, [quantile(K, 0.975)]/2.0;  alpha=0.5, color=:darkkhaki, lw=2, line=:dash )
-  pl = vline!(pl, [quantile(K, 0.025)]/2.0;  alpha=0.5, color=:darkkhaki, lw=2, line=:dash )
-
-  pl = vline!(pl, [mean(o)/4.0];  alpha=0.6, color=:darkred, lw=5 )
-  pl = vline!(pl, [quantile(K, 0.975)]/4.0;  alpha=0.5, color=:darkred, lw=2, line=:dash )
-  pl = vline!(pl, [quantile(K, 0.025)]/4.0;  alpha=0.5, color=:darkred, lw=2, line=:dash )
-
-  nt = length(survey_time)
-  colours = get(colorschemes[:tab20c], 1:nt, :extrema )[rand(1:nt, nt)]
-
-  # scatter!( fb, FM ;  alpha=0.3, color=colours, markersize=4, markerstrokewidth=0)
-
-  fb_mean = mean(fb, dims=2)
-  fm_mean = mean(FM, dims=2)
-
-  # scatter!( [fb[nt,:]], [FM[nt,:]] ;  alpha=0.3, color=:yellow, markersize=6, markerstrokewidth=0)
-  pl = plot!(pl, fb_mean, fm_mean ;  alpha=0.8, color=:slateblue, lw=3)
-
-  pl = scatter!(pl,  fb_mean, fm_mean ;  alpha=0.8, color=colours,  markersize=4, markerstrokewidth=0,
-    series_annotations = text.(trunc.(Int, survey_time), :top, :left, pointsize=4) )
-  pl = scatter!(pl,  [fb_mean[nt]], [fm_mean[nt]] ;  alpha=0.8, color=:yellow, markersize=8, markerstrokewidth=1)
-  
-  ub = max( quantile(o, 0.95), maximum( fb_mean ) ) * 1.05
-  pl = plot!(pl; legend=false, xlim=(0, ub ), ylim=(0, maximum(fm_mean ) * 1.05  ) )
-  # TODO # add predictions ???
-
-  return(K, fb_mean, fm_mean, fmsy, pl)
-end
-
-
 
 
 function fishing_mortality_instantaneous( removed, abundance )
@@ -699,7 +662,7 @@ function fishery_model_inference( fmod; rejection_rate=0.65,
   # turing_sampler = Turing.NUTS(n_adapts, rejection_rate; max_depth=max_depth )  ;# stepsize based upon previous experience
   
   res  =  sample( fmod, turing_sampler, MCMCThreads(), 
-    n_samples, n_chains, thinning=thinning, discard_initial=discard_initial  
+    n_samples, n_chains #, thinning=thinning, discard_initial=discard_initial  
   )
   
   # if on windows and threads are not working, use single processor mode:
@@ -712,30 +675,355 @@ end
 
 
 
+
+# -------------------
+
+
+function fishery_model_predictions( res; prediction_time=prediction_time, n_sample=100 )
+
+  nchains = size(res)[3]
+  nsims = size(res)[1]
+  
+  md = zeros(nM, nS, n_sample, 2)  # number normalized
+  mn = zeros(nM, nS, n_sample, 2)  # numbers
+  mb = mn[:,1,:,:]  # biomass of first class
+
+  trace_time = Vector{Vector{Float64}}()
+
+  out10 = Vector{Vector{Float64}}()
+  out11 = Vector{Vector{Float64}}()
+  out12 = Vector{Vector{Float64}}()
+  
+  out1 = Vector{Vector{Float64}}()
+  out2 = Vector{Vector{Float64}}()
+  out3 = Vector{Vector{Float64}}()
+  out4 = Vector{Vector{Float64}}()
+  out5 = Vector{Vector{Float64}}()
+  out6 = Vector{Vector{Float64}}()
+
+  ntries = 0
+  z = 0
+
+  while z <= n_sample 
+    ntries += 1
+    ntries > n_sample*10 && break
+    z >= n_sample && break
+
+    j = rand(1:nsims)  # nsims
+    l = rand(1:nchains) #nchains
+    b = [ res[j, Symbol("b[$k]"), l] for k in 1:2]
+    K = [ res[j, Symbol("K[$k]"), l] for k in 1:nS]
+    v = [ res[j, Symbol("v[$k]"), l] for k in 1:4]
+    d = [ res[j, Symbol("d[$k]"), l] for k in 1:nS]
+    d2=[ res[j, Symbol("d2[$k]"), l] for k in 1:nS]
+    u0 = [ res[j, Symbol("u0[$k]"), l] for k in 1:nS]
+
+    pm = ( b, K, d, d2, v, tau, hsa )
+    prb = remake( prob; u0=u0 , h=h, tspan=tspan, p=pm )
+    msol1 = solve( prb, solver, callback=cb, saveat=dt, dt=dt  )
+
+    z==0 && push!(trace_time, msol1.t)
+
+    msol0 = solve( prb, solver, saveat=trace_time[1] ) # no call backs
+    
+    if msol1.retcode == :Success && msol0.retcode == :Success
+        z += 1
+        
+        # annual
+        for i in 1:nM
+            ii = findall(x->x==prediction_time[i], trace_time[1]) 
+            if length(ii) > 0  
+              ii = ii[1]
+              sf  = nameof(typeof(mw)) == :ScaledInterpolation ? mw(msol1.t[ii])  ./ 1000.0 ./ 1000.0  :  scale_factor   # n to kt
+              md[i,:,z,1] = msol1.u[ii]  # with fishing
+              md[i,:,z,2] = msol0.u[ii]  # no fishing
+              mn[i,:,z,1] = msol1.u[ii]  .* K # with fishing scaled to K
+              mn[i,:,z,2] = msol0.u[ii]  .* K # no fishing scaled to K
+              mb[i,z,1] = mn[i,1,z,1]  .* sf  # biomass of state var 1 
+              mb[i,z,2] = mn[i,1,z,2]  .* sf
+            end
+        end  # end for
+
+        # traces for plotting, etc 
+        sf  = nameof(typeof(mw)) == :ScaledInterpolation ? mw(trace_time[1])  ./ 1000.0 ./ 1000.0 :  scale_factor
+        b10 = vec( reduce(hcat, msol0.u)'[:,1]) .* K[1] .* sf
+        b11 = vec( reduce(hcat, msol1.u)'[:,1]) .* K[1] .* sf
+        b12 = ( b10 .- b11 ) ./ b10 
+
+        push!(out10, b10)
+        push!(out11, b11)
+        push!(out12, b12)
+
+        push!(out1, vec( reduce(hcat, msol1.u)'[:,1]) .* K[1])
+        push!(out2, vec( reduce(hcat, msol1.u)'[:,2]) .* K[2])
+        push!(out3, vec( reduce(hcat, msol1.u)'[:,3]) .* K[3])
+        push!(out4, vec( reduce(hcat, msol1.u)'[:,4]) .* K[4])
+        push!(out5, vec( reduce(hcat, msol1.u)'[:,5]) .* K[5])
+        push!(out6, vec( reduce(hcat, msol1.u)'[:,6]) .* K[6])
+
+      end # if
+  end  # while
+ 
+  if z < n_sample 
+    @warn  "Insufficient number of solutions" 
+  end
+
+  trace = (out1, out2, out3, out4, out5, out6 )
+  trace_bio = (out10, out11, out12)
+  return (md, mn, mb, trace, trace_bio, trace_time[1] )
+
+end
+
+
+
 # -----------
 
 
-function fishery_model_mortality( removed, fb; n_sample=100 )    
-
+function fishery_model_mortality( ; removed=removed, bio=bio, survey_time=survey_time, fish_year=fish_year )   
+  fb = bio[1:length(survey_time),:,1]  # the last 1 is for size struct; no effect in discrete 
   removed_annual_kt = removals_aggregate( removed, fish_year )
   Fkt = removed_annual_kt[:,:rem_sum] ./1000.0 ./ 1000.0  # removal in kg -> kt
-
   FR =  Fkt ./ ( Fkt .+  fb )  # relative F
   FM = -1 .* log.(  1.0 .- min.( FR, 0.99) )  # instantaneous F
   # FM[ FM .< eps(0.0)] .= zero(eltype(FM))
-
-  o = mean( FM, dims=2)
-  o[isnan.(o)] .= zero(eltype(FM))
- 
-  ub = maximum(o) * 1.1
-
-  pl = plot()
-  pl = plot!(pl, survey_time, FM ;  alpha=0.02, color=:lightslateblue)
-  pl = plot!(pl, survey_time, o ;  alpha=0.8, color=:slateblue, lw=4)
-  pl = plot!(pl, xlim=(minimum(yrs)-0.5, maximum(yrs)+1.5  ) )
-  pl = plot!(pl, ylim=(0, ub ) )
-  pl = plot!(pl ; legend=false )
-  return ( Fkt, FR, FM, pl )
+  return ( Fkt, FR, FM  )
 end
+
+# -----------
+
+
+function fishery_model_plot(; toplot=("fishing", "nofishing", "survey"),
+  res=res, bio=bio, num=num, trace=trace, trace_bio=trace_bio, FM=FM, 
+  S=S, si=1, scale_factor=scale_factor, 
+  prediction_time=prediction_time, survey_time=survey_time, trace_time=trace_time, yrs=yrs, 
+  alphav=0.075, pl= plot(), time_range=(floor(minimum(survey_time))-1.0, ceil(maximum(survey_time))+1.0 )
+)
+ 
+  # extract sims (with fishing)
+  # plot biomass
+  if any(isequal.("fishing", toplot))  
+    g = bio[:,:,1]   # [ yr,  sim, (with fishing=1; nofishing=2) ]
+    pl = plot!(pl, prediction_time, g ;  alpha=alphav, color=:orange)
+    pl = plot!(pl, prediction_time, mean(g, dims=2);  alpha=0.8, color=:darkorange, lw=4)
+    pl = plot!(pl; legend=false )
+    pl = plot!(pl; ylim=(0, maximum(g)*1.01 ) )
+    pl = plot!(pl; xlim=time_range )
+  end
+
+  if any(isequal.("nofishing", toplot))  
+    g = bio[:,:,2]   # [ yr,  sim, (with fishing=1; nofishing=2) ]
+    pl = plot!(pl, prediction_time, g ;  alpha=alphav, color=:lime)
+    pl = plot!(pl, prediction_time, mean(g, dims=2);  alpha=0.8, color=:limegreen, lw=4)
+    pl = plot!(pl; legend=false )
+    pl = plot!(pl; ylim=(0, maximum(g)*1.01 ) )
+    pl = plot!(pl; xlim=time_range )
+  end
+
+  if any(isequal.("footprint", toplot))  
+    g1 = bio[:,:,1]   # [ yr,  sim, (with fishing=1; nofishing=2) ]
+    g2 = bio[:,:,2]   # [ yr,  sim, (with fishing=1; nofishing=2) ]
+    g = ( g2 - g1 ) ./ g2
+    pl = plot!(pl, prediction_time, g ;  alpha=alphav, color=:lightslateblue)
+    pl = plot!(pl, prediction_time, mean(g, dims=2);  alpha=0.8, color=:darkslateblue, lw=4)
+    pl = plot!(pl; legend=false )
+    pl = plot!(pl; ylim=(0, maximum(g)*1.01 ) )
+    pl = plot!(pl; xlim=time_range )
+    
+  end
+
+  if any(isequal.("survey", toplot))  
+    # back transform S to normal scale .. do sims too (TODO)
+    k = 1
+    qcm = mean(res[:,Symbol("qc[$k]"),:])
+    qm  = mean(res[:,Symbol("q[$k]"),:])
+    Km = mean(res[:,Symbol("K[$k]"),:]  )
+    yhat = ( S[:,k] .- qcm  ) ./ qm .* Km   # abundance_from_index S[:,1]  
+    if nameof(typeof(mw)) == :ScaledInterpolation
+      yhat = yhat .* mw(yrs) ./ 1000.0  ./ 1000.0
+    else
+      yhat = yhat .* scale_factor
+    end
+    pl = plot!(pl, survey_time, yhat, color=:gray, lw=2 )
+    pl = scatter!(pl, survey_time, yhat, markersize=4, color=:darkgray)
+    pl = plot!(pl; legend=false )
+    pl = plot!(pl; xlim=time_range )
+
+  end
+  
+
+  if any(isequal.("number", toplot))  
+
+    gk = num[:,si,:,1]
+    pl = plot!(pl, prediction_time, gk;  alpha=alphav, color=:lightslateblue)
+    pl = plot!(pl, prediction_time, mean(gk, dims=2);  alpha=0.8, color=:darkslateblue, lw=4)
+    pl = plot!(pl; legend=false )
+    pl = plot!(pl; ylim=(0, maximum(gk)*1.01 ) )
+
+    # back transform S to normal scale .. do sims too (TODO)
+    yhat = ( S[:,si] .- mean(res[:,Symbol("qc[$si]"),:]  ) ) ./ mean(res[:,Symbol("q[$si]"),:]) .* mean(res[:,Symbol("K[$si]"),:]  )
+
+    pl = plot!(pl, survey_time, yhat, color=:gray, lw=2 )
+    pl = scatter!(pl, survey_time, yhat, markersize=4, color=:grey)
+    pl = plot!(pl; legend=false )
+    pl = plot!(pl; xlim=time_range )
+  end
+
+
+  if any(isequal.("trace", toplot))  
+    pl = plot!( pl, trace_time, trace_bio[2], alpha=alphav, lw=1, color=:orange )
+    pl = plot!( pl, trace_time, trace_bio[1], alpha=alphav, lw=1, color=:lime )
+    pl =  plot!(pl; legend=false )
+    pl =  plot!(pl; xlim=time_range )
+  end
+
+  if any(isequal.("trace_fishing", toplot))  
+    pl = plot!( pl, trace_time, trace_bio[2], alpha=alphav, lw=1, color=:orange )
+    pl =  plot!(pl; legend=false )
+    pl =  plot!(pl; xlim=time_range )
+  end
+ 
+  if any(isequal.("trace_nofishing", toplot))  
+    pl = plot!( pl, trace_time, trace_bio[1], alpha=alphav, lw=1, color=:lime )
+    pl =  plot!(pl; legend=false )
+    pl =  plot!(pl; xlim=time_range )
+  end
+
+
+  if any(isequal.("trace_footprint", toplot))  
+    pl = plot!( pl, trace_time, trace_bio[3], alpha=alphav, lw=1, color=:lime )
+    pl =  plot!(pl; legend=false )
+    pl =  plot!(pl; xlim=time_range )
+  end
+
+  if any(isequal.("fishing_mortality", toplot))  
+    FMmean = mean( FM, dims=2)
+    FMmean[isnan.(FMmean)] .= zero(eltype(FM))
+    ub = maximum(FMmean) * 1.1
+    pl = plot!(pl, survey_time, FM ;  alpha=0.02, color=:lightslateblue)
+    pl = plot!(pl, survey_time, FMmean ;  alpha=0.8, color=:slateblue, lw=4)
+    pl = plot!(pl, ylim=(0, ub ) )
+    pl = plot!(pl ; legend=false )
+    pl = plot!(pl; xlim=time_range )
+  end
+
+
+  if any(isequal.("fishing_mortality_vs_footprint", toplot))  
+    FMmean = mean( FM, dims=2)
+    FMmean[isnan.(FMmean)] .= zero(eltype(FM))
+    ub = maximum(FMmean) * 1.1
+    g1 = bio[:,:,1]   # [ yr,  sim, (with fishing=1; nofishing=2) ]
+    g2 = bio[:,:,2]   # [ yr,  sim, (with fishing=1; nofishing=2) ]
+    g = ( g2 - g1 ) ./ g2
+    g = g[1:length(survey_time),:]
+    pl = scatter!(pl, FM, g;  alpha=alphav, color=:lightslateblue)
+    pl = scatter!(pl, FMmean, mean(g, dims=2);  
+      alpha=0.8, color=:darkslateblue, lw=4, markersize=4, markerstrokewidth=0,
+      series_annotations = text.(trunc.(Int, survey_time), :top, :left, pointsize=4))
+    pl = plot!(pl ; legend=false )
+  end
+
+
+  if any(isequal.("harvest_control_rule_footprint", toplot))  
+    fb = bio[1:length(survey_time),:,1] 
+ 
+    # mean weight by year
+    sf = nameof(typeof(mw)) == :ScaledInterpolation ?  mw(yrs) ./ 1000.0  ./ 1000.0 : scale_factor
+  
+    # sample and plot posterior K
+    K = vec( Array(res[:, Symbol("K[1]"), :]) ) .* mean(sf)  # convert to biomass 
+  
+    pl = vline!(pl, K;  alpha=0.05, color=:limegreen )
+    pl = vline!(pl, K./2;  alpha=0.05, color=:darkkhaki )
+    pl = vline!(pl, K./4;  alpha=0.05, color=:darkred )
+  
+    pl = vline!(pl, [mean(K)];  alpha=0.6, color=:chartreuse4, lw=5 )
+    pl = vline!(pl, [quantile(K, 0.975)];  alpha=0.5, color=:chartreuse4, lw=2, line=:dash )
+    pl = vline!(pl, [quantile(K, 0.025)];  alpha=0.5, color=:chartreuse4, lw=2, line=:dash )
+  
+    pl = vline!(pl, [mean(K)/2.0];  alpha=0.6, color=:darkkhaki, lw=5 )
+    pl = vline!(pl, [quantile(K, 0.975)]/2.0;  alpha=0.5, color=:darkkhaki, lw=2, line=:dash )
+    pl = vline!(pl, [quantile(K, 0.025)]/2.0;  alpha=0.5, color=:darkkhaki, lw=2, line=:dash )
+  
+    pl = vline!(pl, [mean(K)/4.0];  alpha=0.6, color=:darkred, lw=5 )
+    pl = vline!(pl, [quantile(K, 0.975)]/4.0;  alpha=0.5, color=:darkred, lw=2, line=:dash )
+    pl = vline!(pl, [quantile(K, 0.025)]/4.0;  alpha=0.5, color=:darkred, lw=2, line=:dash )
+  
+    nt = length(survey_time)
+    colours = get(colorschemes[:tab20c], 1:nt, :extrema )[rand(1:nt, nt)]
+  
+    # scatter!( fb, FM ;  alpha=0.3, color=colours, markersize=4, markerstrokewidth=0)
+  
+    fb_mean = mean(fb, dims=2)
+
+    g1 = bio[:,:,1]   # [ yr,  sim, (with fishing=1; nofishing=2) ]
+    g2 = bio[:,:,2]   # [ yr,  sim, (with fishing=1; nofishing=2) ]
+    g = ( g2 - g1 ) ./ g2
+  
+    g = g[1:length(survey_time),:]
+  
+    g_mean = mean(g, dims=2)
+  
+    # scatter!( [fb[nt,:]], [FM[nt,:]] ;  alpha=0.3, color=:yellow, markersize=6, markerstrokewidth=0)
+    pl = plot!(pl, fb_mean, g_mean ;  alpha=0.8, color=:slateblue, lw=3)
+  
+    pl = scatter!(pl,  fb_mean, g_mean ;  alpha=0.8, color=colours,  markersize=4, markerstrokewidth=0,
+      series_annotations = text.(trunc.(Int, survey_time), :top, :left, pointsize=4) )
+    pl = scatter!(pl,  [fb_mean[nt]], [g_mean[nt]] ;  alpha=0.8, color=:yellow, markersize=8, markerstrokewidth=1)
+    
+    ub = max( quantile(K, 0.95), maximum( fb_mean ) ) * 1.05
+    pl = plot!(pl; legend=false, xlim=(0, ub ), ylim=(0, maximum(g_mean ) * 1.05  ) )
+ 
+  end
+   
+
+  if any(isequal.("harvest_control_rule", toplot))  
+    fb = bio[1:length(survey_time),:,1] 
+ 
+    # mean weight by year
+    sf = nameof(typeof(mw)) == :ScaledInterpolation ?  mw(yrs) ./ 1000.0  ./ 1000.0 : scale_factor
+  
+    # sample and plot posterior K
+    K = vec( Array(res[:, Symbol("K[1]"), :]) ) .* mean(sf)  # convert to biomass 
+  
+    pl = vline!(pl, K;  alpha=0.05, color=:limegreen )
+    pl = vline!(pl, K./2;  alpha=0.05, color=:darkkhaki )
+    pl = vline!(pl, K./4;  alpha=0.05, color=:darkred )
+  
+    pl = vline!(pl, [mean(K)];  alpha=0.6, color=:chartreuse4, lw=5 )
+    pl = vline!(pl, [quantile(K, 0.975)];  alpha=0.5, color=:chartreuse4, lw=2, line=:dash )
+    pl = vline!(pl, [quantile(K, 0.025)];  alpha=0.5, color=:chartreuse4, lw=2, line=:dash )
+  
+    pl = vline!(pl, [mean(K)/2.0];  alpha=0.6, color=:darkkhaki, lw=5 )
+    pl = vline!(pl, [quantile(K, 0.975)]/2.0;  alpha=0.5, color=:darkkhaki, lw=2, line=:dash )
+    pl = vline!(pl, [quantile(K, 0.025)]/2.0;  alpha=0.5, color=:darkkhaki, lw=2, line=:dash )
+  
+    pl = vline!(pl, [mean(K)/4.0];  alpha=0.6, color=:darkred, lw=5 )
+    pl = vline!(pl, [quantile(K, 0.975)]/4.0;  alpha=0.5, color=:darkred, lw=2, line=:dash )
+    pl = vline!(pl, [quantile(K, 0.025)]/4.0;  alpha=0.5, color=:darkred, lw=2, line=:dash )
+  
+    nt = length(survey_time)
+    colours = get(colorschemes[:tab20c], 1:nt, :extrema )[rand(1:nt, nt)]
+  
+    # scatter!( fb, FM ;  alpha=0.3, color=colours, markersize=4, markerstrokewidth=0)
+  
+    fb_mean = mean(fb, dims=2)
+    fm_mean = mean(FM, dims=2)
+  
+    # scatter!( [fb[nt,:]], [FM[nt,:]] ;  alpha=0.3, color=:yellow, markersize=6, markerstrokewidth=0)
+    pl = plot!(pl, fb_mean, fm_mean ;  alpha=0.8, color=:slateblue, lw=3)
+  
+    pl = scatter!(pl,  fb_mean, fm_mean ;  alpha=0.8, color=colours,  markersize=4, markerstrokewidth=0,
+      series_annotations = text.(trunc.(Int, survey_time), :top, :left, pointsize=4) )
+    pl = scatter!(pl,  [fb_mean[nt]], [fm_mean[nt]] ;  alpha=0.8, color=:yellow, markersize=8, markerstrokewidth=1)
+    
+    ub = max( quantile(K, 0.95), maximum( fb_mean ) ) * 1.05
+    pl = plot!(pl; legend=false, xlim=(0, ub ), ylim=(0, maximum(fm_mean ) * 1.05  ) )
+ 
+  end
+   
+  return(pl)
+
+end
+
 
 

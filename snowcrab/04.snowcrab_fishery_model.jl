@@ -1,6 +1,7 @@
 
 # ------------------------------
 # fishery model
+# https://docs.juliahub.com/DifferentialEquations/UQdwS/6.13.0/
 
 # run-level options
 
@@ -18,11 +19,12 @@ model_variations_implemented = [
 model_variation = "logistic_discrete_historical"   # Model 0 .. pre-2022 method  :: ~ 1 hr
 model_variation = "logistic_discrete_basic"  # Model 1
 model_variation = "logistic_discrete"        # Model 2 ~ 
+model_variation = "size_structured_dde_unnormalized"  # Model 3 ::  5 to 10 hrs,  24hrs, >24 hrs
 model_variation = "size_structured_dde_normalized"  # Model 3 ::  5 to 10 hrs,  24hrs, >24 hrs
 
 # choose a region of interest"
 aulab ="cfanorth"   
-aulab ="cfasouth"   
+aulab ="cfasouth"  # 42 hrs
 aulab ="cfa4x"     
 
 
@@ -31,9 +33,7 @@ yrs = 1999:2021  # <<<<<<<<-- change
 
 # create data (in R)
 if false
-
-  #  https://mybinder.org/v2/gh/jae0/dynamical_model/main
-
+ 
     # ==== R-code ==== start
         # # NOTE::: this requires 03.snowcrab_carstm.r to be completed
         # source( file.path( code_root, "bio_startup.R" )  )
@@ -53,8 +53,7 @@ if false
   project_directory = @__DIR__() #  same folder as the current file
   push!(LOAD_PATH, project_directory)  # add the directory to the load path, so it can be found
   include( "startup.jl" )
-
-
+ 
 end
 
 
@@ -112,62 +111,75 @@ if debugging
 
 
     Logging.disable_logging(Logging.Debug-2000)  # force re-enable logging
-
     include( fn_env )
     
     #  Run sampler, collect results.
-    n_sample = 30
-    
+    n_sample_test = 30
+    n_adapts_test = 30
+    n_chains_test = 4
+
     # first test with SGLD as it is fast and provides behavioural range
     # ensure basic solutions are within range .. testing balance of parameter effects (positive, follows data, etc)
-    # tsampler = Turing.SGLD()   # Stochastic Gradient Langevin Dynamics (SGLD)
+    # turing_sampler_test = Turing.SGLD()   # Stochastic Gradient Langevin Dynamics (SGLD)
+    # turing_sampler_test = Turing.SMC()   # Stochastic Gradient Langevin Dynamics (SGLD)
+    # turing_sampler_test = Turing.PG()   # Stochastic Gradient Langevin Dynamics (SGLD)
 
     # then choose from the following (NUTS is probably the simplest choice):
-    # tsampler = Turing.HMC(0.01, 7)
-    # tsampler = Turing.HMCDA(0.15, 0.65)  #  total leapfrog length, target accept ratio.
-    # tsampler = Turing.NUTS(n_sample, 0.65; max_depth=7, init_ϵ=0.001 )
-    # tsampler = Turing.NUTS{Turing.ForwardDiffAD{true}}( n_sample, 0.65 ) # , init_ϵ=0.001
+    # turing_sampler_test = Turing.HMC(0.01, 7)
+    # turing_sampler_test = Turing.HMCDA(0.25, 0.65)  #  total leapfrog length, target accept ratio.
+    turing_sampler_test = Turing.NUTS(n_adapts_test, 0.65; max_depth=7, init_ϵ=0.01 )
+    # turing_sampler_test = Turing.NUTS{Turing.ForwardDiffAD{true}}( n_adapts_test, 0.65 ) # , init_ϵ=0.001
+    # turing_sampler_test = Turing.NUTS( 0.65 ) # , init_ϵ=0.001
 
-    res  =  sample( fmod, tsampler, n_sample  ) # to see progress -- about 5 min
-    
-    # res  =  sample( fmod, tsampler, n_sample, thinning=5, discard_initial=30 ) # to see progress -- about 5 min
-      
-    # res = sample( fmod, tsampler, MCMCThreads(), n_sample, 4, 10 ) # MCMCThreads(), n_samples, n_chains, n_adapts
-    # res = fishery_model_inference( fmod, n_adapts=10, n_samples=n_sample, n_chains=1, max_depth=7  ) # same thing
-    
-    (m, num, bio, pl)  = fishery_model_predictions(res; prediction_time=prediction_time, n_sample=n_sample )
-    (pl)
-    
-    # trace plot .. only useful in continuous models, otherwise identical to predictions
-    (trace_nofishing, trace_fishing, pl) = fishery_model_predictions_trace( res; n_sample=n_sample, plot_k=1, alpha=0.1, plot_only_fishing=false )  # model traces
-    (pl)
-    
-    showall( summarize( res ) )
-
-    # plot fishing mortality
-    fb = bio[1:length(survey_time),:,1]  # the last 1 is for size struct; no effect in discrete
-    (Fkt, FR, FM, pl) = fishery_model_mortality( removed, fb, n_sample=n_sample ) 
-    (pl)
-
-    # HCR plot
-    (K, bi, fm, fmsy, pl) = fishery_model_harvest_control_rule(res, yrs; FM=FM, fb=fb, n_sample=n_sample)
-    pl
+    #   include( fn_env )
+    res  =  sample( fmod, turing_sampler_test, n_sample_test  ) # to see progress -- about 5 min
+    # res  =  sample( fmod, turing_sampler_test, n_sample_test, thinning=5, discard_initial=n_adapts_test ) # to see progress -- about 5 min
+    # res = sample( fmod, turing_sampler_test, MCMCThreads(), n_adapts_test, n_chains_test, n_adapts_test ) # MCMCThreads(), n_sample_test, n_chains, n_adapts
+    # res = fishery_model_inference( fmod, n_adapts=n_adapts_test, n_samples=n_sample_test, n_chains=n_chains_test, max_depth=7  ) # same thing
    
-    showall( summarize( res ) )
-
     # describe(res)
     # plot(res)
     # summarystats(res)
+
+    # --------
+    # extract values into main memory:
+
+    # n scaled, n unscaled, biomass of fb with and without fishing, model_traces, model_times 
+    m, num, bio, trace, trace_bio, trace_time = fishery_model_predictions(res; n_sample=n_sample_test )
+    # fishing (kt), relative Fishing mortlaity, instantaneous fishing mortality:
+    Fkt, FR, FM = fishery_model_mortality() 
+    showall( summarize( res ) )
+
+    # --------
+    # plots
+    pl = fishery_model_plot( toplot="trace" )
+    pl = fishery_model_plot( toplot=("survey", "fishing", "nofishing") )
+     
+    pl = fishery_model_plot( toplot="footprint" )
+    pl = fishery_model_plot( toplot="trace_footprint" )
+
+    pl = fishery_model_plot( toplot="fishing_mortality" )
+    pl = fishery_model_plot( toplot="fishing_mortality_vs_footprint" )
+    
+    pl = fishery_model_plot( toplot="number", si=1 )  # s1 as numbers
+    pl = fishery_model_plot( toplot="number", si=2 )  # s2 numbers
+    pl = fishery_model_plot( toplot="number", si=3 )  # s3 numbers
+    pl = fishery_model_plot( toplot="number", si=4 )  # s4 numbers
+    pl = fishery_model_plot( toplot="number", si=5 )  # s5 numbers
+    pl = fishery_model_plot( toplot="number", si=6 )  # female numbers
+ 
+    pl = fishery_model_plot( toplot="harvest_control_rule" )  # hcr with fishing mortality
+    pl = fishery_model_plot( toplot="harvest_control_rule_footprint" )  # hcr with fishing footprint
+     
 end
 
 Logging.disable_logging(Logging.Warn) # or e.g. Logging.Info
 
-# params defined in environments .. about 3-5 hrs each
-tsampler = Turing.NUTS(n_samples, 0.65; max_depth=7, init_ϵ=0.001 )
+# params defined in environments ..  upto 42 hrs!
 res = fishery_model_inference( 
-  fmod, turing_sampler=tsampler, 
-  n_adapts=n_adapts, n_samples=n_samples, n_chains=n_chains,
-  thinning=5, discard_initial=30  )
+  fmod, turing_sampler=turing_sampler, 
+  n_adapts=n_adapts, n_samples=n_samples, n_chains=n_chains ) 
+  # , thinning=5, discard_initial=30  )
 
 
 # save results to (directory_output) as a hdf5  # directory location is created in environment
@@ -214,69 +226,76 @@ plot( mixeddensity(res) )
 plot( autocorplot(res) )
 
 # labels = [:b[1], :b[2]]; corner(res, :b)
-
 #  pl = plot(pl, ylim=(0, 0.65))
 
-# annual snapshots of biomass (kt); return m=normalized abundance, num=numbers, bio=biomass and pl=plot, where possible
-(m, num, bio, pl)  = fishery_model_predictions(res; prediction_time=prediction_time, n_sample=500)
-fb = bio[1:length(survey_time),:,1]  # the last 1 is for size struct; no effect in discrete
-# if occursin.( r"size_structured", model_variation )
-#   pl = plot(pl, ylim=aulab=="cfanorth" ? (0, 6.0) : aulab=="cfasouth" ? (0, 90) : (0, 1.5))
-# end
+
+# --------
+# extract values into main memory:
+# n scaled, n unscaled, biomass of fb with and without fishing, model_traces, model_times 
+m, num, bio, trace, trace_bio, trace_time = fishery_model_predictions(res; n_sample=500 )
+
+# fishing (kt), relative Fishing mortlaity, instantaneous fishing mortality:
+Fkt, FR, FM = fishery_model_mortality() 
+
+
+# --------
+# plots
+
+# annual snapshots of biomass (kt) 
+pl = fishery_model_plot( toplot=("survey", "fishing", "nofishing") )
 savefig(pl, joinpath( directory_output, string("plot_predictions_", aulab, ".pdf") )  )
 
 # plot fishing mortality
-(Fkt, FR, FM, pl) = fishery_model_mortality( removed, fb, n_sample=500 ) 
-# if occursin.( r"size_structured", model_variation )
-#   pl = plot(pl, ylim=aulab=="cfanorth" ? (0, 1.25) : aulab=="cfasouth" ? (0, 0.7) : (0, 1.6))
-# end
+pl = fishery_model_plot( toplot="fishing_mortality" )
 savefig(pl, joinpath( directory_output, string("plot_fishing_mortality_", aulab, ".pdf") )  )
 
-
 # HCR plot
-(K, bi, fm, fmsy, pl) = fishery_model_harvest_control_rule(res, yrs; FM=FM, fb=fb, n_sample=500)
-# if occursin.( r"size_structured", model_variation )
-#   pl = plot(pl, ylim=aulab=="cfanorth" ? (0, 1.0) : aulab=="cfasouth" ? (0, 0.75) : (0, 1.4))
-# end
+pl = fishery_model_plot( toplot="harvest_control_rule" )  # hcr
 savefig(pl, joinpath( directory_output, string("plot_hcr_", aulab, ".pdf") )  )
 
+# HCR footprint
+pl = fishery_model_plot( toplot="harvest_control_rule_footprint" )  # hcr with fishing footprint
+savefig(pl, joinpath( directory_output, string("plot_hcr_footprint_", aulab, ".pdf") )  )
+     
+# fishery footprint
+pl = fishery_model_plot( toplot="footprint" )
+savefig(pl, joinpath( directory_output, string("plot_footprint_", aulab, ".pdf") )  )
+
+pl = fishery_model_plot( toplot="trace_footprint" )
+savefig(pl, joinpath( directory_output, string("plot_footprint_trace_", aulab, ".pdf") )  )
+
+pl = fishery_model_plot( toplot="fishing_mortality_vs_footprint" )
+savefig(pl, joinpath( directory_output, string("plot_fishing_mortality_vs_footprint", aulab, ".pdf") )  )
 
 
 if occursin.( r"size_structured", model_variation )
-  # plot simulation traces of FB with and without fishing .. only for continuous models, otherwise identical to predictions (below)
-  (trace_nofishing, trace_fishing, pl) = fishery_model_predictions_trace( res; n_sample=50, plot_k=1, alpha=0.1, plot_only_fishing=false )  # model traces
+  pl = fishery_model_plot( toplot="trace" )
   pl = plot(pl, ylim=(aulab=="cfanorth" ? (0, 7) : aulab=="cfasouth" ? (0, 85) : (0, 2)))
   savefig(pl, joinpath( directory_output, string("plot_predictions_trace_", aulab, ".pdf") )  )
 
   # timeseries of predictions (number; kn and pl =plot) -- not relevent if only 1 state varable
   statevar = 1  # index of S
-  (numS, pl)  = fishery_model_predictions_timeseries(num; prediction_time=prediction_time, plot_k=statevar )
-  pl
+  pl = fishery_model_plot( toplot="number", si=statevar )  # s1 as numbers
   savefig(pl, joinpath( directory_output, string("plot_predictions_timeseries_",  aulab, "_", statevar, ".pdf") )  )
 
   statevar = 2  # index of S
-  (numS, pl)  = fishery_model_predictions_timeseries(num; prediction_time=prediction_time, plot_k=statevar )
-  pl
+  pl = fishery_model_plot( toplot="number", si=statevar )  # s1 as numbers
   savefig(pl, joinpath( directory_output, string("plot_predictions_timeseries_",  aulab, "_", statevar, ".pdf") )  )
 
   statevar = 3  # index of S
-  (numS, pl)  = fishery_model_predictions_timeseries(num; prediction_time=prediction_time, plot_k=statevar )
-  pl
+  pl = fishery_model_plot( toplot="number", si=statevar )  # s1 as numbers
   savefig(pl, joinpath( directory_output, string("plot_predictions_timeseries_",  aulab, "_", statevar, ".pdf") )  )
 
   statevar = 4  # index of S
-  (numS, pl)  = fishery_model_predictions_timeseries(num; prediction_time=prediction_time, plot_k=statevar )
-  pl
+  pl = fishery_model_plot( toplot="number", si=statevar )  # s1 as numbers
   savefig(pl, joinpath( directory_output, string("plot_predictions_timeseries_",  aulab, "_", statevar, ".pdf") )  )
 
   statevar = 5  # index of S
-  (numS, pl)  = fishery_model_predictions_timeseries(num; prediction_time=prediction_time, plot_k=statevar )
-  pl
+  pl = fishery_model_plot( toplot="number", si=statevar )  # s1 as numbers
   savefig(pl, joinpath( directory_output, string("plot_predictions_timeseries_",  aulab, "_", statevar, ".pdf") )  )
   
   statevar = 6  # index of S
-  (numS, pl)  = fishery_model_predictions_timeseries(num; prediction_time=prediction_time, plot_k=statevar )
-  pl
+  pl = fishery_model_plot( toplot="number", si=statevar )  # s1 as numbers
   savefig(pl, joinpath( directory_output, string("plot_predictions_timeseries_",  aulab, "_", statevar, ".pdf") )  )
 
 end
