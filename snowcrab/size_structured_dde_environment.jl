@@ -21,11 +21,12 @@ end
 
 
 # add Turing@v0.21.10  # to add a particular version
+#  "DynamicHMC", 
 
 pkgs = [
   "Revise", "MKL", "Logging", "StatsBase", "Statistics", "Distributions", "Random", "QuadGK",
   "MCMCChains", "DynamicPPL", "AdvancedHMC", "DistributionsAD", "Bijectors",  
-  "DynamicHMC", "AbstractPPL", "Memoization",
+  "AbstractPPL", "Memoization", # "Enzyme", "Diffractor",
   "ForwardDiff", "DataFrames", "CSV", "JLD2", "PlotThemes", "Colors", "ColorSchemes", "RData",
   "Plots", "StatsPlots",  "MultivariateStats", "StaticArrays", "LazyArrays", "FillArrays",
   "Turing", "ModelingToolkit", "DifferentialEquations", "Interpolations", "LinearAlgebra"
@@ -57,7 +58,7 @@ gr()
 # solver = MethodOfSteps(BS3())   # 56.1
 # solver = MethodOfSteps(Rodas4()) #   24.86- 82.79
 # solver = MethodOfSteps(Rosenbrock23()) #  71.48
-# solver = MethodOfSteps(Vern6())  # 73.98
+# solver = MethodOfSteps(Vern6())  # 73.98s
 # solver = MethodOfSteps(RK4())   # 76.28
 # solver = MethodOfSteps(TRBDF2())  # 92.16
 # solver = MethodOfSteps(QNDF())  # 110.79
@@ -65,8 +66,8 @@ gr()
 # solver = MethodOfSteps(KenCarp4())  # 139.88
 
 
-# solver = MethodOfSteps(Tsit5())   # faster
-solver = MethodOfSteps(Rodas5())  # safer
+solver = MethodOfSteps(Tsit5())   # faster
+# solver = MethodOfSteps(Rodas5())  # safer
  
 # perpare dat for dde run of fishery model
 
@@ -182,11 +183,13 @@ ki = aulab == "cfanorth" ? 1 :
      0  # default
 
 
+kmu  =  Kmu[ki] / mean(scale_factor)
+
+smallnumber = 1.0 / kmu  # floating point value of sufficient to assume 0 valued
+     
 no_digits = 3  # time floating point rounding
 
-
-dt = (0.05, 0.05, 0.05)[ki]    # long fishing seasons .. aggregate landings more stable
-
+dt = (0.01, 0.01, 0.01)[ki] 
 
 # spin up time of ~ 1 cycle prior to start of dymamics and project nP years into the future
 tspan = (minimum(yrs) - 10.1, maximum(yrs) + nP + 1.1 )
@@ -263,7 +266,9 @@ else
   error("model_variation not found")
 
 end
- 
+
+
+
 # callbacks for external perturbations to the system (deterministic fishing without error)
 cb = PresetTimeCallback( fish_time, affect_fishing! )
 # alternative formulation:
@@ -298,34 +303,28 @@ rejection_rate = 0.65  ## too high and it become impossibly slow .. this is a go
 max_depth=7  ## too high and it become impossibly slow
 init_ϵ=0.01 
  
-kmu  =  Kmu[ki] / mean(scale_factor)
-
-smallnumber = 1.0 / kmu  # floating point value of sufficient to assume 0 valued
 
 # choose model and over-rides if any
 if model_variation=="size_structured_dde_normalized" 
-  n_adapts=500
-  n_samples=1500
+  n_adapts=1000
+  n_samples=1000
   n_chains=4
 
   rejection_rate = 0.65
   max_depth = 7
-  init_ϵ = 0.001
+  init_ϵ = 0.01
 
+  fmod = size_structured_dde_turing( S, kmu, tspan, prob, nS, solver, dt )
   turing_sampler = Turing.NUTS(n_samples, rejection_rate; max_depth=max_depth, init_ϵ=init_ϵ )
-  fmod = size_structured_dde_turing( S, kmu, tspan, prob, nS,  solver, dt )
-  
+    
   if aulab=="cfanorth"
-  #  turing_sampler = Turing.NUTS(n_samples, rejection_rate; max_depth=max_depth, init_ϵ=init_ϵ )
-    fmod = size_structured_dde_turing_north( S, kmu, tspan, prob, nS, solver, dt )
+   # fmod = size_structured_dde_turing_north( S, kmu, tspan, prob, nS, solver, dt )
   
   elseif aulab=="cfasouth" 
-  #  turing_sampler = Turing.NUTS(n_samples, rejection_rate; max_depth=max_depth, init_ϵ=init_ϵ )
-    fmod = size_structured_dde_turing_south( S, kmu, tspan, prob, nS, solver, dt )  
+   # fmod = size_structured_dde_turing_south( S, kmu, tspan, prob, nS, solver, dt )  
         
   elseif aulab=="cfa4x" 
-  #  turing_sampler = Turing.NUTS(n_samples, rejection_rate; max_depth=max_depth, init_ϵ=init_ϵ )
-    fmod = size_structured_dde_turing_4x( S, kmu, tspan, prob, nS, solver, dt )  
+   # fmod = size_structured_dde_turing_4x( S, kmu, tspan, prob, nS, solver, dt )  
     
   end
 

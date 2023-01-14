@@ -20,14 +20,12 @@ params:
   smd: "/home/jae/projects/dynamical_model/snowcrab"  
   work_root: "/home/jae/projects/dynamical_model/snowcrab/outputs"
 
-# original version presented: 2020-02-25, Darthmouth, Nova Scotia
-# converted to markdown 2022-01-25
+
 ---
 
 
 <!--- set up R-environment --->
 ```{r setup, include=FALSE}
-  rmd_dir = getwd()
 
   if (0) {
     # To create the msword document from within R run this:
@@ -96,8 +94,7 @@ params:
         file.path( om1, "plot_fishing_mortality_cfa4x.pdf" ), 
         file.path( om1, "plot_hcr_cfanorth.pdf" ), 
         file.path( om1, "plot_hcr_cfasouth.pdf" ), 
-        file.path( om1, "plot_hcr_cfa4x.pdf" )
- 
+        file.path( om1, "plot_hcr_cfa4x.pdf" ) 
     ) )
 
 ```
@@ -115,8 +112,7 @@ params:
         file.path( om2, "plot_fishing_mortality_cfa4x.pdf" ), 
         file.path( om2, "plot_hcr_cfanorth.pdf" ), 
         file.path( om2, "plot_hcr_cfasouth.pdf" ), 
-        file.path( om2, "plot_hcr_cfa4x.pdf" )
- 
+        file.path( om2, "plot_hcr_cfa4x.pdf" ) 
     ) )
 
 ```
@@ -134,8 +130,17 @@ params:
         file.path( om3, "plot_fishing_mortality_cfa4x.pdf" ), 
         file.path( om3, "plot_hcr_cfanorth.pdf" ), 
         file.path( om3, "plot_hcr_cfasouth.pdf" ), 
-        file.path( om3, "plot_hcr_cfa4x.pdf" )
- 
+        file.path( om3, "plot_hcr_cfa4x.pdf" ),
+        file.path( om3, "plot_footprint_trace_cfanorth.pdf" ), 
+        file.path( om3, "plot_footprint_trace_cfasouth.pdf" ), 
+        file.path( om3, "plot_footprint_trace_cfa4x.pdf" ), 
+        file.path( om3, "plot_hcr_footprint_cfanorth.pdf" ), 
+        file.path( om3, "plot_hcr_footprint_cfasouth.pdf" ), 
+        file.path( om3, "plot_hcr_footprint_cfa4x.pdf" ), 
+        file.path( om3, "plot_fishing_mortality_vs_footprint_cfanorth.pdf" ), 
+        file.path( om3, "plot_fishing_mortality_vs_footprint_cfasouth.pdf" ), 
+        file.path( om3, "plot_fishing_mortality_vs_footprint_cfa4x.pdf" )  
+
     ) )
 
 
@@ -146,46 +151,46 @@ params:
     ) )
 
 
-    # include_graphics(  c(
-    #     file.path( om3, "plot_predictions_timeseries_cfanorth_1.pdf" ), 
-    #     file.path( om3, "plot_predictions_timeseries_cfasouth_1.pdf" ), 
-    #     file.path( om3, "plot_predictions_timeseries_cfa4x_1.pdf" )
-    # ) )
+    include_graphics(  c(
+        file.path( om3, "plot_predictions_timeseries_cfanorth_1.pdf" ), 
+        file.path( om3, "plot_predictions_timeseries_cfasouth_1.pdf" ), 
+        file.path( om3, "plot_predictions_timeseries_cfa4x_1.pdf" )
+    ) )
 
 
-    # include_graphics(  c(
-    #     file.path( om3, "plot_predictions_timeseries_cfanorth_2.pdf" ), 
-    #     file.path( om3, "plot_predictions_timeseries_cfasouth_2.pdf" ), 
-    #     file.path( om3, "plot_predictions_timeseries_cfa4x_2.pdf" )
-    # ) )
+    include_graphics(  c(
+        file.path( om3, "plot_predictions_timeseries_cfanorth_2.pdf" ), 
+        file.path( om3, "plot_predictions_timeseries_cfasouth_2.pdf" ), 
+        file.path( om3, "plot_predictions_timeseries_cfa4x_2.pdf" )
+    ) )
 
 
-    # include_graphics(  c(
-    #     file.path( om3, "plot_predictions_timeseries_cfanorth_3.pdf" ), 
-    #     file.path( om3, "plot_predictions_timeseries_cfasouth_3.pdf" ), 
-    #     file.path( om3, "plot_predictions_timeseries_cfa4x_3.pdf" )
-    # ) )
+    include_graphics(  c(
+        file.path( om3, "plot_predictions_timeseries_cfanorth_3.pdf" ), 
+        file.path( om3, "plot_predictions_timeseries_cfasouth_3.pdf" ), 
+        file.path( om3, "plot_predictions_timeseries_cfa4x_3.pdf" )
+    ) )
 
 
-    # include_graphics(  c(
-    #     file.path( om3, "plot_predictions_timeseries_cfanorth_4.pdf" ), 
-    #     file.path( om3, "plot_predictions_timeseries_cfasouth_4.pdf" ), 
-    #     file.path( om3, "plot_predictions_timeseries_cfa4x_4.pdf" )
-    # ) )
+    include_graphics(  c(
+        file.path( om3, "plot_predictions_timeseries_cfanorth_4.pdf" ), 
+        file.path( om3, "plot_predictions_timeseries_cfasouth_4.pdf" ), 
+        file.path( om3, "plot_predictions_timeseries_cfa4x_4.pdf" )
+    ) )
 
 
-    # include_graphics(  c(
-    #     file.path( om3, "plot_predictions_timeseries_cfanorth_5.pdf" ), 
-    #     file.path( om3, "plot_predictions_timeseries_cfasouth_5.pdf" ), 
-    #     file.path( om3, "plot_predictions_timeseries_cfa4x_5.pdf" )
-    # ) )
+    include_graphics(  c(
+        file.path( om3, "plot_predictions_timeseries_cfanorth_5.pdf" ), 
+        file.path( om3, "plot_predictions_timeseries_cfasouth_5.pdf" ), 
+        file.path( om3, "plot_predictions_timeseries_cfa4x_5.pdf" )
+    ) )
 
 
-    # include_graphics(  c(
-    #     file.path( om3, "plot_predictions_timeseries_cfanorth_6.pdf" ), 
-    #     file.path( om3, "plot_predictions_timeseries_cfasouth_6.pdf" ), 
-    #     file.path( om3, "plot_predictions_timeseries_cfa4x_6.pdf" )
-    # ) )
+    include_graphics(  c(
+        file.path( om3, "plot_predictions_timeseries_cfanorth_6.pdf" ), 
+        file.path( om3, "plot_predictions_timeseries_cfasouth_6.pdf" ), 
+        file.path( om3, "plot_predictions_timeseries_cfa4x_6.pdf" )
+    ) )
 
 
 
