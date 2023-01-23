@@ -2,7 +2,7 @@
 
 Dynamical and spatiotemporal models for fishery assessment in Julia
 
-**snowcrab** (dynamical only):
+**snowcrab** (dynamical only): -- now grafted onto bio.snowcrab (Jan 2023) .. this is here as a seprate form for exploratory work
 
 - discrete logistic (Euler)
 - discrete logistic map
@@ -15,4 +15,4 @@ Dynamical and spatiotemporal models for fishery assessment in Julia
 
 **spacetime**:
 
-- combine car with dynamical models
+- combine car with dynamical models (todo))

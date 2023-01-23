@@ -39,32 +39,10 @@
 
 # DEFINE KEY DIRECTORIES:
       
-# this needs to be defined  ... if not in start up call or ".julia/config/startup.jl" or  local startup.jl
+  # this needs to be defined  ... if not in start up call or ".julia/config/startup.jl" or  local startup.jl
   project_directory = joinpath( homedir(), "bio", "bio.snowcrab", "inst", "julia" ) 
-
-  if ! @isdefined project_directory 
-    # defaulting to location of this file "bio.snowcrab/inst/julia" 
-    # my call is: JULIA_NUM_THREADS=4 julia -i ~/projects/dynamical_model/snowcrab/startup.jl
-    project_directory = @__DIR__() 
-  end
- 
-  push!(LOAD_PATH, project_directory)  # add the directory to the load path, so it can be found
-  import Pkg  # or using Pkg
-  Pkg.activate(project_directory)  # so now you activate the package
-  Base.active_project()  # to make sure it's the package you meant to activate, print the path to console so you get a visual confirmation it's the package you meant to use
-  print( "project_directory: ", project_directory )
-
-
-  if ! @isdefined outputs_directory 
-    # tailor to your specific installation
-    outputs_directory = joinpath( homedir(), "bio.data", "bio.snowcrab", "output", "fishery_model" ) 
-  end
-
-  mkpath(outputs_directory)
-  cd( outputs_directory )   # this is necessary as julia stores packages (versions) specific to this project here 
-  print( "outputs_directory: ", outputs_directory )
-
- 
+  outputs_directory = joinpath( homedir(), "bio.data", "bio.snowcrab", "output", "fishery_model" ) 
+  
 
 # RUN LEVEL OPTIONS
 
@@ -72,23 +50,24 @@
 
   yrs = 1999:year_assessment  
 
-
   # choose model and area
+  #= 
+    model_variations_implemented = [
+    "logistic_discrete_historical",  # pre-2022, no normalization, q-based observation model
+    "logistic_discrete_map",  # logistic map ... more extreme fluctuations
+    "logistic_discrete_basic",  # q catchability only for observation model
+    "logistic_discrete",  # q and intercept for observation model
+    "size_structured_dde_unnormalized",  # basic continuous model without normaliztion ... very very slow .. do not use
+    "size_structured_dde_normalized"  # default (for continuous)
+    ]
+  =#
 
-  model_variations_implemented = [
-  "logistic_discrete_historical",  # pre-2022, no normalization, q-based observation model
-  "logistic_discrete_map",  # logistic map ... more extreme fluctuations
-  "logistic_discrete_basic",  # q catchability only for observation model
-  "logistic_discrete",  # q and intercept for observation model
-  "size_structured_dde_unnormalized",  # basic continuous model without normaliztion ... very very slow .. do not use
-  "size_structured_dde_normalized"  # default (for continuous)
-  ]
+  model_variation = "logistic_discrete_historical"    #   pre-2022 method  :: ~ 1 hr
+  model_variation = "size_structured_dde_normalized"  #      24hrs, >24 hrs
+  # model_variation = "logistic_discrete_basic"     
+  # model_variation = "logistic_discrete"              
+  # model_variation = "size_structured_dde_unnormalized"  #  (incomplete params need tweaking) ::   24hrs, >24 hrs
 
-  model_variation = "logistic_discrete_historical"   # Model 0 .. pre-2022 method  :: ~ 1 hr
-  # model_variation = "logistic_discrete_basic"  # Model 1
-  # model_variation = "logistic_discrete"        # Model 2 ~  
-  model_variation = "size_structured_dde_normalized"  # Model 3 ::    24hrs, >24 hrs
-  # model_variation = "size_structured_dde_unnormalized"  # Model 4 (incomplete params need tweaking) ::   24hrs, >24 hrs
 
   # choose a region of interest"
   aulab ="cfanorth"   
@@ -96,44 +75,24 @@
   aulab ="cfa4x"     
 
 
-
-
+  
 # ---------------
 # define model-specific save location
 
   model_outdir = joinpath( outputs_directory, string(year_assessment), model_variation )
-  mkpath(model_outdir)
-  print( "outputs_directory: ", outputs_directory )
-
-
-# ---------------
-# make a copy of the input data in case ... 
-
-  if  occursin( r"size_structured", model_variation ) 
-    fndat_source = joinpath( homedir(), "bio.data", "bio.snowcrab", "modelled", 
-      "1999_present_fb", "fishery_model_results", "turing1", "biodyn_number_size_struct.RData" )
-  elseif  occursin( r"logistic_discrete", model_variation ) 
-    fndat_source = joinpath( homedir(), "bio.data", "bio.snowcrab", "modelled", 
-      "1999_present_fb", "fishery_model_results", "turing1", "biodyn_biomass.RData" )
-  end
-
-  fndat = joinpath( model_outdir, basename(fndat_source) )
-  cp( fndat_source, fndat; force=true )
-
+    
+  include( joinpath(project_directory, "snowcrab_startup.jl" ) )  # add some paths and package requirements
   
+  include( fn_env )  # loads libs and setup workspace / data (fn_env is defined in the snowcrab_startup.jl)
 
-# ---------------
-# LOAD environment (libs and functions)
-  if  occursin( r"size_structured", model_variation ) 
-    fn_env = joinpath( project_directory, "size_structured_dde_environment.jl" )
-  elseif  occursin( r"logistic_discrete", model_variation ) 
-    fn_env = joinpath( project_directory, "logistic_discrete_environment.jl" )  
-  end
-
+  #= 
+    # should this be a first time run, to install libs:
+    for pk in pkgs; Pkg.add(string(Symbol(pk))); end   
+    
+    # or a single package at a time:
+    Pkg.add( pkgs ) 
+  =#
   
-  include( fn_env )
-  
-
 
   #=
     # debugging/development: to test dynamical model with generic/random parameters
@@ -188,12 +147,8 @@
   Random.seed!(seed)
 
   res  =  sample( fmod, turing_sampler_test, n_sample_test  ) # to see progress -- about 5 min
-
-  #=
-    describe(res)
-    plot(res)
-    summarystats(res)
-  =#
+ 
+  showall( summarize( res ) )
 
   # extract values into main memory:
 
@@ -202,30 +157,32 @@
 
   # fishing (kt), relative Fishing mortlaity, instantaneous fishing mortality:
   Fkt, FR, FM = fishery_model_mortality() 
-  
-  showall( summarize( res ) )
-
-  # diagnostic plots
-  pl = fishery_model_plot( toplot="trace" )
-  pl = fishery_model_plot( toplot=("survey", "fishing" ) )  
-  pl = fishery_model_plot( toplot=("survey", "fishing", "nofishing") )
-    
-  pl = fishery_model_plot( toplot="footprint" )
-  pl = fishery_model_plot( toplot="trace_footprint" )
-
-  pl = fishery_model_plot( toplot="fishing_mortality" )
-  pl = fishery_model_plot( toplot="fishing_mortality_vs_footprint" )
-  
-  pl = fishery_model_plot( toplot="number", si=1 )  # s1 as numbers
-  pl = fishery_model_plot( toplot="number", si=2 )  # s2 numbers
-  pl = fishery_model_plot( toplot="number", si=3 )  # s3 numbers
-  pl = fishery_model_plot( toplot="number", si=4 )  # s4 numbers
-  pl = fishery_model_plot( toplot="number", si=5 )  # s5 numbers
-  pl = fishery_model_plot( toplot="number", si=6 )  # female numbers
-
-  pl = fishery_model_plot( toplot="harvest_control_rule" )  # hcr with fishing mortality
-  pl = fishery_model_plot( toplot="harvest_control_rule_footprint" )  # hcr with fishing footprint
  
+  # diagnostic plots
+
+  pl = fishery_model_plot( toplot=("survey","trace") )
+  pl = fishery_model_plot( toplot=("survey", "fishing" ) )  
+  pl = fishery_model_plot( toplot="fishing_mortality" )
+  pl = fishery_model_plot( toplot="harvest_control_rule" )  # hcr with fishing mortality
+  
+  
+  #=
+    describe(res)
+    plot(res)
+    summarystats(res)
+    
+    pl = fishery_model_plot( toplot=("survey", "fishing", "nofishing") )
+    pl = fishery_model_plot( toplot="footprint" )
+    pl = fishery_model_plot( toplot="trace_footprint" )
+    pl = fishery_model_plot( toplot="fishing_mortality_vs_footprint" )
+    pl = fishery_model_plot( toplot="harvest_control_rule_footprint" )  # hcr with fishing footprint
+    pl = fishery_model_plot( toplot="number", si=1 )  # s1 as numbers
+    pl = fishery_model_plot( toplot="number", si=2 )  # s2 numbers
+    pl = fishery_model_plot( toplot="number", si=3 )  # s3 numbers
+    pl = fishery_model_plot( toplot="number", si=4 )  # s4 numbers
+    pl = fishery_model_plot( toplot="number", si=5 )  # s5 numbers
+    pl = fishery_model_plot( toplot="number", si=6 )  # female numbers
+  =#
 
 # ------------
 # SECOND PASS : finalize sampling using above estimate of approximate modes/means  
@@ -251,8 +208,8 @@
   summary_fn = joinpath( model_outdir, string("results_turing", "_", aulab, "_summary", ".csv" ) )  
   CSV.write( summary_fn,  summarize( res ) )
   
-  # summaries and plots 
   #=
+    # summaries and plots 
     vn = "model_sd"; 
     vn = "K"
     vn = "K[1]" 
@@ -272,7 +229,6 @@
     plot( autocorplot(res) )
     # labels = [:b[1], :b[2]]; corner(res, :b)
     #  pl = plot(pl, ylim=(0, 0.65))
-  
   =#
 
   # --------
@@ -286,7 +242,7 @@
 
 
   # --------
-  # plots
+  # plots 
   
   #  pl = plot(pl, ylim=(0, 0.65))
 

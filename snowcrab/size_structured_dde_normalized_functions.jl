@@ -675,7 +675,7 @@ function fishery_model_plot(; toplot=("fishing", "nofishing", "survey"),
   res=res, bio=bio, num=num, trace=trace, trace_bio=trace_bio, FM=FM, 
   S=S, si=1, scale_factor=scale_factor, 
   prediction_time=prediction_time, survey_time=survey_time, trace_time=trace_time, yrs=yrs, 
-  alphav=0.05, pl= plot(), time_range=(floor(minimum(survey_time))-1.0, ceil(maximum(survey_time))+1.0 )
+  alphav=0.05, pl= Plots.plot(), time_range=(floor(minimum(survey_time))-1.0, ceil(maximum(survey_time))+1.0 )
 )
  
   # extract sims (with fishing)

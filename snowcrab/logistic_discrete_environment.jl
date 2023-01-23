@@ -36,18 +36,7 @@ end
 
 
 # load libs and check settings
-
-# add Turing@v0.21.10  # to add a particular version
-
-pkgs = [
-  "Revise", "MKL", "Logging", "StatsBase", "Statistics", "Distributions", "Random",
-  "ForwardDiff", "DataFrames", "JLD2", "CSV", "PlotThemes", "Colors", "ColorSchemes", "RData", "GR",
-  "Plots", "StatsPlots", "MultivariateStats", "StaticArrays", "LazyArrays", "FillArrays",
-  "Turing", "ModelingToolkit", "DifferentialEquations", "Interpolations", "LinearAlgebra"
-]
-
-for pk in pkgs; Pkg.add(string(Symbol(pk))); end   # Pkg.add( pkgs ) # add required packages
-
+# pkgs are defined in snowcrab_startup.jl
 for pk in pkgs; @eval using $(Symbol(pk)); end   # Pkg.add( pkgs ) # add required packages
 
 
