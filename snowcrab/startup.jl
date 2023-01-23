@@ -1,4 +1,5 @@
 
+#=
 
 project_directory = @__DIR__() #  same folder as the file
 push!(LOAD_PATH, project_directory)  # add the directory to the load path, so it can be found
@@ -13,3 +14,5 @@ Base.active_project()  # to make sure it's the package you meant to activate, pr
 cd( project_directory )
 
 print( project_directory )
+
+=#

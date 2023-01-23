@@ -2,6 +2,9 @@
 # starting environment for the DDE snow crab model
 
 
+print( "WARNING: if this is the initial run, it will take a while to precompile/download all libraries" )
+
+
 if false
 
   # if doing manual startup .. this is done automatically on start but in case it fails:
@@ -27,10 +30,14 @@ pkgs = [
   "Revise", "MKL", "Logging", "StatsBase", "Statistics", "Distributions", "Random", "QuadGK",
   "MCMCChains", "DynamicPPL", "AdvancedHMC", "DistributionsAD", "Bijectors",  
   "AbstractPPL", "Memoization", # "Enzyme", "Diffractor",
-  "ForwardDiff", "DataFrames", "CSV", "JLD2", "PlotThemes", "Colors", "ColorSchemes", "RData",
+  "ForwardDiff", "DataFrames", "CSV", "JLD2", "PlotThemes", "Colors", "ColorSchemes", "RData", 
+  "GR", "MKL",
   "Plots", "StatsPlots",  "MultivariateStats", "StaticArrays", "LazyArrays", "FillArrays",
   "Turing", "ModelingToolkit", "DifferentialEquations", "Interpolations", "LinearAlgebra"
 ]
+
+
+for pk in pkgs; Pkg.add(string(Symbol(pk))); end   # Pkg.add( pkgs ) # add required packages
 
 for pk in pkgs; @eval using $(Symbol(pk)); end   # Pkg.add( pkgs ) # add required packages
 

@@ -39,25 +39,30 @@
 
 # DEFINE KEY DIRECTORIES:
       
+# this needs to be defined  ... if not in start up call or ".julia/config/startup.jl" or  local startup.jl
+  project_directory = joinpath( homedir(), "bio", "bio.snowcrab", "inst", "julia" ) 
+
   if ! @isdefined project_directory 
-    # this needs to be defined  ... if not in start up call or ".julia/config/startup.jl" or  local startup.jl
-    # defaulting to location of this file "bio.snowcrab/inst/scripts"
+    # defaulting to location of this file "bio.snowcrab/inst/julia" 
     # my call is: JULIA_NUM_THREADS=4 julia -i ~/projects/dynamical_model/snowcrab/startup.jl
     project_directory = @__DIR__() 
-    push!(LOAD_PATH, project_directory)  # add the directory to the load path, so it can be found
-    import Pkg  # or using Pkg
-    Pkg.activate(project_directory)  # so now you activate the package
-    Base.active_project()  # to make sure it's the package you meant to activate, print the path to console so you get a visual confirmation it's the package you meant to use
-    print( "project_directory: ", project_directory )
   end
  
+  push!(LOAD_PATH, project_directory)  # add the directory to the load path, so it can be found
+  import Pkg  # or using Pkg
+  Pkg.activate(project_directory)  # so now you activate the package
+  Base.active_project()  # to make sure it's the package you meant to activate, print the path to console so you get a visual confirmation it's the package you meant to use
+  print( "project_directory: ", project_directory )
+
+
   if ! @isdefined outputs_directory 
     # tailor to your specific installation
     outputs_directory = joinpath( homedir(), "bio.data", "bio.snowcrab", "output", "fishery_model" ) 
-    mkpath(outputs_directory)
-    cd( outputs_directory )   # this is necessary as julia stores packages (versions) specific to this project here 
-    print( "outputs_directory: ", outputs_directory )
   end
+
+  mkpath(outputs_directory)
+  cd( outputs_directory )   # this is necessary as julia stores packages (versions) specific to this project here 
+  print( "outputs_directory: ", outputs_directory )
 
  
 
@@ -125,6 +130,7 @@
     fn_env = joinpath( project_directory, "logistic_discrete_environment.jl" )  
   end
 
+  
   include( fn_env )
   
 
