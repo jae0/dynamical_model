@@ -155,7 +155,11 @@ end
     # likelihood
     # observation model: Y = q X + qc ; X = (Y - qc) / q
     for i in iok
-      S[i] ~ Normal( q * (m[i] - removed[i-1]/K ) + qc, bosd )  ;
+      if i == 1
+        S[i] ~ Normal( q * (m[i] ) + qc, bosd )  ;
+      else
+        S[i] ~ Normal( q * (m[i] - removed[i-1]/K ) + qc, bosd )  ;
+      end
     end
   
 end
@@ -468,11 +472,9 @@ function fishery_model_harvest_control_rule(res, yrs; FM=FM, fb=fb, n_sample=500
   pl = hline!(pl, [quantile(fmsy, 0.975)];  alpha=0.5, color=:gray, lw=2, line=:dash )
   pl = hline!(pl, [quantile(fmsy, 0.025)];  alpha=0.5, color=:gray, lw=2, line=:dash )
 
-
-  o = sample(K, n_sample)
-  pl = vline!(pl, o;  alpha=0.05, color=:limegreen )
-  pl = vline!(pl, o./2;  alpha=0.05, color=:darkkhaki )
-  pl = vline!(pl, o./4;  alpha=0.05, color=:darkred )
+  pl = vline!(pl, K;  alpha=0.05, color=:limegreen )
+  pl = vline!(pl, K./2;  alpha=0.05, color=:darkkhaki )
+  pl = vline!(pl, K./4;  alpha=0.05, color=:darkred )
 
   pl = vline!(pl, [mean(K)];  alpha=0.6, color=:chartreuse4, lw=5 )
   pl = vline!(pl, [quantile(K, 0.975)];  alpha=0.5, color=:chartreuse4, lw=2, line=:dash )
@@ -482,7 +484,7 @@ function fishery_model_harvest_control_rule(res, yrs; FM=FM, fb=fb, n_sample=500
   pl = vline!(pl, [quantile(K, 0.975)]/2.0;  alpha=0.5, color=:darkkhaki, lw=2, line=:dash )
   pl = vline!(pl, [quantile(K, 0.025)]/2.0;  alpha=0.5, color=:darkkhaki, lw=2, line=:dash )
 
-  pl = vline!(pl, [mean(o)/4.0];  alpha=0.6, color=:darkred, lw=5 )
+  pl = vline!(pl, [mean(K)/4.0];  alpha=0.6, color=:darkred, lw=5 )
   pl = vline!(pl, [quantile(K, 0.975)]/4.0;  alpha=0.5, color=:darkred, lw=2, line=:dash )
   pl = vline!(pl, [quantile(K, 0.025)]/4.0;  alpha=0.5, color=:darkred, lw=2, line=:dash )
 
@@ -501,7 +503,7 @@ function fishery_model_harvest_control_rule(res, yrs; FM=FM, fb=fb, n_sample=500
     series_annotations = text.(trunc.(Int, survey_time), :top, :left, pointsize=4) )
   pl = scatter!(pl,  [fb_mean[nt]], [fm_mean[nt]] ;  alpha=0.8, color=:yellow, markersize=8, markerstrokewidth=1)
   
-  ub = max( quantile(o, 0.95), maximum( fb_mean ) ) * 1.05
+  ub = max( quantile(K, 0.95), maximum( fb_mean ) ) * 1.05
   pl = plot!(pl; legend=false, xlim=(0, ub ), ylim=(0, maximum(fm_mean ) * 1.05  ) )
   # TODO # add predictions ???
 
@@ -548,22 +550,33 @@ end
 # ----------
 
 
-function fishery_model_inference( fmod; rejection_rate=0.65, n_adapts=1000, n_samples=1000, n_chains=1, max_depth=7, 
-  turing_sampler = Turing.NUTS(n_adapts, rejection_rate; max_depth=max_depth), seed=1  )
-   
-  Logging.disable_logging(Logging.Warn) # or e.g. Logging.Info
-  
-  Random.seed!(seed)
-  
-  # 1000 -> ? hrs (Tsit5);  500 -> 6 hrs;; 29hrs 100/100 cfasouth
-  #   # n_chains = Threads.nthreads()
-  # turing_sampler = Turing.NUTS(n_adapts, rejection_rate; max_depth=max_depth )  ;# stepsize based upon previous experience
-  
-  res  =  sample( fmod, turing_sampler, MCMCThreads(), n_samples, n_chains )
+function fishery_model_inference(  fmod; rejection_rate=0.65, 
+  n_adapts=1000, n_samples=1000, n_chains=1, max_depth=7,   
+  turing_sampler=Turing.NUTS(n_adapts, rejection_rate; max_depth=max_depth ) 
+)
+
+  res  =  sample( fmod, turing_sampler, MCMCThreads(), 
+    n_samples, n_chains #, thinning=thinning, discard_initial=discard_initial  
+  )
+       
   # if on windows and threads are not working, use single processor mode:
   # res = mapreduce(c -> sample(fmod, turing_sampler, n_samples), chainscat, 1:n_chains)
 
   showall(summarize(res ) )  # show(stdout, "text/plain", summarize(res)) # display all estimates
+
+  return res
+end
+
+
+function fishery_model_inference( fmod; rejection_rate=0.65, 
+  n_adapts=1000, n_samples=1000, n_chains=1, max_depth=7,
+  turing_sampler=Turing.NUTS(n_adapts, rejection_rate; max_depth=max_depth ),    
+  init_params=NaN 
+)
+    res  =  sample( fmod, turing_sampler, MCMCThreads(), 
+      n_samples, n_chains, init_params=init_params #, thinning=thinning, discard_initial=discard_initial  
+    )
+   showall(summarize(res ) )  # show(stdout, "text/plain", summarize(res)) # display all estimates
 
   return res
 end
@@ -626,10 +639,12 @@ function fishery_model_plot(; toplot=("fishing", "survey"),
  
 if any(isequal.("trace", toplot))  
   @warn "trace is not valid for a discrete model"
+  return()
 end 
 
 if any(isequal.("nofishing", toplot))  
   @warn "nofishing not implemented"
+  return()
 end 
 
   # extract sims (with fishing)
@@ -772,16 +787,15 @@ end
     r = vec( Array(res[:, Symbol("r"), :]) )
     K = vec( Array(res[:, Symbol("K"), :]) ) 
     (msy, bmsy, fmsy) = logistic_discrete_reference_points(r, K)
-    pl = hline!(pl, sample(fmsy, n_sample); alpha=0.01, color=:lightgray )
+
+    pl = hline!(pl, fmsy; alpha=0.01, color=:lightgray )
     pl = hline!(pl, [mean(fmsy)];  alpha=0.6, color=:darkgray, lw=5 )
     pl = hline!(pl, [quantile(fmsy, 0.975)];  alpha=0.5, color=:gray, lw=2, line=:dash )
     pl = hline!(pl, [quantile(fmsy, 0.025)];  alpha=0.5, color=:gray, lw=2, line=:dash )
   
-  
-    o = sample(K, n_sample)
-    pl = vline!(pl, o;  alpha=0.05, color=:limegreen )
-    pl = vline!(pl, o./2;  alpha=0.05, color=:darkkhaki )
-    pl = vline!(pl, o./4;  alpha=0.05, color=:darkred )
+    pl = vline!(pl, K;  alpha=0.05, color=:limegreen )
+    pl = vline!(pl, K./2;  alpha=0.05, color=:darkkhaki )
+    pl = vline!(pl, K./4;  alpha=0.05, color=:darkred )
   
     pl = vline!(pl, [mean(K)];  alpha=0.6, color=:chartreuse4, lw=5 )
     pl = vline!(pl, [quantile(K, 0.975)];  alpha=0.5, color=:chartreuse4, lw=2, line=:dash )
@@ -791,7 +805,7 @@ end
     pl = vline!(pl, [quantile(K, 0.975)]/2.0;  alpha=0.5, color=:darkkhaki, lw=2, line=:dash )
     pl = vline!(pl, [quantile(K, 0.025)]/2.0;  alpha=0.5, color=:darkkhaki, lw=2, line=:dash )
   
-    pl = vline!(pl, [mean(o)/4.0];  alpha=0.6, color=:darkred, lw=5 )
+    pl = vline!(pl, [mean(K)/4.0];  alpha=0.6, color=:darkred, lw=5 )
     pl = vline!(pl, [quantile(K, 0.975)]/4.0;  alpha=0.5, color=:darkred, lw=2, line=:dash )
     pl = vline!(pl, [quantile(K, 0.025)]/4.0;  alpha=0.5, color=:darkred, lw=2, line=:dash )
   
@@ -810,7 +824,7 @@ end
       series_annotations = text.(trunc.(Int, survey_time), :top, :left, pointsize=4) )
     pl = scatter!(pl,  [fb_mean[nt]], [fm_mean[nt]] ;  alpha=0.8, color=:yellow, markersize=8, markerstrokewidth=1)
     
-    ub = max( quantile(o, 0.95), maximum( fb_mean ) ) * 1.05
+    ub = max( quantile(K, 0.95), maximum( fb_mean ), maximum(fmsy) ) * 1.05
     pl = plot!(pl; legend=false, xlim=(0, ub ), ylim=(0, maximum(fm_mean ) * 1.05  ) )
     # TODO # add predictions ???
   

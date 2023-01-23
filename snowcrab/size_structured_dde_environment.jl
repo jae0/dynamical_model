@@ -71,11 +71,18 @@ solver = MethodOfSteps(Tsit5())   # faster
  
 # perpare dat for dde run of fishery model
 
-fndat = "/home/jae/bio.data/bio.snowcrab/modelled/1999_present_fb/fishery_model_results/turing1/biodyn_number_size_struct.RData"
+
 o = load( fndat, convert=true)
-Y = o["Y"]
-removals = o["L"]
-MW = o["M0_W"]
+
+Yyrs = floor.(Int, o["Y"].yrs)
+Y = o["Y"][∈(yrs).(Yyrs), :]
+
+removalsyrs = floor.(Int, o["L"].yrs)
+removals = o["L"][∈(yrs).(removalsyrs), :]
+
+MW = o["M0_W"][∈(yrs).(o["M0_W"].mw_yrs), :]
+MW.yrs = MW.mw_yrs
+
 
 Kmu = [5.0, 60.0, 1.5]
 
@@ -92,7 +99,7 @@ Kmu = [5.0, 60.0, 1.5]
 
         # source( file.path( code_root, "bio_startup.R" )  )
         # require(bio.snowcrab)   # loadfunctions("bio.snowcrab")
-        # fishery_model_data_inputs( year.assessment=2021, type="size_structured_numerical_dynamics",  for_julia=TRUE, time_resolution=1/12)
+        # fishery_model_data_inputs( year.assessment=year.assessment, type="size_structured_numerical_dynamics",  for_julia=TRUE, time_resolution=1/12)
 
         # # then back in Julia, fetch data into julia's workspace (replace fndat with the  filenane printed above )
         # @rget Y
@@ -236,9 +243,6 @@ if length(ikeep) > 0
   fish_year = fish_year[ikeep]
 end
   
-directory_output = joinpath( project_directory, "outputs", model_variation )
-mkpath(directory_output)
-
 
 # model-specifics functions and data
 
@@ -336,4 +340,5 @@ elseif  model_variation=="size_structured_dde_unnormalized"
 end
 
 
- 
+print( model_variation, ": ", aulab, year_assessment )
+

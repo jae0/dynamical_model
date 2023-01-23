@@ -3,8 +3,8 @@ title: "Snow crab # model comparisons"
 author: "Jae S. Choi"
 date: "Document version timestamp `r format(Sys.time(), '%d %B, %Y')`"
 always_allow_html: true
-output: 
-  word_document:
+output: bookdown::odt_document2
+  # word_document:
     # reference_docx: outputs/model_comparisons.docx
 # other outputs: html_document, pdf_document, ioslides_presentation, powerpoint_presentation
 # bibliography: media/snowcrab.bib 
@@ -15,11 +15,9 @@ output:
 # csl is citation style download from: https://www.zotero.org/styles
 # csas.csl copied from "csasdown"
 params:
-  year.assessment: 2021
-  bio.data.dir: "/home/jae/bio.data"
-  smd: "/home/jae/projects/dynamical_model/snowcrab"  
-  work_root: "/home/jae/projects/dynamical_model/snowcrab/outputs"
-
+  year.assessment: 2022 
+  media_loc: "/home/jae/projects/dynamical_model/snowcrab/outputs"
+  mod_name: !r c( "" )
 
 ---
 
@@ -29,10 +27,26 @@ params:
 
   if (0) {
     # To create the msword document from within R run this:
-    smd = "/home/jae/projects/dynamical_model/snowcrab"
-    setwd( smd )  # change to where the rmd file lives
-    rmarkdown::render( "model_comparisons.rmd", params=list(year.assessment=2021 ),  output_dir=work_root )
-    system( paste( "/usr/bin/libreoffice ", file.path( work_root, "model_comparisons.docx") ) )
+ 
+    year.assessment = 2021
+    ID = "model_comparisons"
+
+    loc = file.path( Sys.getenv("HOME"), "projects", "dynamical_model", "snowcrab"  )
+    media_loc = file.path( loc, "outputs" ) 
+
+    fn  = file.path( loc, paste( ID, ".rmd", sep="") )
+ 
+    mods = c("logistic_discrete_historical", "logistic_discrete_basic", "logistic_discrete", "logistic_discrete_map", 
+    "size_structured_dde_unnormalized", "size_structured_dde_normalized")
+    pm = list( year.assessment=year.assessment, media_loc=media_loc, mod_name=mods  )
+    out_loc = file.path( media_loc, year.assessment )
+    out_file = file.path( out_loc, gsub( "\\.rmd$", ".odt", basename(fn) ) )
+    dir.create( out_loc, recursive=TRUE )
+
+    rmarkdown::render( fn, params=pm, output_dir=out_loc  )
+ 
+    # system( paste( "libreoffice -o ", out_file, "&" ) )
+
   }
 
   require(knitr)
@@ -53,147 +67,197 @@ params:
   SCD = project.datadirectory("bio.snowcrab")
   
   
-  odir = file.path( smd, "outputs" )
-  om0 = file.path( odir, "logistic_discrete_historical" )
-  om1 = file.path( odir, "logistic_discrete_basic" )
-  om2 = file.path( odir, "logistic_discrete" )
-  om3 = file.path( odir, "size_structured_dde_normalized" )
+  odir = file.path( params$media_loc, year.assessment )
 
+  mod_discrete = c("logistic_discrete_historical", "logistic_discrete_basic", "logistic_discrete", "logistic_discrete_map" )
+  mod_continuous = c("size_structured_dde_unnormalized", "size_structured_dde_normalized")
+  
+  if (length( params$mod_name)==0) {
+    mod_name = c(mod_discrete, mod_continuous)
+  } else {
+    mod_name = params$mod_name
+  }
+
+  mod_n = length(mod_name)
+
+  mod_exists = rep(FALSE, mod_n)
+  for (i in 1:mod_n) if (dir.exists( file.path( odir, mod_name[i] ))) mod_exists[i] = TRUE
+
+  mod_is_discrete = rep(TRUE, mod_n)
+  ii = which( mod_name %in% mod_continuous )
+  if (length(ii) > 0 ) mod_is_discrete[ii] = FALSE
+
+  mods = which(mod_exists) 
+  if (length(mods)== 0 )  stop( "Model output directories not found.")
 ```
 
+Order of models: 
 
-# Model 0
-
-```{r, out.width=520 }
-
-    include_graphics(  c(
-        file.path( om0, "plot_predictions_cfanorth.pdf" ), 
-        file.path( om0, "plot_predictions_cfasouth.pdf" ), 
-        file.path( om0, "plot_predictions_cfa4x.pdf" ), 
-        file.path( om0, "plot_fishing_mortality_cfanorth.pdf" ), 
-        file.path( om0, "plot_fishing_mortality_cfasouth.pdf" ), 
-        file.path( om0, "plot_fishing_mortality_cfa4x.pdf" ), 
-        file.path( om0, "plot_hcr_cfanorth.pdf" ), 
-        file.path( om0, "plot_hcr_cfasouth.pdf" ), 
-        file.path( om0, "plot_hcr_cfa4x.pdf" )
+```{r , echo=TRUE}
+print(mod_name[mods])
+print(odir)
+```
  
-    ) )
+```{r predictions, fig.show="hold", out.width="32%", echo=FALSE, fig.cap = "Predictions." }
+# for (i in mods) {
+  i=1
+  print (mod_name[i])
+  print("N-ENS:")
+    fn1 = file.path( odir, mod_name[i], "plot_predictions_cfanorth.pdf" ) 
+    if (file.exists(fn1)) include_graphics( fn1 )
+
+  print("S-ENS:")
+    fn2 = file.path( odir, mod_name[i], "plot_predictions_cfasouth.pdf" ) 
+    if (file.exists(fn2)) include_graphics( fn2 )
+
+  print("4X")
+    fn3 = file.path( odir, mod_name[i], "plot_predictions_cfa4x.pdf" ) 
+    if (file.exists(fn3)) include_graphics( fn3 )
+
+#}
 
 ```
 
-# Model 1
-
-```{r, out.width=520 }
-
-    include_graphics(  c(
-        file.path( om1, "plot_predictions_cfanorth.pdf" ), 
-        file.path( om1, "plot_predictions_cfasouth.pdf" ), 
-        file.path( om1, "plot_predictions_cfa4x.pdf" ), 
-        file.path( om1, "plot_fishing_mortality_cfanorth.pdf" ), 
-        file.path( om1, "plot_fishing_mortality_cfasouth.pdf" ), 
-        file.path( om1, "plot_fishing_mortality_cfa4x.pdf" ), 
-        file.path( om1, "plot_hcr_cfanorth.pdf" ), 
-        file.path( om1, "plot_hcr_cfasouth.pdf" ), 
-        file.path( om1, "plot_hcr_cfa4x.pdf" ) 
-    ) )
-
-```
-
-# Model 2
-
-```{r, out.width=520 }
-
-    include_graphics(  c(
-        file.path( om2, "plot_predictions_cfanorth.pdf" ), 
-        file.path( om2, "plot_predictions_cfasouth.pdf" ), 
-        file.path( om2, "plot_predictions_cfa4x.pdf" ), 
-        file.path( om2, "plot_fishing_mortality_cfanorth.pdf" ), 
-        file.path( om2, "plot_fishing_mortality_cfasouth.pdf" ), 
-        file.path( om2, "plot_fishing_mortality_cfa4x.pdf" ), 
-        file.path( om2, "plot_hcr_cfanorth.pdf" ), 
-        file.path( om2, "plot_hcr_cfasouth.pdf" ), 
-        file.path( om2, "plot_hcr_cfa4x.pdf" ) 
-    ) )
-
-```
-
-# Model 3
-
-```{r, out.width=520 }
-
-    include_graphics(  c(
-        file.path( om3, "plot_predictions_cfanorth.pdf" ), 
-        file.path( om3, "plot_predictions_cfasouth.pdf" ), 
-        file.path( om3, "plot_predictions_cfa4x.pdf" ), 
-        file.path( om3, "plot_fishing_mortality_cfanorth.pdf" ), 
-        file.path( om3, "plot_fishing_mortality_cfasouth.pdf" ), 
-        file.path( om3, "plot_fishing_mortality_cfa4x.pdf" ), 
-        file.path( om3, "plot_hcr_cfanorth.pdf" ), 
-        file.path( om3, "plot_hcr_cfasouth.pdf" ), 
-        file.path( om3, "plot_hcr_cfa4x.pdf" ),
-        file.path( om3, "plot_footprint_trace_cfanorth.pdf" ), 
-        file.path( om3, "plot_footprint_trace_cfasouth.pdf" ), 
-        file.path( om3, "plot_footprint_trace_cfa4x.pdf" ), 
-        file.path( om3, "plot_hcr_footprint_cfanorth.pdf" ), 
-        file.path( om3, "plot_hcr_footprint_cfasouth.pdf" ), 
-        file.path( om3, "plot_hcr_footprint_cfa4x.pdf" ), 
-        file.path( om3, "plot_fishing_mortality_vs_footprint_cfanorth.pdf" ), 
-        file.path( om3, "plot_fishing_mortality_vs_footprint_cfasouth.pdf" ), 
-        file.path( om3, "plot_fishing_mortality_vs_footprint_cfa4x.pdf" )  
-
-    ) )
+ 
 
 
-    include_graphics(  c(
-        file.path( om3, "plot_predictions_trace_cfanorth.pdf" ), 
-        file.path( om3, "plot_predictions_trace_cfasouth.pdf" ), 
-        file.path( om3, "plot_predictions_trace_cfa4x.pdf" )
-    ) )
+# # Model historical discrete logistic
 
 
-    include_graphics(  c(
-        file.path( om3, "plot_predictions_timeseries_cfanorth_1.pdf" ), 
-        file.path( om3, "plot_predictions_timeseries_cfasouth_1.pdf" ), 
-        file.path( om3, "plot_predictions_timeseries_cfa4x_1.pdf" )
-    ) )
+# ```{r, out.width=520 }
+# if (file.exists(om0)) {
+#     include_graphics(  c(
+#         file.path( om0, "plot_predictions_cfanorth.pdf" ), 
+#         file.path( om0, "plot_predictions_cfasouth.pdf" ), 
+#         file.path( om0, "plot_predictions_cfa4x.pdf" ), 
+#         file.path( om0, "plot_fishing_mortality_cfanorth.pdf" ), 
+#         file.path( om0, "plot_fishing_mortality_cfasouth.pdf" ), 
+#         file.path( om0, "plot_fishing_mortality_cfa4x.pdf" ), 
+#         file.path( om0, "plot_hcr_cfanorth.pdf" ), 
+#         file.path( om0, "plot_hcr_cfasouth.pdf" ), 
+#         file.path( om0, "plot_hcr_cfa4x.pdf" )
+ 
+#     ) )
+# }
+
+# ```
+
+# # Model variation 1: discrete logistic with normalization of Y
+
+# ```{r, out.width=520 }
+# if (file.exists(om1)) {
+
+#     include_graphics(  c(
+#         file.path( om1, "plot_predictions_cfanorth.pdf" ), 
+#         file.path( om1, "plot_predictions_cfasouth.pdf" ), 
+#         file.path( om1, "plot_predictions_cfa4x.pdf" ), 
+#         file.path( om1, "plot_fishing_mortality_cfanorth.pdf" ), 
+#         file.path( om1, "plot_fishing_mortality_cfasouth.pdf" ), 
+#         file.path( om1, "plot_fishing_mortality_cfa4x.pdf" ), 
+#         file.path( om1, "plot_hcr_cfanorth.pdf" ), 
+#         file.path( om1, "plot_hcr_cfasouth.pdf" ), 
+#         file.path( om1, "plot_hcr_cfa4x.pdf" ) 
+#     ) )
+# }
+# ```
+
+# # Model variation 2: discrete logistic with normalization of Y and intercept term for observation model
+
+# ```{r, out.width=520 }
+# if (file.exists(om2)) {
+
+#     include_graphics(  c(
+#         file.path( om2, "plot_predictions_cfanorth.pdf" ), 
+#         file.path( om2, "plot_predictions_cfasouth.pdf" ), 
+#         file.path( om2, "plot_predictions_cfa4x.pdf" ), 
+#         file.path( om2, "plot_fishing_mortality_cfanorth.pdf" ), 
+#         file.path( om2, "plot_fishing_mortality_cfasouth.pdf" ), 
+#         file.path( om2, "plot_fishing_mortality_cfa4x.pdf" ), 
+#         file.path( om2, "plot_hcr_cfanorth.pdf" ), 
+#         file.path( om2, "plot_hcr_cfasouth.pdf" ), 
+#         file.path( om2, "plot_hcr_cfa4x.pdf" ) 
+#     ) )
+# }
+# ```
+
+# # Model continuous delay differential 
+
+# ```{r, out.width=520 }
+# if (file.exists(om3)) {
+
+#     include_graphics(  c(
+#         file.path( om3, "plot_predictions_cfanorth.pdf" ), 
+#         file.path( om3, "plot_predictions_cfasouth.pdf" ), 
+#         file.path( om3, "plot_predictions_cfa4x.pdf" ), 
+#         file.path( om3, "plot_fishing_mortality_cfanorth.pdf" ), 
+#         file.path( om3, "plot_fishing_mortality_cfasouth.pdf" ), 
+#         file.path( om3, "plot_fishing_mortality_cfa4x.pdf" ), 
+#         file.path( om3, "plot_hcr_cfanorth.pdf" ), 
+#         file.path( om3, "plot_hcr_cfasouth.pdf" ), 
+#         file.path( om3, "plot_hcr_cfa4x.pdf" ),
+#         file.path( om3, "plot_footprint_trace_cfanorth.pdf" ), 
+#         file.path( om3, "plot_footprint_trace_cfasouth.pdf" ), 
+#         file.path( om3, "plot_footprint_trace_cfa4x.pdf" ), 
+#         file.path( om3, "plot_hcr_footprint_cfanorth.pdf" ), 
+#         file.path( om3, "plot_hcr_footprint_cfasouth.pdf" ), 
+#         file.path( om3, "plot_hcr_footprint_cfa4x.pdf" ), 
+#         file.path( om3, "plot_fishing_mortality_vs_footprint_cfanorth.pdf" ), 
+#         file.path( om3, "plot_fishing_mortality_vs_footprint_cfasouth.pdf" ), 
+#         file.path( om3, "plot_fishing_mortality_vs_footprint_cfa4x.pdf" )  
+
+#     ) )
 
 
-    include_graphics(  c(
-        file.path( om3, "plot_predictions_timeseries_cfanorth_2.pdf" ), 
-        file.path( om3, "plot_predictions_timeseries_cfasouth_2.pdf" ), 
-        file.path( om3, "plot_predictions_timeseries_cfa4x_2.pdf" )
-    ) )
+#     include_graphics(  c(
+#         file.path( om3, "plot_predictions_trace_cfanorth.pdf" ), 
+#         file.path( om3, "plot_predictions_trace_cfasouth.pdf" ), 
+#         file.path( om3, "plot_predictions_trace_cfa4x.pdf" )
+#     ) )
 
 
-    include_graphics(  c(
-        file.path( om3, "plot_predictions_timeseries_cfanorth_3.pdf" ), 
-        file.path( om3, "plot_predictions_timeseries_cfasouth_3.pdf" ), 
-        file.path( om3, "plot_predictions_timeseries_cfa4x_3.pdf" )
-    ) )
+#     include_graphics(  c(
+#         file.path( om3, "plot_predictions_timeseries_cfanorth_1.pdf" ), 
+#         file.path( om3, "plot_predictions_timeseries_cfasouth_1.pdf" ), 
+#         file.path( om3, "plot_predictions_timeseries_cfa4x_1.pdf" )
+#     ) )
 
 
-    include_graphics(  c(
-        file.path( om3, "plot_predictions_timeseries_cfanorth_4.pdf" ), 
-        file.path( om3, "plot_predictions_timeseries_cfasouth_4.pdf" ), 
-        file.path( om3, "plot_predictions_timeseries_cfa4x_4.pdf" )
-    ) )
+#     include_graphics(  c(
+#         file.path( om3, "plot_predictions_timeseries_cfanorth_2.pdf" ), 
+#         file.path( om3, "plot_predictions_timeseries_cfasouth_2.pdf" ), 
+#         file.path( om3, "plot_predictions_timeseries_cfa4x_2.pdf" )
+#     ) )
 
 
-    include_graphics(  c(
-        file.path( om3, "plot_predictions_timeseries_cfanorth_5.pdf" ), 
-        file.path( om3, "plot_predictions_timeseries_cfasouth_5.pdf" ), 
-        file.path( om3, "plot_predictions_timeseries_cfa4x_5.pdf" )
-    ) )
+#     include_graphics(  c(
+#         file.path( om3, "plot_predictions_timeseries_cfanorth_3.pdf" ), 
+#         file.path( om3, "plot_predictions_timeseries_cfasouth_3.pdf" ), 
+#         file.path( om3, "plot_predictions_timeseries_cfa4x_3.pdf" )
+#     ) )
 
 
-    include_graphics(  c(
-        file.path( om3, "plot_predictions_timeseries_cfanorth_6.pdf" ), 
-        file.path( om3, "plot_predictions_timeseries_cfasouth_6.pdf" ), 
-        file.path( om3, "plot_predictions_timeseries_cfa4x_6.pdf" )
-    ) )
+#     include_graphics(  c(
+#         file.path( om3, "plot_predictions_timeseries_cfanorth_4.pdf" ), 
+#         file.path( om3, "plot_predictions_timeseries_cfasouth_4.pdf" ), 
+#         file.path( om3, "plot_predictions_timeseries_cfa4x_4.pdf" )
+#     ) )
 
 
+#     include_graphics(  c(
+#         file.path( om3, "plot_predictions_timeseries_cfanorth_5.pdf" ), 
+#         file.path( om3, "plot_predictions_timeseries_cfasouth_5.pdf" ), 
+#         file.path( om3, "plot_predictions_timeseries_cfa4x_5.pdf" )
+#     ) )
 
-```
+
+#     include_graphics(  c(
+#         file.path( om3, "plot_predictions_timeseries_cfanorth_6.pdf" ), 
+#         file.path( om3, "plot_predictions_timeseries_cfasouth_6.pdf" ), 
+#         file.path( om3, "plot_predictions_timeseries_cfa4x_6.pdf" )
+#     ) )
+
+# }
+
+# ```
 
 

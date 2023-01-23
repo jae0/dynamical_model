@@ -56,12 +56,13 @@ gr()
 # gr(size=(1000,1000),legend=false,markerstrokewidth=0,markersize=4)
 
 # allsavetimes = unique( vcat( survey_time, prediction_time  ) )
+
  
- 
-fndat = "/home/jae/bio.data/bio.snowcrab/modelled/1999_present_fb/fishery_model_results/turing1/biodyn_biomass.RData"
+# fndat = "/home/jae/bio.data/bio.snowcrab/modelled/1999_present_fb/fishery_model_results/turing1/biodyn_biomass.RData"
 o = load( fndat, convert=true)
-Y = o["Y"]
-removals = o["L"] 
+ 
+Y = o["Y"][∈(yrs).(o["Y"].yrs), :]
+removals = o["L"][∈(yrs).(o["L"].yrs), :]
 
 Kmu = [5.0, 60.0, 1.25]
 
@@ -171,9 +172,6 @@ prediction_time =
 
 iok = findall( !ismissing, S )
 
-
-directory_output = joinpath( project_directory, "outputs", model_variation )
-mkpath(directory_output)
  
 include( "logistic_discrete_functions.jl" )  #specific to model form
 
@@ -220,9 +218,10 @@ n_chains=4
 
 # NUTS-specific
 # see write up here: https://turing.ml/dev/docs/using-turing/sampler-viz
-rejection_rate = 0.9  ## too high and it become impossibly slow .. this is a good balance between variability and speed
-max_depth=9  ## too high and it become impossibly slow
- 
+rejection_rate = 0.65  ## too high and it become impossibly slow .. this is a good balance between variability and speed
+max_depth = 7  ## too high and it become impossibly slow
+init_ϵ = 0.01
+
 if model_variation=="logistic_discrete_historical"   # pre-2022, mimic STAN defaults
   n_adapts=10000
   n_samples=2000
@@ -230,8 +229,10 @@ if model_variation=="logistic_discrete_historical"   # pre-2022, mimic STAN defa
   max_depth=14  ## too high and it become impossibly slow
 end
 
-print( model_variation, ": ", aulab)
+ 
+turing_sampler = Turing.NUTS(n_samples, rejection_rate; max_depth=max_depth, init_ϵ=init_ϵ )
 
+print( model_variation, ": ", aulab, year_assessment )
 
 
 
