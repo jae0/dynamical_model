@@ -1,4 +1,8 @@
- 
+# automatic load of things related to all projects go here
+# for now, using snowcrab_startup.jl to be clear
+
+
+
 #=
 
 project_directory = @__DIR__() #  same folder as the file

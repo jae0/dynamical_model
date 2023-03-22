@@ -21,48 +21,60 @@
 
   if ! @isdefined outputs_directory 
     # tailor to your specific installation
-    outputs_directory = joinpath( homedir(), "bio.data", "bio.snowcrab", "output", "fishery_model" ) 
+    outputs_directory = joinpath( bio_data_directory, "bio.snowcrab",  "fishery_model" ) 
   end
 
   mkpath(outputs_directory)
 #   cd( outputs_directory )   # this is necessary as julia stores packages (versions) specific to this project here 
-
   print( "outputs_directory: ", outputs_directory )
+
+  model_outdir = joinpath( outputs_directory, string(year_assessment), model_variation )
   mkpath(model_outdir)
-  print( "outputs_directory: ", outputs_directory )
 
-
+  print( "model_outdir: ", model_outdir )
+ 
 # ---------------
 # make a copy of the input data in case ... 
 
   if  occursin( r"size_structured", model_variation ) 
-    fndat_source = joinpath( homedir(), "bio.data", "bio.snowcrab", "modelled", 
+    fndat_source = joinpath( bio_data_directory, "bio.snowcrab", "modelled", 
       "1999_present_fb", "fishery_model_results", "turing1", "biodyn_number_size_struct.RData" )
   elseif  occursin( r"logistic_discrete", model_variation ) 
-    fndat_source = joinpath( homedir(), "bio.data", "bio.snowcrab", "modelled", 
+    fndat_source = joinpath( bio_data_directory, "bio.snowcrab", "modelled", 
       "1999_present_fb", "fishery_model_results", "turing1", "biodyn_biomass.RData" )
   end
 
   fndat = joinpath( model_outdir, basename(fndat_source) )
-  cp( fndat_source, fndat; force=true )
+
+  if (!isfile(fndat)) 
+    # prompt to input
+    print("\nData file not found. Copy from: \n")
+    print(fndat_source)
+    print("\nTo: \n")
+    print( fndat )
+    print( "\nType 'Yes' to proceed >  ")
+    confirm = readline()
+    if confirm=="Yes"
+      cp( fndat_source, fndat; force=true )
+    end
+  end
 
   
- 
   if  occursin( r"logistic_discrete", model_variation ) 
         pkgs = [
-            "Revise", "MKL", "Logging", "StatsBase", "Statistics", "Distributions", "Random",
+            "Revise", "MKL", "Logging", "StatsBase", "Statistics", "Distributions", "Random", "Setfield", "Memoization",
             "ForwardDiff", "DataFrames", "JLD2", "CSV", "PlotThemes", "Colors", "ColorSchemes", "RData",  
             "Plots", "StatsPlots", "MultivariateStats", "StaticArrays", "LazyArrays", "FillArrays",
             "Turing", "ModelingToolkit", "DifferentialEquations", "Interpolations", "LinearAlgebra"
         ]
-  end
+  end 
 
     # add Turing@v0.21.10  # to add a particular version
     #  "DynamicHMC", 
 
   if occursin( r"size_structured", model_variation ) 
         pkgs = [
-            "Revise", "MKL", "Logging", "StatsBase", "Statistics", "Distributions", "Random", "QuadGK",
+            "Revise", "MKL", "Logging", "StatsBase", "Statistics", "Distributions", "Random", "QuadGK", "Setfield", "Memoization",
             "MCMCChains", "DynamicPPL", "AdvancedHMC", "DistributionsAD", "Bijectors",  
             "AbstractPPL", "Memoization", # "Enzyme", "Diffractor",
             "ForwardDiff", "DataFrames", "CSV", "JLD2", "PlotThemes", "Colors", "ColorSchemes", "RData", 
@@ -80,6 +92,8 @@
     fn_env = joinpath( project_directory, "logistic_discrete_environment.jl" )  
   end
   
+
+  include( fn_env )  # loads libs and setup workspace / data (fn_env is defined in the snowcrab_startup.jl)
 
 
 #=

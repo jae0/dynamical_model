@@ -1,7 +1,7 @@
 ---
-title: "Snow crab # model comparisons"
+title: "Snow crab model comparisons"
 author: "Jae S. Choi"
-date: "Document version timestamp `r format(Sys.time(), '%d %B, %Y')`"
+date: "Document timestamp `r format(Sys.time(), '%d %B, %Y')`"
 always_allow_html: true
 output: bookdown::odt_document2
   # word_document:
@@ -31,19 +31,28 @@ params:
     year.assessment = 2021
     ID = "model_comparisons"
 
-    loc = file.path( Sys.getenv("HOME"), "projects", "dynamical_model", "snowcrab"  )
-    media_loc = file.path( loc, "outputs" ) 
+    loc_rmd = file.path( Sys.getenv("HOME"), "projects", "dynamical_model", "snowcrab"  )
+    loc_res = file.path( project.datadirectory("bio.snowcrab"), "fishery_model" )
 
-    fn  = file.path( loc, paste( ID, ".rmd", sep="") )
- 
-    mods = c("logistic_discrete_historical", "logistic_discrete_basic", "logistic_discrete", "logistic_discrete_map", 
+    results_from_dynamical_model = FALSE
+    if (results_from_dynamical_model) {
+      media_loc = file.path( loc_rmd, "outputs" )  
+    }
+
+    media_loc =  loc_res    
+
+    fn_mod_compar  = file.path( loc_rmd, paste( ID, ".rmd", sep="") )
+
+    mod_name = c("logistic_discrete_historical", "logistic_discrete_basic", "logistic_discrete", "logistic_discrete_map", 
     "size_structured_dde_unnormalized", "size_structured_dde_normalized")
-    pm = list( year.assessment=year.assessment, media_loc=media_loc, mod_name=mods  )
+
+    pm = list( year.assessment=year.assessment, media_loc=media_loc, mod_name=mod_name  )
+
     out_loc = file.path( media_loc, year.assessment )
-    out_file = file.path( out_loc, gsub( "\\.rmd$", ".odt", basename(fn) ) )
+    out_file = file.path( out_loc, gsub( "\\.rmd$", ".odt", basename(fn_mod_compar) ) )
     dir.create( out_loc, recursive=TRUE )
 
-    rmarkdown::render( fn, params=pm, output_dir=out_loc  )
+    rmarkdown::render( fn_mod_compar, params=pm, output_dir=out_loc  )
  
     # system( paste( "libreoffice -o ", out_file, "&" ) )
 
@@ -72,6 +81,14 @@ params:
   mod_discrete = c("logistic_discrete_historical", "logistic_discrete_basic", "logistic_discrete", "logistic_discrete_map" )
   mod_continuous = c("size_structured_dde_unnormalized", "size_structured_dde_normalized")
   
+  # indices (internal)
+  logistic_discrete_historical = 1
+  logistic_discrete_basic =2
+  logistic_discrete = 3
+  logistic_discrete_map = 4
+  size_structured_dde_unnormalized = 5
+  size_structured_dde_normalized = 6
+
   if (length( params$mod_name)==0) {
     mod_name = c(mod_discrete, mod_continuous)
   } else {
@@ -91,173 +108,438 @@ params:
   if (length(mods)== 0 )  stop( "Model output directories not found.")
 ```
 
-Order of models: 
 
-```{r , echo=TRUE}
-print(mod_name[mods])
+```{r, asis=TRUE}
+out = '
+![]("/home/jae/test.pdf")
+
+Template: 
+
+| Model  | N-ENS | S-ENS | 4X |
+|  logistic_discrete_historical | | |  |
+|  logistic_discrete_basic | | |  |
+|  logistic_discrete | | |  |
+|  logistic_discrete_map | | |  |
+|  size_structured_dde_normalized | | |  |'
+cat(out)
+```
+
+Source location:
+
+```{r , echo=FALSE}
 print(odir)
 ```
+
+
+<!-- NOTE layout is a bit awkward due to "for" loops not working within Rmarkdown -->
+
+# Predictions (N-ENS, S-ENS, 4X)
+
+```{r predictions, fig.show="hold", out.width="32%", echo=FALSE, fig.cap="predictions" }
+  loc = file.path( odir, mod_name[logistic_discrete_historical] )
+  include_graphics( file.path( loc, "plot_predictions_cfanorth.pdf" ) )
+  include_graphics( file.path( loc, "plot_predictions_cfasouth.pdf" ) ) 
+  include_graphics( file.path( loc, "plot_predictions_cfa4x.pdf" ) ) 
+
+  loc = file.path( odir, mod_name[logistic_discrete_basic] )
+  include_graphics( file.path( loc, "plot_predictions_cfanorth.pdf" ) )
+  include_graphics( file.path( loc, "plot_predictions_cfasouth.pdf" ) ) 
+  include_graphics( file.path( loc, "plot_predictions_cfa4x.pdf" ) )
+
+  loc = file.path( odir, mod_name[logistic_discrete] )
+  include_graphics( file.path( loc, "plot_predictions_cfanorth.pdf" ) )
+  include_graphics( file.path( loc, "plot_predictions_cfasouth.pdf" ) ) 
+  include_graphics( file.path( loc, "plot_predictions_cfa4x.pdf" ) )
+
+  loc = file.path( odir, mod_name[logistic_discrete_map] )
+  include_graphics( file.path( loc, "plot_predictions_cfanorth.pdf" ) )
+  include_graphics( file.path( loc, "plot_predictions_cfasouth.pdf" ) ) 
+  include_graphics( file.path( loc, "plot_predictions_cfa4x.pdf" ) )
+
+  # loc = file.path( odir, mod_name[size_structured_dde_unnormalized] )
+  # include_graphics( file.path( loc, "plot_predictions_cfanorth.pdf" ) )
+  # include_graphics( file.path( loc, "plot_predictions_cfasouth.pdf" ) ) 
+  # include_graphics( file.path( loc, "plot_predictions_cfa4x.pdf" ) )
+
+  loc = file.path( odir, mod_name[size_structured_dde_normalized] )
+  include_graphics( file.path( loc, "plot_predictions_cfanorth.pdf" ) )
+  include_graphics( file.path( loc, "plot_predictions_cfasouth.pdf" ) ) 
+  include_graphics( file.path( loc, "plot_predictions_cfa4x.pdf" ) )
+``` 
+  
+  
+# Fishing mortality (N-ENS, S-ENS, 4X)
+
+```{r fishing_mortality, fig.show="hold", out.width="32%", echo=FALSE, fig.cap="fishing_mortality" }
+  loc = file.path( odir, mod_name[logistic_discrete_historical] )
+  include_graphics( file.path( loc, "plot_fishing_mortality_cfanorth.pdf" ) )
+  include_graphics( file.path( loc, "plot_fishing_mortality_cfasouth.pdf" ) ) 
+  include_graphics( file.path( loc, "plot_fishing_mortality_cfa4x.pdf" ) ) 
+
+  loc = file.path( odir, mod_name[logistic_discrete_basic] )
+  include_graphics( file.path( loc, "plot_fishing_mortality_cfanorth.pdf" ) )
+  include_graphics( file.path( loc, "plot_fishing_mortality_cfasouth.pdf" ) ) 
+  include_graphics( file.path( loc, "plot_fishing_mortality_cfa4x.pdf" ) )
+
+  loc = file.path( odir, mod_name[logistic_discrete] )
+  include_graphics( file.path( loc, "plot_fishing_mortality_cfanorth.pdf" ) )
+  include_graphics( file.path( loc, "plot_fishing_mortality_cfasouth.pdf" ) ) 
+  include_graphics( file.path( loc, "plot_fishing_mortality_cfa4x.pdf" ) )
+
+  loc = file.path( odir, mod_name[logistic_discrete_map] )
+  include_graphics( file.path( loc, "plot_fishing_mortality_cfanorth.pdf" ) )
+  include_graphics( file.path( loc, "plot_fishing_mortality_cfasouth.pdf" ) ) 
+  include_graphics( file.path( loc, "plot_fishing_mortality_cfa4x.pdf" ) )
+
+  # loc = file.path( odir, mod_name[size_structured_dde_unnormalized] )
+  # include_graphics( file.path( loc, "plot_fishing_mortality_cfanorth.pdf" ) )
+  # include_graphics( file.path( loc, "plot_fishing_mortality_cfasouth.pdf" ) ) 
+  # include_graphics( file.path( loc, "plot_fishing_mortality_cfa4x.pdf" ) )
+
+  loc = file.path( odir, mod_name[size_structured_dde_normalized] )
+  include_graphics( file.path( loc, "plot_fishing_mortality_cfanorth.pdf" ) )
+  include_graphics( file.path( loc, "plot_fishing_mortality_cfasouth.pdf" ) ) 
+  include_graphics( file.path( loc, "plot_fishing_mortality_cfa4x.pdf" ) )
+
+``` 
+  
+  
+  
+
+# Harvest control rules (N-ENS, S-ENS, 4X)
+
+```{r hcr, fig.show="hold", out.width="32%", echo=FALSE, fig.cap="hcr" }
+  loc = file.path( odir, mod_name[logistic_discrete_historical] )
+  include_graphics( file.path( loc, "plot_hcr_cfanorth.pdf" ) )
+  include_graphics( file.path( loc, "plot_hcr_cfasouth.pdf" ) ) 
+  include_graphics( file.path( loc, "plot_hcr_cfa4x.pdf" ) ) 
+
+  loc = file.path( odir, mod_name[logistic_discrete_basic] )
+  include_graphics( file.path( loc, "plot_hcr_cfanorth.pdf" ) )
+  include_graphics( file.path( loc, "plot_hcr_cfasouth.pdf" ) ) 
+  include_graphics( file.path( loc, "plot_hcr_cfa4x.pdf" ) )
+
+  loc = file.path( odir, mod_name[logistic_discrete] )
+  include_graphics( file.path( loc, "plot_hcr_cfanorth.pdf" ) )
+  include_graphics( file.path( loc, "plot_hcr_cfasouth.pdf" ) ) 
+  include_graphics( file.path( loc, "plot_hcr_cfa4x.pdf" ) )
+
+  loc = file.path( odir, mod_name[logistic_discrete_map] )
+  include_graphics( file.path( loc, "plot_hcr_cfanorth.pdf" ) )
+  include_graphics( file.path( loc, "plot_hcr_cfasouth.pdf" ) ) 
+  include_graphics( file.path( loc, "plot_hcr_cfa4x.pdf" ) )
+
+  # loc = file.path( odir, mod_name[size_structured_dde_unnormalized] )
+  # include_graphics( file.path( loc, "plot_hcr_cfanorth.pdf" ) )
+  # include_graphics( file.path( loc, "plot_hcr_cfasouth.pdf" ) ) 
+  # include_graphics( file.path( loc, "plot_hcr_cfa4x.pdf" ) )
+
+  loc = file.path( odir, mod_name[size_structured_dde_normalized] )
+  include_graphics( file.path( loc, "plot_hcr_cfanorth.pdf" ) )
+  include_graphics( file.path( loc, "plot_hcr_cfasouth.pdf" ) ) 
+  include_graphics( file.path( loc, "plot_hcr_cfa4x.pdf" ) )
+
+``` 
+
+\clearpage
+\pagebreak
+
+Template: 
+| <!-- -->    | N-ENS | S-ENS | 4X |
+|:----:|:----:| | |
+|  size_structured_dde_normalized | | |  |
+| <!-- --> | | |  |
+
+
+```{r predictions_trace, fig.show="hold", out.width="32%", echo=FALSE, fig.cap="predictions_trace" }
  
-```{r predictions, fig.show="hold", out.width="32%", echo=FALSE, fig.cap = "Predictions." }
-# for (i in mods) {
-  i=1
-  print (mod_name[i])
-  print("N-ENS:")
-    fn1 = file.path( odir, mod_name[i], "plot_predictions_cfanorth.pdf" ) 
-    if (file.exists(fn1)) include_graphics( fn1 )
+  # loc = file.path( odir, mod_name[size_structured_dde_unnormalized] )
+  # include_graphics( file.path( loc, "plot_predictions_trace_cfanorth.pdf" ) )
+  # include_graphics( file.path( loc, "plot_predictions_trace_cfasouth.pdf" ) ) 
+  # include_graphics( file.path( loc, "plot_predictions_trace_cfa4x.pdf" ) )
 
-  print("S-ENS:")
-    fn2 = file.path( odir, mod_name[i], "plot_predictions_cfasouth.pdf" ) 
-    if (file.exists(fn2)) include_graphics( fn2 )
+  loc = file.path( odir, mod_name[size_structured_dde_normalized] )
+  include_graphics( file.path( loc, "plot_predictions_trace_cfanorth.pdf" ) )
+  include_graphics( file.path( loc, "plot_predictions_trace_cfasouth.pdf" ) ) 
+  include_graphics( file.path( loc, "plot_predictions_trace_cfa4x.pdf" ) )
 
-  print("4X")
-    fn3 = file.path( odir, mod_name[i], "plot_predictions_cfa4x.pdf" ) 
-    if (file.exists(fn3)) include_graphics( fn3 )
+``` 
 
-#}
 
-```
+```{r footprint_trace, fig.show="hold", out.width="32%", echo=FALSE, fig.cap="footprint_trace" }
+ 
+  # loc = file.path( odir, mod_name[size_structured_dde_unnormalized] )
+  # include_graphics( file.path( loc, "plot_footprint_trace_cfanorth.pdf" ) )
+  # include_graphics( file.path( loc, "plot_footprint_trace_cfasouth.pdf" ) ) 
+  # include_graphics( file.path( loc, "plot_footprint_trace_cfa4x.pdf" ) )
 
+  loc = file.path( odir, mod_name[size_structured_dde_normalized] )
+  include_graphics( file.path( loc, "plot_footprint_trace_cfanorth.pdf" ) )
+  include_graphics( file.path( loc, "plot_footprint_trace_cfasouth.pdf" ) ) 
+  include_graphics( file.path( loc, "plot_footprint_trace_cfa4x.pdf" ) )
+
+``` 
+
+
+```{r hcr_footprint, fig.show="hold", out.width="32%", echo=FALSE, fig.cap="hcr_footprint" }
+ 
+  # loc = file.path( odir, mod_name[size_structured_dde_unnormalized] )
+  # include_graphics( file.path( loc, "plot_hcr_footprint_cfanorth.pdf" ) )
+  # include_graphics( file.path( loc, "plot_hcr_footprint_cfasouth.pdf" ) ) 
+  # include_graphics( file.path( loc, "plot_hcr_footprint_cfa4x.pdf" ) )
+
+  loc = file.path( odir, mod_name[size_structured_dde_normalized] )
+  include_graphics( file.path( loc, "plot_hcr_footprint_cfanorth.pdf" ) )
+  include_graphics( file.path( loc, "plot_hcr_footprint_cfasouth.pdf" ) ) 
+  include_graphics( file.path( loc, "plot_hcr_footprint_cfa4x.pdf" ) )
+
+``` 
+
+
+```{r fishing_mortality_vs_footprint, fig.show="hold", out.width="32%", echo=FALSE, fig.cap="fishing_mortality_vs_footprint" }
+ 
+  # loc = file.path( odir, mod_name[size_structured_dde_unnormalized] )
+  # include_graphics( file.path( loc, "plot_fishing_mortality_vs_footprint_cfanorth.pdf" ) )
+  # include_graphics( file.path( loc, "plot_fishing_mortality_vs_footprint_cfasouth.pdf" ) ) 
+  # include_graphics( file.path( loc, "plot_fishing_mortality_vs_footprint_cfa4x.pdf" ) )
+
+  loc = file.path( odir, mod_name[size_structured_dde_normalized] )
+  include_graphics( file.path( loc, "plot_fishing_mortality_vs_footprint_cfanorth.pdf" ) )
+  include_graphics( file.path( loc, "plot_fishing_mortality_vs_footprint_cfasouth.pdf" ) ) 
+  include_graphics( file.path( loc, "plot_fishing_mortality_vs_footprint_cfa4x.pdf" ) )
+
+``` 
+
+
+```{r predictions_timeseries_1, fig.show="hold", out.width="32%", echo=FALSE, fig.cap="predictions_timeseries_1" }
+ 
+  # loc = file.path( odir, mod_name[size_structured_dde_unnormalized] )
+  # include_graphics( file.path( loc, "plot_predictions_timeseries_cfanorth_1.pdf" ) )
+  # include_graphics( file.path( loc, "plot_predictions_timeseries_cfasouth_1.pdf" ) ) 
+  # include_graphics( file.path( loc, "plot_predictions_timeseries_cfa4x_1.pdf" ) )
+
+  loc = file.path( odir, mod_name[size_structured_dde_normalized] )
+  include_graphics( file.path( loc, "plot_predictions_timeseries_cfanorth_1.pdf" ) )
+  include_graphics( file.path( loc, "plot_predictions_timeseries_cfasouth_1.pdf" ) ) 
+  include_graphics( file.path( loc, "plot_predictions_timeseries_cfa4x_1.pdf" ) )
+
+``` 
+
+
+```{r predictions_timeseries_2, fig.show="hold", out.width="32%", echo=FALSE, fig.cap="predictions_timeseries_2" }
+ 
+  # loc = file.path( odir, mod_name[size_structured_dde_unnormalized] )
+  # include_graphics( file.path( loc, "plot_predictions_timeseries_cfanorth_2.pdf" ) )
+  # include_graphics( file.path( loc, "plot_predictions_timeseries_cfasouth_2.pdf" ) ) 
+  # include_graphics( file.path( loc, "plot_predictions_timeseries_cfa4x_2.pdf" ) )
+
+  loc = file.path( odir, mod_name[size_structured_dde_normalized] )
+  include_graphics( file.path( loc, "plot_predictions_timeseries_cfanorth_2.pdf" ) )
+  include_graphics( file.path( loc, "plot_predictions_timeseries_cfasouth_2.pdf" ) ) 
+  include_graphics( file.path( loc, "plot_predictions_timeseries_cfa4x_2.pdf" ) )
+
+``` 
+
+
+```{r predictions_timeseries_3, fig.show="hold", out.width="32%", echo=FALSE, fig.cap="predictions_timeseries_3" }
+ 
+  # loc = file.path( odir, mod_name[size_structured_dde_unnormalized] )
+  # include_graphics( file.path( loc, "plot_predictions_timeseries_cfanorth_3.pdf" ) )
+  # include_graphics( file.path( loc, "plot_predictions_timeseries_cfasouth_3.pdf" ) ) 
+  # include_graphics( file.path( loc, "plot_predictions_timeseries_cfa4x_3.pdf" ) )
+
+  loc = file.path( odir, mod_name[size_structured_dde_normalized] )
+  include_graphics( file.path( loc, "plot_predictions_timeseries_cfanorth_3.pdf" ) )
+  include_graphics( file.path( loc, "plot_predictions_timeseries_cfasouth_3.pdf" ) ) 
+  include_graphics( file.path( loc, "plot_predictions_timeseries_cfa4x_3.pdf" ) )
+
+``` 
+
+
+```{r predictions_timeseries_4, fig.show="hold", out.width="32%", echo=FALSE, fig.cap="predictions_timeseries_4" }
+ 
+  # loc = file.path( odir, mod_name[size_structured_dde_unnormalized] )
+  # include_graphics( file.path( loc, "plot_predictions_timeseries_cfanorth_4.pdf" ) )
+  # include_graphics( file.path( loc, "plot_predictions_timeseries_cfasouth_4.pdf" ) ) 
+  # include_graphics( file.path( loc, "plot_predictions_timeseries_cfa4x_4.pdf" ) )
+
+  loc = file.path( odir, mod_name[size_structured_dde_normalized] )
+  include_graphics( file.path( loc, "plot_predictions_timeseries_cfanorth_4.pdf" ) )
+  include_graphics( file.path( loc, "plot_predictions_timeseries_cfasouth_4.pdf" ) ) 
+  include_graphics( file.path( loc, "plot_predictions_timeseries_cfa4x_4.pdf" ) )
+
+``` 
+
+
+```{r predictions_timeseries_5, fig.show="hold", out.width="32%", echo=FALSE, fig.cap="predictions_timeseries_5" }
+ 
+  # loc = file.path( odir, mod_name[size_structured_dde_unnormalized] )
+  # include_graphics( file.path( loc, "plot_predictions_timeseries_cfanorth_5.pdf" ) )
+  # include_graphics( file.path( loc, "plot_predictions_timeseries_cfasouth_5.pdf" ) ) 
+  # include_graphics( file.path( loc, "plot_predictions_timeseries_cfa4x_5.pdf" ) )
+
+  loc = file.path( odir, mod_name[size_structured_dde_normalized] )
+  include_graphics( file.path( loc, "plot_predictions_timeseries_cfanorth_5.pdf" ) )
+  include_graphics( file.path( loc, "plot_predictions_timeseries_cfasouth_5.pdf" ) ) 
+  include_graphics( file.path( loc, "plot_predictions_timeseries_cfa4x_5.pdf" ) )
+
+``` 
+
+
+```{r predictions_timeseries_6, fig.show="hold", out.width="32%", echo=FALSE, fig.cap="predictions_timeseries_6" }
+ 
+  # loc = file.path( odir, mod_name[size_structured_dde_unnormalized] )
+  # include_graphics( file.path( loc, "plot_predictions_timeseries_cfanorth_6.pdf" ) )
+  # include_graphics( file.path( loc, "plot_predictions_timeseries_cfasouth_6.pdf" ) ) 
+  # include_graphics( file.path( loc, "plot_predictions_timeseries_cfa4x_6.pdf" ) )
+
+  loc = file.path( odir, mod_name[size_structured_dde_normalized] )
+  include_graphics( file.path( loc, "plot_predictions_timeseries_cfanorth_6.pdf" ) )
+  include_graphics( file.path( loc, "plot_predictions_timeseries_cfasouth_6.pdf" ) ) 
+  include_graphics( file.path( loc, "plot_predictions_timeseries_cfa4x_6.pdf" ) )
+
+``` 
  
 
 
-# # Model historical discrete logistic
-
-
-# ```{r, out.width=520 }
-# if (file.exists(om0)) {
-#     include_graphics(  c(
-#         file.path( om0, "plot_predictions_cfanorth.pdf" ), 
-#         file.path( om0, "plot_predictions_cfasouth.pdf" ), 
-#         file.path( om0, "plot_predictions_cfa4x.pdf" ), 
-#         file.path( om0, "plot_fishing_mortality_cfanorth.pdf" ), 
-#         file.path( om0, "plot_fishing_mortality_cfasouth.pdf" ), 
-#         file.path( om0, "plot_fishing_mortality_cfa4x.pdf" ), 
-#         file.path( om0, "plot_hcr_cfanorth.pdf" ), 
-#         file.path( om0, "plot_hcr_cfasouth.pdf" ), 
-#         file.path( om0, "plot_hcr_cfa4x.pdf" )
  
-#     ) )
-# }
+```{r dde-predictions-trace,  fig.show='hold', out.width='50%', echo=FALSE, fig.cap='predictions trace' }
+  odir = file.path( SCD, "fishery_model", year.assessment, "size_structured_dde_normalized" )
+  fn1 = file.path( odir, "plot_predictions_trace_cfanorth.pdf" ) 
+  fn2 = file.path( odir, "plot_predictions_trace_cfasouth.pdf" ) 
+  fn3 = file.path( odir, "plot_predictions_trace_cfa4x.pdf" ) 
+  include_graphics(c(fn1, fn2, fn3) )
+  # \@ref(fig:dde-predictions-trace)
+``` 
 
-# ```
+ 
+```{r dde-predictions,   fig.show='hold', out.width='50%', echo=FALSE, fig.cap='predictions' }
+  odir = file.path( SCD, "fishery_model", year.assessment, "size_structured_dde_normalized" )
+  fn1 = file.path( odir, "plot_predictions_cfanorth.pdf" ) 
+  fn2 = file.path( odir, "plot_predictions_cfasouth.pdf" ) 
+  fn3 = file.path( odir, "plot_predictions_cfa4x.pdf" ) 
+  include_graphics(c(fn1, fn2, fn3) )
+  # \@ref(fig:dde-predictions)
+``` 
+  
+  
+# Fishing mortality (N-ENS, S-ENS, 4X)
 
-# # Model variation 1: discrete logistic with normalization of Y
-
-# ```{r, out.width=520 }
-# if (file.exists(om1)) {
-
-#     include_graphics(  c(
-#         file.path( om1, "plot_predictions_cfanorth.pdf" ), 
-#         file.path( om1, "plot_predictions_cfasouth.pdf" ), 
-#         file.path( om1, "plot_predictions_cfa4x.pdf" ), 
-#         file.path( om1, "plot_fishing_mortality_cfanorth.pdf" ), 
-#         file.path( om1, "plot_fishing_mortality_cfasouth.pdf" ), 
-#         file.path( om1, "plot_fishing_mortality_cfa4x.pdf" ), 
-#         file.path( om1, "plot_hcr_cfanorth.pdf" ), 
-#         file.path( om1, "plot_hcr_cfasouth.pdf" ), 
-#         file.path( om1, "plot_hcr_cfa4x.pdf" ) 
-#     ) )
-# }
-# ```
-
-# # Model variation 2: discrete logistic with normalization of Y and intercept term for observation model
-
-# ```{r, out.width=520 }
-# if (file.exists(om2)) {
-
-#     include_graphics(  c(
-#         file.path( om2, "plot_predictions_cfanorth.pdf" ), 
-#         file.path( om2, "plot_predictions_cfasouth.pdf" ), 
-#         file.path( om2, "plot_predictions_cfa4x.pdf" ), 
-#         file.path( om2, "plot_fishing_mortality_cfanorth.pdf" ), 
-#         file.path( om2, "plot_fishing_mortality_cfasouth.pdf" ), 
-#         file.path( om2, "plot_fishing_mortality_cfa4x.pdf" ), 
-#         file.path( om2, "plot_hcr_cfanorth.pdf" ), 
-#         file.path( om2, "plot_hcr_cfasouth.pdf" ), 
-#         file.path( om2, "plot_hcr_cfa4x.pdf" ) 
-#     ) )
-# }
-# ```
-
-# # Model continuous delay differential 
-
-# ```{r, out.width=520 }
-# if (file.exists(om3)) {
-
-#     include_graphics(  c(
-#         file.path( om3, "plot_predictions_cfanorth.pdf" ), 
-#         file.path( om3, "plot_predictions_cfasouth.pdf" ), 
-#         file.path( om3, "plot_predictions_cfa4x.pdf" ), 
-#         file.path( om3, "plot_fishing_mortality_cfanorth.pdf" ), 
-#         file.path( om3, "plot_fishing_mortality_cfasouth.pdf" ), 
-#         file.path( om3, "plot_fishing_mortality_cfa4x.pdf" ), 
-#         file.path( om3, "plot_hcr_cfanorth.pdf" ), 
-#         file.path( om3, "plot_hcr_cfasouth.pdf" ), 
-#         file.path( om3, "plot_hcr_cfa4x.pdf" ),
-#         file.path( om3, "plot_footprint_trace_cfanorth.pdf" ), 
-#         file.path( om3, "plot_footprint_trace_cfasouth.pdf" ), 
-#         file.path( om3, "plot_footprint_trace_cfa4x.pdf" ), 
-#         file.path( om3, "plot_hcr_footprint_cfanorth.pdf" ), 
-#         file.path( om3, "plot_hcr_footprint_cfasouth.pdf" ), 
-#         file.path( om3, "plot_hcr_footprint_cfa4x.pdf" ), 
-#         file.path( om3, "plot_fishing_mortality_vs_footprint_cfanorth.pdf" ), 
-#         file.path( om3, "plot_fishing_mortality_vs_footprint_cfasouth.pdf" ), 
-#         file.path( om3, "plot_fishing_mortality_vs_footprint_cfa4x.pdf" )  
-
-#     ) )
+```{r dde-fishing-mortality, fig.show='hold', out.width='50%', echo=FALSE, fig.cap='fishing mortality' }
+  odir = file.path( SCD, "fishery_model", year.assessment, "size_structured_dde_normalized" )
+  fn1 = file.path( odir, "plot_fishing_mortality_cfanorth.pdf" ) 
+  fn2 = file.path( odir, "plot_fishing_mortality_cfasouth.pdf" ) 
+  fn3 = file.path( odir, "plot_fishing_mortality_cfa4x.pdf" ) 
+  include_graphics(c(fn1, fn2, fn3) )
+  # \@ref(fig:dde-fishing-mortality)
+``` 
+   
+\clearpage
 
 
-#     include_graphics(  c(
-#         file.path( om3, "plot_predictions_trace_cfanorth.pdf" ), 
-#         file.path( om3, "plot_predictions_trace_cfasouth.pdf" ), 
-#         file.path( om3, "plot_predictions_trace_cfa4x.pdf" )
-#     ) )
+```{r dde-predictions-timeseries-1, fig.show='hold', out.width='50%', echo=FALSE, fig.cap='predictions timeseries 1' }
+  odir = file.path( SCD, "fishery_model", year.assessment, "size_structured_dde_normalized" )
+  fn1 = file.path( odir, "plot_predictions_timeseries_cfanorth_1.pdf" ) 
+  fn2 = file.path( odir, "plot_predictions_timeseries_cfasouth_1.pdf" ) 
+  fn3 = file.path( odir, "plot_predictions_timeseries_cfa4x_1.pdf" ) 
+  include_graphics(c(fn1, fn2, fn3) )
+  # \@ref(fig:dde-predictions-timeseries-1)
+
+``` 
 
 
-#     include_graphics(  c(
-#         file.path( om3, "plot_predictions_timeseries_cfanorth_1.pdf" ), 
-#         file.path( om3, "plot_predictions_timeseries_cfasouth_1.pdf" ), 
-#         file.path( om3, "plot_predictions_timeseries_cfa4x_1.pdf" )
-#     ) )
+```{r dde-predictions-timeseries-2, fig.show='hold', out.width='50%', echo=FALSE, fig.cap='predictions timeseries 2' }
+  odir = file.path( SCD, "fishery_model", year.assessment, "size_structured_dde_normalized" )
+   fn1 = file.path( odir, "plot_predictions_timeseries_cfanorth_2.pdf" ) 
+  fn2 = file.path( odir, "plot_predictions_timeseries_cfasouth_2.pdf" ) 
+  fn3 = file.path( odir, "plot_predictions_timeseries_cfa4x_2.pdf" ) 
+  include_graphics(c(fn1, fn2, fn3) )
+  # \@ref(fig:dde-predictions-timeseries-2)
+
+``` 
 
 
-#     include_graphics(  c(
-#         file.path( om3, "plot_predictions_timeseries_cfanorth_2.pdf" ), 
-#         file.path( om3, "plot_predictions_timeseries_cfasouth_2.pdf" ), 
-#         file.path( om3, "plot_predictions_timeseries_cfa4x_2.pdf" )
-#     ) )
+```{r dde-predictions-timeseries-3, fig.show='hold', out.width='50%', echo=FALSE, fig.cap='predictions timeseries 3' }
+  odir = file.path( SCD, "fishery_model", year.assessment, "size_structured_dde_normalized" )
+   fn1 = file.path( odir, "plot_predictions_timeseries_cfanorth_3.pdf" ) 
+  fn2 = file.path( odir, "plot_predictions_timeseries_cfasouth_3.pdf" ) 
+  fn3 = file.path( odir, "plot_predictions_timeseries_cfa4x_3.pdf" ) 
+  include_graphics(c(fn1, fn2, fn3) )
+  # \@ref(fig:dde-predictions-timeseries-3)
+``` 
 
 
-#     include_graphics(  c(
-#         file.path( om3, "plot_predictions_timeseries_cfanorth_3.pdf" ), 
-#         file.path( om3, "plot_predictions_timeseries_cfasouth_3.pdf" ), 
-#         file.path( om3, "plot_predictions_timeseries_cfa4x_3.pdf" )
-#     ) )
+```{r dde-predictions-timeseries-4, fig.show='hold', out.width='50%', echo=FALSE, fig.cap='predictions timeseries 4' }
+  odir = file.path( SCD, "fishery_model", year.assessment, "size_structured_dde_normalized" )
+   fn1 = file.path( odir, "plot_predictions_timeseries_cfanorth_4.pdf" ) 
+  fn2 = file.path( odir, "plot_predictions_timeseries_cfasouth_4.pdf" ) 
+  fn3 = file.path( odir, "plot_predictions_timeseries_cfa4x_4.pdf" ) 
+  include_graphics(c(fn1, fn2, fn3) )
+  # \@ref(fig:dde-predictions-timeseries-4)
+
+``` 
 
 
-#     include_graphics(  c(
-#         file.path( om3, "plot_predictions_timeseries_cfanorth_4.pdf" ), 
-#         file.path( om3, "plot_predictions_timeseries_cfasouth_4.pdf" ), 
-#         file.path( om3, "plot_predictions_timeseries_cfa4x_4.pdf" )
-#     ) )
+```{r dde-predictions-timeseries-5, fig.show='hold', out.width='50%', echo=FALSE, fig.cap='predictions timeseries 5' }
+  odir = file.path( SCD, "fishery_model", year.assessment, "size_structured_dde_normalized" )
+   fn1 = file.path( odir, "plot_predictions_timeseries_cfanorth_5.pdf" ) 
+  fn2 = file.path( odir, "plot_predictions_timeseries_cfasouth_5.pdf" ) 
+  fn3 = file.path( odir, "plot_predictions_timeseries_cfa4x_5.pdf" ) 
+  include_graphics(c(fn1, fn2, fn3) )
+  # \@ref(fig:dde-predictions-timeseries-5)
+``` 
 
 
-#     include_graphics(  c(
-#         file.path( om3, "plot_predictions_timeseries_cfanorth_5.pdf" ), 
-#         file.path( om3, "plot_predictions_timeseries_cfasouth_5.pdf" ), 
-#         file.path( om3, "plot_predictions_timeseries_cfa4x_5.pdf" )
-#     ) )
+```{r dde-predictions-timeseries-6, fig.show='hold', out.width='50%', echo=FALSE, fig.cap='predictions timeseries 6' }
+  odir = file.path( SCD, "fishery_model", year.assessment, "size_structured_dde_normalized" )
+  fn1 = file.path( odir, "plot_predictions_timeseries_cfanorth_6.pdf" ) 
+  fn2 = file.path( odir, "plot_predictions_timeseries_cfasouth_6.pdf" ) 
+  fn3 = file.path( odir, "plot_predictions_timeseries_cfa4x_6.pdf" ) 
+  include_graphics(c(fn1, fn2, fn3) )
+  # \@ref(fig:dde-predictions-timeseries-6)
+``` 
+ 
+ \clearpage
 
 
-#     include_graphics(  c(
-#         file.path( om3, "plot_predictions_timeseries_cfanorth_6.pdf" ), 
-#         file.path( om3, "plot_predictions_timeseries_cfasouth_6.pdf" ), 
-#         file.path( om3, "plot_predictions_timeseries_cfa4x_6.pdf" )
-#     ) )
+```{r dde-hcr, fig.show='hold', out.width='50%', echo=FALSE, fig.cap='hcr' }
+  odir = file.path( SCD, "fishery_model", year.assessment, "size_structured_dde_normalized" )
+  fn1 = file.path( odir, "plot_hcr_cfanorth.pdf" ) 
+  fn2 = file.path( odir, "plot_hcr_cfasouth.pdf" ) 
+  fn3 = file.path( odir, "plot_hcr_cfa4x.pdf" ) 
+  include_graphics(c(fn1, fn2, fn3) )
+  # \@ref(fig:dde-hcr)
+``` 
 
-# }
-
-# ```
 
 
+```{r dde-footprint-trace,  fig.show='hold', out.width='50%', echo=FALSE, fig.cap='footprint trace' }
+  odir = file.path( SCD, "fishery_model", year.assessment, "size_structured_dde_normalized" )
+  fn1 = file.path( odir, "plot_footprint_trace_cfanorth.pdf" ) 
+  fn2 = file.path( odir, "plot_footprint_trace_cfasouth.pdf" ) 
+  fn3 = file.path( odir, "plot_footprint_trace_cfa4x.pdf" ) 
+  include_graphics(c(fn1, fn2, fn3) )
+  # \@ref(fig:dde-footprint-trace)
+``` 
+
+\clearpage
+
+
+```{r dde-hcr-footprint, fig.show='hold', out.width='50%', echo=FALSE, fig.cap='hcr footprint' }
+  odir = file.path( SCD, "fishery_model", year.assessment, "size_structured_dde_normalized" )
+  fn1 = file.path( odir, "plot_hcr_footprint_cfanorth.pdf" ) 
+  fn2 = file.path( odir, "plot_hcr_footprint_cfasouth.pdf" ) 
+  fn3 = file.path( odir, "plot_hcr_footprint_cfa4x.pdf" ) 
+  include_graphics(c(fn1, fn2, fn3) )
+  # \@ref(fig:dde-hcr-footprint)
+``` 
+
+
+```{r dde-fishing-mortality-vs-footprint, fig.show='hold', out.width='50%', echo=FALSE, fig.cap='fishing mortality vs footprint' }
+  odir = file.path( SCD, "fishery_model", year.assessment, "size_structured_dde_normalized" )
+  fn1 = file.path( odir, "plot_fishing_mortality_vs_footprint_cfanorth.pdf" ) 
+  fn2 = file.path( odir, "plot_fishing_mortality_vs_footprint_cfasouth.pdf" ) 
+  fn3 = file.path( odir, "plot_fishing_mortality_vs_footprint_cfa4x.pdf" ) 
+  include_graphics(c(fn1, fn2, fn3) )
+  # \@ref(fig:dde-fishing-mortality-vs-footprint)
+``` 
