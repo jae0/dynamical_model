@@ -20,9 +20,6 @@ if false
 end
 
 
-# load libs and check settings
-# pkgs are defined in snowcrab_startup.jl
-for pk in pkgs; @eval using $(Symbol(pk)); end   # Pkg.add( pkgs ) # add required packages
 
 
 theme(:default)  # defaults for graphics
@@ -37,6 +34,26 @@ gr()
 # allsavetimes = unique( vcat( survey_time, prediction_time  ) )
 
 # prepare dat for dde run of fishery model
+# ---------------
+# make a copy of the input data in case ... 
+
+fndat_source = joinpath( bio_data_directory, "bio.snowcrab", "modelled", 
+    "1999_present_fb", "fishery_model_results", "turing1", "biodyn_number_size_struct.RData" )
+
+fndat = joinpath( model_outdir, basename(fndat_source) )
+
+if (!isfile(fndat)) 
+  # prompt to input
+  print("\nData file not found. Copy from: \n")
+  print(fndat_source)
+  print("\nTo: \n")
+  print( fndat )
+  print( "\nType 'Yes' to proceed >  ")
+  confirm = readline()
+  if confirm=="Yes"
+    cp( fndat_source, fndat; force=true )
+  end
+end
 
 o = load( fndat, convert=true)
 

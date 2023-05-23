@@ -1,4 +1,5 @@
 
+
   if ! @isdefined project_directory 
     # defaulting to location of this file "bio.snowcrab/inst/julia" 
     # my call is: JULIA_NUM_THREADS=4 julia -i ~/projects/dynamical_model/snowcrab/startup.jl
@@ -17,8 +18,7 @@
   Pkg.activate(project_directory)  # so now you activate the package
 
   Base.active_project()  # to make sure it's the package you meant to activate, print the path to console so you get a visual confirmation it's the package you meant to use
-
-
+ 
   if ! @isdefined outputs_directory 
     # tailor to your specific installation
     outputs_directory = joinpath( bio_data_directory, "bio.snowcrab",  "fishery_model" ) 
@@ -33,33 +33,7 @@
 
   print( "model_outdir: ", model_outdir )
  
-# ---------------
-# make a copy of the input data in case ... 
-
-  if  occursin( r"size_structured", model_variation ) 
-    fndat_source = joinpath( bio_data_directory, "bio.snowcrab", "modelled", 
-      "1999_present_fb", "fishery_model_results", "turing1", "biodyn_number_size_struct.RData" )
-  elseif  occursin( r"logistic_discrete", model_variation ) 
-    fndat_source = joinpath( bio_data_directory, "bio.snowcrab", "modelled", 
-      "1999_present_fb", "fishery_model_results", "turing1", "biodyn_biomass.RData" )
-  end
-
-  fndat = joinpath( model_outdir, basename(fndat_source) )
-
-  if (!isfile(fndat)) 
-    # prompt to input
-    print("\nData file not found. Copy from: \n")
-    print(fndat_source)
-    print("\nTo: \n")
-    print( fndat )
-    print( "\nType 'Yes' to proceed >  ")
-    confirm = readline()
-    if confirm=="Yes"
-      cp( fndat_source, fndat; force=true )
-    end
-  end
-
-  
+ 
   if  occursin( r"logistic_discrete", model_variation ) 
         pkgs = [
             "Revise", "MKL", "Logging", "StatsBase", "Statistics", "Distributions", "Random", "Setfield", "Memoization",
@@ -81,8 +55,11 @@
             "MKL", "Plots", "StatsPlots",  "MultivariateStats", "StaticArrays", "LazyArrays", "FillArrays",
             "Turing", "ModelingToolkit", "DifferentialEquations", "Interpolations", "LinearAlgebra"
         ]
-   end
+  end
 
+  # load libs and check settings
+  # pkgs are defined in snowcrab_startup.jl
+  for pk in pkgs; @eval using $(Symbol(pk)); end   # Pkg.add( pkgs ) # add required packages
 
 # ---------------
 # LOAD environment (libs and functions)
@@ -94,8 +71,7 @@
   
 
   include( fn_env )  # loads libs and setup workspace / data (fn_env is defined in the snowcrab_startup.jl)
-
-
+    
 #=
 
 project_directory = @__DIR__() #  same folder as the file
