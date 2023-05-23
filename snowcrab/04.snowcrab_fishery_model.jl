@@ -39,9 +39,16 @@
 
 # DEFINE KEY DIRECTORIES:
   # these need to be defined  ... if not in start up call or ".julia/config/startup.jl" or  local startup.jl
-  project_directory = joinpath( homedir(), "bio", "bio.snowcrab", "inst", "julia" ) 
-  bio_data_directory = joinpath( homedir(), "bio.data" )  
-  outputs_directory = joinpath( homedir(), "bio.data", "bio.snowcrab", "fishery_model" ) 
+  current_directory =  @__DIR__()
+
+  project_directory = current_directory
+  bio_data_directory = current_directory
+  outputs_directory = current_directory
+
+  # these are for operational work
+  # project_directory = joinpath( homedir(), "bio", "bio.snowcrab", "inst", "julia" ) 
+  # bio_data_directory = joinpath( homedir(), "bio.data" )  
+  # outputs_directory = joinpath( homedir(), "bio.data", "bio.snowcrab", "fishery_model" ) 
   
 
 # RUN LEVEL OPTIONS: time, area model 

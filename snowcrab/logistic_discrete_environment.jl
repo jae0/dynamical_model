@@ -51,7 +51,8 @@ gr()
 
 # allsavetimes = unique( vcat( survey_time, prediction_time  ) )
 
-fndat_source = joinpath( bio_data_directory, "bio.snowcrab", "modelled", 
+fndat_source = joinpath( bio_data_directory,"biodyn_biomass.RData" )
+# fndat_source = joinpath( bio_data_directory, "bio.snowcrab", "modelled", 
 "1999_present_fb", "fishery_model_results", "turing1", "biodyn_biomass.RData" )
 
 fndat = joinpath( model_outdir, basename(fndat_source) )
