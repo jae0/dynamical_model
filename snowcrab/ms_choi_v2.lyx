@@ -1,0 +1,4729 @@
+#LyX file created by tex2lyx 2.3
+\lyxformat 544
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin /home/jae/projects/snowcrab_fishery_model/article/
+\textclass article
+\begin_preamble
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Journal Article
+% LaTeX Template
+% Version 2.0 (February 7, 2023)
+%
+% This template originates from:
+% https://www.LaTeXTemplates.com
+%
+% Author:
+% Vel (vel@latextemplates.com)
+%
+% License:
+% CC BY-NC-SA 4.0 (https://creativecommons.org/licenses/by-nc-sa/4.0/)
+%
+% NOTE: The bibliography needs to be compiled using the biber engine.
+% Minor mod to keep all options in one file jc
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%----------------------------------------------------------------------------------------
+%	PACKAGES AND OTHER DOCUMENT CONFIGURATIONS
+%----------------------------------------------------------------------------------------
+%
+
+
+
+%----------------------------------------------------------------------------------------
+%	CLASS CONFIGURATION
+%----------------------------------------------------------------------------------------
+
+\NeedsTeXFormat{LaTeX2e}
+% \ProvidesClass{LTJournalArticle}[2023/02/07 LaTeX Templates Journal Article Class v2.0]
+
+\usepackage{etoolbox}% Required for conditional logic and easily changing commands
+
+\newtoggle{unnumberedsections} % Create toggle for a class option
+\settoggle{unnumberedsections}{false} % Default value for the class option
+\DeclareOption{unnumberedsections}{\settoggle{unnumberedsections}{true}} % Set the class option toggle if the class option was used in the template
+
+\DeclareOption*{\PassOptionsToClass{\CurrentOption}{article}} % Pass through any extra options specified to the base class
+\ProcessOptions\relax % Process class options
+
+% \LoadClass[twocolumn]{article} % Load the base class
+
+%----------------------------------------------------------------------------------------
+%	REQUIRED PACKAGES AND MISC CONFIGURATIONS
+%----------------------------------------------------------------------------------------
+
+% Required for including images
+\graphicspath{{media/}{./}} % Specifies where to look for included images (trailing slash required)
+
+\usepackage[bottom, hang]{footmisc}% Force footnotes to the bottom of the page and to the left margin
+\setlength{\footnotemargin}{6pt} % Horizontal space between the footnote marker and text
+
+%----------------------------------------------------------------------------------------
+%	MARGINS
+%----------------------------------------------------------------------------------------
+
+
+
+%----------------------------------------------------------------------------------------
+%	FONTS
+%----------------------------------------------------------------------------------------
+
+% Required for inputting international characters
+% Output font encoding for international characters
+
+% Use the Palatino font
+
+\linespread{1.05} % Increase line spacing slightly
+
+% Slightly tweak font spacing for aesthetics
+
+%----------------------------------------------------------------------------------------
+%	HEADERS AND FOOTERS
+%----------------------------------------------------------------------------------------
+
+\usepackage{fancyhdr}% Required for customizing headers and footers
+ % Enable custom headers and footers
+
+\renewcommand{\headrulewidth}{0pt} % Top horizontal rule thickness
+
+\fancyhf{} % Clear default headers/footers
+
+\fancyhead[RO]{\small\textit{\runninghead}} % Right-odd page header
+\fancyhead[LE]{\small\textit{\runninghead}} % Left-even page header
+
+\fancyfoot[RO]{\small\textbf{\thepage}} % Right-odd page footer
+\fancyfoot[LO]{\footnotesize\footertext} % Left-odd page footer
+\fancyfoot[LE]{\small\textbf{\thepage}} % Left-even page footer
+\fancyfoot[RE]{\footnotesize\footertext} % Left-even page footer
+
+%----------------------------------------------------------------------------------------
+%	SECTIONS
+%----------------------------------------------------------------------------------------
+
+\usepackage{titlesec}% Required for modifying sections
+
+\iftoggle{unnumberedsections}{ % Conditional logic for the unnumbered sections class options
+	 % Don't number sections at any level
+}{
+	 % Number sections down to subsections
+}
+
+\titleformat
+	{\section} % Section type being modified
+	[block] % Section layout type, can be: hang, block, display, runin, leftmargin, rightmargin, drop, wrap, frame
+	{\Large\bfseries\centering} % Text formatting of the whole section, i.e. label and title
+	{\thesection} % Section label (e.g. number) and its formatting
+	{0.5em} % Horizontal space between the section label and title
+	{} % Code before the section title
+	[] % Code after the section title
+
+%------------------------------------------------
+
+\titleformat
+	{\subsection} % Section type being modified
+	[block] % Section layout type, can be: hang, block, display, runin, leftmargin, rightmargin, drop, wrap, frame
+	{\raggedright\large\bfseries} % Text formatting of the whole section, i.e. label and title
+	{\thesubsection} % Section label (e.g. number) and its formatting
+	{0.5em} % Horizontal space between the section label and title
+	{} % Code before the section title
+	[] % Code after the section title
+
+%------------------------------------------------
+
+\titleformat
+	{\subsubsection} % Section type being modified
+	[runin] % Section layout type, can be: hang, block, display, runin, leftmargin, rightmargin, drop, wrap, frame
+	{\bfseries} % Text formatting of the whole section, i.e. label and title
+	{} % Section label (e.g. number) and its formatting
+	{5pt} % Horizontal space between the section label and title
+	{} % Code before the section title
+	[] % Code after the section title
+
+\titlespacing*{\subsubsection}{0pt}{0.5\baselineskip}{8pt} % Spacing around section titles, the order is: left, before and after
+
+%----------------------------------------------------------------------------------------
+%	TITLE SECTION CUSTOMIZATION
+%----------------------------------------------------------------------------------------
+
+\usepackage{titling}% Required for customizing the title section
+
+\setlength{\droptitle}{-4\baselineskip} % Move the title up
+
+\pretitle{\begin{center}\huge\bfseries} % Article title pre-formatting
+\posttitle{\end{center}} % Article title post-formatting
+
+\setlength{\thanksmarkwidth}{3pt} % Left margin for the first \thanks line
+\setlength{\thanksmargin}{-3pt} % Left margin for the second and onwards \thanks line
+
+\patchcmd{\maketitle}{plain}{empty}{}{} % Set the headers and footers style for the first page to empty
+
+%----------------------------------------------------------------------------------------
+%	ABSTRACT CUSTOMIZATION
+%----------------------------------------------------------------------------------------
+
+\usepackage{abstract}% Allows abstract customization
+
+\renewcommand{\abstractnamefont}{\normalfont\bfseries\vspace{0.5\baselineskip}} % Set the "Abstract" text to bold
+\renewcommand{\abstracttextfont}{\vspace{-0.5\baselineskip}\normalfont\small\itshape} % Set the abstract itself to small italic text
+
+%----------------------------------------------------------------------------------------
+%	BIBLIOGRAPHY
+%----------------------------------------------------------------------------------------
+
+
+
+
+ % BibLaTeX bibliography file
+
+
+%----------------------------------------------------------------------------------------
+%	TABLES
+%----------------------------------------------------------------------------------------
+
+\usepackage{booktabs}% Required for better horizontal rules in tables
+
+\usepackage{array}% Required for manipulating table columns
+
+\newcolumntype{R}[1]{>{\raggedleft\arraybackslash}p{#1}} % Define a new right-aligned paragraph column type
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}} % Define a new left-aligned (no justification) paragraph column type
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}} % Define a new centered paragraph column type
+
+%----------------------------------------------------------------------------------------
+%	CAPTIONS
+%----------------------------------------------------------------------------------------
+
+\usepackage{caption}% Required for customizing captions
+
+\captionsetup{skip=6pt} % Vertical whitespace between figures/tables and the caption (default is 10pt)
+\captionsetup{labelfont={bf,small}, textfont={it,small}} % Define caption font style
+
+%----------------------------------------------------------------------------------------
+%	LISTS
+%----------------------------------------------------------------------------------------
+
+\usepackage{enumitem}% Required for list customization
+
+\setlist{noitemsep} % Customize spacing around and inside lists
+
+%----------------------------------------------------------------------------------------
+%	LINKS
+%----------------------------------------------------------------------------------------
+
+% Required for links
+
+
+
+%----------------------------------------------------------------------------------------
+%	MATH
+%----------------------------------------------------------------------------------------
+
+
+
+
+%----------------------------------------------------------------------------------------
+%	CUSTOM COMMANDS
+%----------------------------------------------------------------------------------------
+
+\newcommand{\runninghead}[1]{\renewcommand{\runninghead}{#1}}
+
+\newcommand{\footertext}[1]{\renewcommand{\footertext}{#1}}
+
+\runninghead{Multi-stage model snow crab SSE} 
+% A shortened article title to appear in the running head, leave this command empty for no running head
+
+\footertext{} 
+% Text to appear in the footer, leave this command empty for no footer text
+
+\setcounter{page}{1} % The page number of the first page, set this to a higher number if the article is to be part of an issue or larger work
+
+
+\usepackage[title]{appendix}
+
+
+
+%----------------------------------------------------------------------------------------
+%	TITLE SECTION
+%----------------------------------------------------------------------------------------
+
+\title{A multi-stage, delay differential model of snow crab population dynamics \\ 
+in the Scotian Shelf of Atlantic Canada} % Article title, use manual lines breaks (\\) to beautify the layout
+
+% Authors are listed in a comma-separated list with superscript numbers indicating affiliations
+% \thanks{} is used for any text that should be placed in a footnote on the first page, such as the corresponding author's email, journal acceptance dates, a copyright/license notice, keywords, etc
+\author{%
+	% John Smith\textsuperscript{1,2}, Robert Smith\textsuperscript{3} and Jane Smith\textsuperscript{1}\thanks{Corresponding author: \href{mailto:jane@smith.com}{jane@smith.com}\\ \textbf{Received:} October 20, 2023, \textbf{Published:} December 14, 2023}
+	Jae S. Choi \textsuperscript{1}
+}
+
+% Affiliations are output in the \date{} command
+% \date{\footnotesize\textsuperscript{\textbf{1}}School of Chemistry, The University of Michigan\\ \textsuperscript{\textbf{2}}Physics Department, The University of Wisconsin\\ \textsuperscript{\textbf{3}}Biological Sciences Department, The University of Minnesota}
+\date{\footnotesize\textsuperscript{\textbf{1}}Bedford Institute of Oceanography, Fisheries and Oceans Canada \\ 1 Challenger Dr., Dartmouth, Nova Scotia, B2Y 4A2, Canada \\  \href{mailto:Jae.Choi@dfo-mpo.gc.ca}{Jae.Choi@dfo-mpo.gc.ca}}
+
+% Full-width abstract
+\renewcommand{\maketitlehookd}{%
+	\begin{abstract}
+		\noindent Snow crab (\emph{Chionoecetes opilio}) are cold-water
+		stenotherms in the northern hemisphere. As they are long-lived and have
+		a complex life history, developing an operational model of population
+		dynamics has been a challenge, especially in the context of human
+		exploitation and rapid global climate change. Here we review past
+		efforts at understanding the population dynamics of snow crab in an
+		environmentally and spatiotemporally heterogeneous area, the Scotian
+		Shelf of the northwest Atlantic of Canada. We address these difficulties
+		with a moderately complex multi-stage, delay differential model and
+		parameterize it leveraging Bayesian techniques. Operational solutions
+		were stable and reasonable and permitted inference upon the intra-annual
+		dynamics of snow crab. Further, a concept of a \emph{Fisheries footprint},
+		akin to fishing mortality, can be elucidated that directly addresses the
+		conceptual impact of a fishery upon a population. The approach is
+		promising. The model suggests additional processes need to be accounted
+		that contributes to the \emph{non-well-mixed} nature of the model system.
+		We hypothesize that seasonal and interannual movement and
+		spatiotemporally structured predation are key processes that require
+		further attention. However, as computational costs are significant,
+		these additional processes will need to be parameterized carefully.
+	\end{abstract}
+}
+
+
+% Keywords
+% \keyword{fishery assessment; snow crab; fishery footprint; Bayesian model; Julia; Turing; SciML} 
+
+% \newcommand{\orcidauthorA}{0000-0003-3632-5723} 
+
+%----------------------------------------------------------------------------------------
+
+
+
+\end_preamble
+\use_default_options false
+\maintain_unincluded_children false
+\language english
+\language_package none
+\inputencoding utf8
+\fontencoding T1
+\font_roman "palatino" "default"
+\font_sans "default" "default"
+\font_typewriter "mathpazo" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\use_microtype true
+\use_dash_ligatures true
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize 10
+\spacing single
+\use_hyperref true
+\pdf_bookmarks 0
+\pdf_bookmarksnumbered 0
+\pdf_bookmarksopen 0
+\pdf_bookmarksopenlevel 1
+\pdf_breaklinks 0
+\pdf_pdfborder 0
+\pdf_colorlinks 1
+\pdf_backref section
+\pdf_pdfusetitle 0
+\pdf_quoted_options "urlcolor=black,linkcolor=black,citecolor=black"
+\papersize letterpaper
+\use_geometry true
+\use_package amsmath 2
+\use_package amssymb 0
+\use_package cancel 0
+\use_package esint 1
+\use_package mathdots 0
+\use_package mathtools 0
+\use_package mhchem 0
+\use_package stackrel 0
+\use_package stmaryrd 0
+\use_package undertilde 0
+\cite_engine biblatex
+\cite_engine_type authoryear
+\biblio_style plainnat
+\use_bibtopic false
+\biblio_options backend=biber,sorting=none
+\biblatex_bibstyle numeric
+\biblatex_citestyle numeric
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 0
+\use_minted 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\headsep 0.75cm
+\footskip 1cm
+\columnsep 20pt
+\secnumdepth 2
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style english
+\dynamic_quotes 0
+\papercolumns 1
+\papersides 1
+\paperpagestyle fancy
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+\backslash
+maketitle
+\end_layout
+
+\end_inset
+
+ 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% Output the title section
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%----------------------------------------------------------------------------------------
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%	ARTICLE CONTENTS
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%----------------------------------------------------------------------------------------
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 
+\backslash
+noindent àáâäãåèéêëìíîïòóôöõøùúûüÿýñçčšž
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 
+\backslash
+noindent ÀÁÂÄÃÅÈÉÊËÌÍÎÏÒÓÔÖÕØÙÚÛÜŸÝÑ
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 
+\backslash
+noindent ßÇŒÆČŠŽ
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% This is a clickable URL link: 
+\backslash
+href{https://www.latextemplates.com}{LaTeX Templates}. 
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% This is a clickable email link: 
+\backslash
+href{mailto:vel@latextemplates.com}{vel@latextemplates.com}. 
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% This is a clickable monospaced URL link: 
+\backslash
+url{https://www.LaTeXTemplates.com}.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 
+\backslash
+begin{equation}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 	
+\backslash
+cos^3 
+\backslash
+theta =
+\backslash
+frac{1}{4}
+\backslash
+cos
+\backslash
+theta+
+\backslash
+frac{3}{4}
+\backslash
+cos 3
+\backslash
+theta
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 	
+\backslash
+label{eq:example}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 
+\backslash
+end{equation}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% Automatically referencing an equation number using its label: Equation 
+\backslash
+ref{eq:example}.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 
+\backslash
+begin{figure} % Single column figure
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 	
+\backslash
+includegraphics[width=
+\backslash
+linewidth]{Tolmukapea.jpg}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 	
+\backslash
+caption{Anther of thale cress (Arabidopsis thaliana), fluorescence micrograph. Source: Heiti Paves, 
+\backslash
+href{https://commons.wikimedia.org/wiki/File:Tolmukapea.jpg}{https://commons.wiki-
+\backslash
+
+\backslash
+media.org/wiki/File:Tolmukapea.jpg}.}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 	
+\backslash
+label{fig:tcanther}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 
+\backslash
+end{figure}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% Referencing a figure using its label: Figure 
+\backslash
+ref{fig:tcanther}.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 
+\backslash
+begin{figure*} % Two column figure (notice the starred environment)
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 	
+\backslash
+includegraphics[width=
+\backslash
+linewidth]{Fibroblastid.jpg}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 	
+\backslash
+caption{Bovine pulmonary artery endothelial cells in culture. Blue: nuclei; red: mitochondria; green: microfilaments. Computer generated image from a 3D model based on a confocal laser scanning microscopy using fluorescent marker dyes. Source: Heiti Paves, 
+\backslash
+href{https://commons.wikimedia.org/wiki/File:Fibroblastid.jpg}{https://commons.wikimedia.org/wiki/File:Fibroblastid.jpg}.}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 	
+\backslash
+label{fig:bpartery}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 
+\backslash
+end{figure*}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 
+\backslash
+begin{table} % Single column table
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 	
+\backslash
+caption{Example single column table.}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 	
+\backslash
+centering
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 	
+\backslash
+begin{tabular}{l l r}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 		
+\backslash
+toprule
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 		
+\backslash
+multicolumn{2}{c}{Location} 
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 		
+\backslash
+cmidrule(r){1-2}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 		East Distance & West Distance & Count 
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 		
+\backslash
+midrule
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 		100km & 200km & 422 
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 		350km & 1000km & 1833 
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 		600km & 1200km & 890 
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 		
+\backslash
+bottomrule
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 	
+\backslash
+end{tabular}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 	
+\backslash
+label{tab:distcounts}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 
+\backslash
+end{table}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% Referencing a table using its label: Table 
+\backslash
+ref{tab:distcounts}.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 
+\backslash
+begin{table*} % Full width table (notice the starred environment)
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 	
+\backslash
+caption{Example two column table with fixed-width columns.}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 	
+\backslash
+centering % Horizontally center the table
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 	
+\backslash
+begin{tabular}{L{0.2
+\backslash
+linewidth} L{0.2
+\backslash
+linewidth} R{0.15
+\backslash
+linewidth}} % Manually specify column alignments with L{}, R{} or C{} and widths as a fixed amount, usually as a proportion of 
+\backslash
+linewidth
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 		
+\backslash
+toprule
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 		
+\backslash
+multicolumn{2}{c}{Location} 
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 		
+\backslash
+cmidrule(r){1-2}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 		East Distance & West Distance & Count 
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 		
+\backslash
+midrule
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 		100km & 200km & 422 
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 		350km & 1000km & 1833 
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 		600km & 1200km & 890 
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 		
+\backslash
+bottomrule
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 	
+\backslash
+end{tabular}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 
+\backslash
+end{table*}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Introduction
+\end_layout
+
+\begin_layout Standard
+Snow crab (
+\emph on
+Chionoecetes opilio
+\emph default
+) are large Crustaceans, exploited primarily as a food source. They are also used as fertilizer, bait in other fisheries and for the glucosamine polysaccharide derived from chitin, known as chitosan. Chitosan is widely used in medicine as an agent to slow bleeding from wounds 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Zhang_et_al_2015, Moghadas_et_al_2016"
+literal "false"
+
+\end_inset
+
+, agriculturally as natural fungicides and bactericides 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Linden_Stoner_2007"
+literal "false"
+
+\end_inset
+
+, plastic replacement 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Tampieri_et_al_2003"
+literal "false"
+
+\end_inset
+
+ and even as a battery electrolyte 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Poosapati_et_al_2021"
+literal "false"
+
+\end_inset
+
+. In North America, including in the area of this study, the Scotian Shelf of the northwest Atlantic of Canada (Figure
+\begin_inset space ~
+
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig1"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+), the largest of males (> 95 mm carapace width) are preferentially captured due to their higher meat-yield and consumer preferences of larger claws, a trait that occurs only at the terminal molt to maturity. This market-driven protection for the female reproductive crab which never reaches such sizes and the smaller immature crab represents a form of built-in protection for the population which spans 10 years of age or more, from larval release; it helps to offset otherwise heavy exploitation pressures. However, extreme exploitation of mature males by fishers with advanced technological and historical knowledge of their environment and the species' aggregation patterns, enable them to target their efforts in time and space and significantly magnify their influence. Currently, every known population of snow crab is exploited by humans, most using technologically informed approaches. As such, it is imperative that exploitation occurs in a responsible and sustainable manner.
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset Float figure
+wide true
+sideways false
+status open
+
+
+\begin_layout Standard
+
+\begin_inset Graphics 
+	filename media/area_map.png
+	width 100line%
+
+\end_inset
+
+ 
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+The area of interest in the Scotian Shelf of the northwest Atlantic Ocean, Canada. Shown are isobaths and some of the major bathymetric features in the area. This area is at the confluence of the Gulf Stream from the south and south east along the shelf edge, Labrador Current and St. Lawrence outflow from the north and north east, as well as a nearshore Nova Scotia current, running from the northeast. It is hydro-dynamically complex due to mixing of cold, low salinity water from the north with the warm saline water from the south. Shown also are the managed Crab Fishing Areas divided by thick dashed lines: NENS (North-Eastern Nova Scotia), SENS (South-Eastern Nova Scotia), CFA 4X Crab Fishing Area 4X).
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "fig1"
+
+\end_inset
+
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Unfortunately, characterizing snow crab population dynamics is remarkably difficult (Figure
+\begin_inset space ~
+
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig2"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+)). This is because they are long lived and have a complex life history. Ultimately this translates into large vertical and horizontal shifts in spatial distributions as they grow older (ontogenetic shift in habitat). Functionally, they participate in the pelagic and subsequently benthic ecosystems and associated nutrient and carbon cycles. They also have a narrow range of environmental preferences which coincide with highly variable ocean climates rendering them a challenge to sample. The additional factors of global rapid climate and ecosystem change make this understanding even more difficult. Some of the notable life history features of snow crab that make them so interesting but difficult to model, include: sexual dimorphism with mature males being much larger than mature females; pelagic larval stages and benthic pre-adolescent and adult stages; semi-annual and annual molts depending upon size, age and environmental conditions; terminal molt to maturity; and longevity up to 15 years. They also have a narrow range of temperature preferences 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Foyle_et_al_1989, Sainte-Marie_Lafrance_2002, Kuhn_Choi_2011"
+literal "false"
+
+\end_inset
+
+. They are thought to avoid temperatures above 
+\begin_inset Formula $7^{\circ}C$
+\end_inset
+
+, as metabolic costs have been shown to exceed metabolic gains above this temperature in laboratory studies 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Foyle_et_al_1989"
+literal "false"
+
+\end_inset
+
+. Smaller crab and females also have differences in thermal preferenda 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Choi_et_al_2022"
+literal "false"
+
+\end_inset
+
+. Further, snow crab are generally observed on soft mud bottoms; with smaller-sized and molting crabs showing preference for more complex (boulder, cobble) substrates, presumably as they afford more shelter 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Sainte-Marie_Hazel_1992, Comeau_et_al_1998"
+literal "false"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset Float figure
+wide true
+sideways false
+status open
+
+
+\begin_layout Standard
+
+\begin_inset Graphics 
+	filename media/life_history.png
+	width 100line%
+
+\end_inset
+
+ 
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Life history patterns of snow crab and approximate timing of the main life history stages since larval release of snow crab and size (measured as carapace width; mm) and instar (Roman numerals). Size and timings are specific to the area of study and likely vary with regional environmental conditions, food availability and genetic variability. Brooding time is variable and is between 1 and two years. Terminal molt to maturity (orange and blue lines) also vary in timing.
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "fig2"
+
+\end_inset
+
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Snow crab eggs are brooded by their mothers for up to two years, depending upon ambient temperatures as well as food availability (which also depends upon temperature as it influences overall system primary and secondary production) and the health condition and maturity status of the mother (up to 27 months in primiparous females (first breeding event) event; and up to 24 months in multiparous females (second and subsequent breeding events) 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Sainte-Marie_1993"
+literal "false"
+
+\end_inset
+
+. More rapid development of eggs, from 12 to 18 months, has been observed in other areas 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Elner_Beninger_1995, Webb_et_al_2007"
+literal "false"
+
+\end_inset
+
+. Over 80% of the female snow crab on the Scotian Shelf are estimated to follow an annual cycle, possibly due to extended periods of exposure to warmer temperatures 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Kuhn_Choi_2011"
+literal "false"
+
+\end_inset
+
+. A primiparous female of approximately
+\begin_inset space ~
+
+\end_inset
+
+58
+\begin_inset space ~
+
+\end_inset
+
+mm carapace width produces between 35,000 to 46,000 eggs, which are extruded between February and April 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Sainte-Marie_1993"
+literal "false"
+
+\end_inset
+
+. Multiparous females are thought to be more fecund, with more than 100,000 eggs being produced by each female. Eggs are hatched from April to June when larvae are released. This pelagic larval stage lasts for three to five months (Zoea stages I and II) during which snow crab feed upon zooplankton. Pelagic stages seem to have highest abundance in October and so may begin settling in January 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Kuhn_Choi_2011"
+literal "false"
+
+\end_inset
+
+. Thereafter, they settle closer to the ocean bottom in their Megalopea stage. Very little is known of survival rates at these early life stages, but they are thought to depend highly upon temperature 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Sainte-Marie_Lafrance_2002"
+literal "false"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+This paper reviews some of the historical attempts at modeling snow crab dynamics and identifies a novel approach that overcomes historical difficulties by incorporating observation error across sex and stage-structure and habitat variability to simultaneously model population dynamics and infer population parameters. We examine its utility and demonstrate the mechanism by which we can make these and more complex models operationally viable through the use of efficient and modular computing that simultaneously models and infers parameters by leveraging 
+\series bold
+Julia
+\series default
+ programming environment 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Bezanson_et_al_2017"
+literal "false"
+
+\end_inset
+
+ and the supporting 
+\series bold
+Turing
+\series default
+ library 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Ge_et_al_2018"
+literal "false"
+
+\end_inset
+
+ for Bayesian parameter inference and the 
+\series bold
+DifferentialEquations
+\series default
+ library 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Rackauckas_Nie_2017"
+literal "false"
+
+\end_inset
+
+ for dynamical modeling. This examination is conducted in the Scotian Shelf Ecosystem (Figure
+\begin_inset space ~
+
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig1"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+) where the variability of ocean climate is known to be high 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Choi_et_al_2004, Drinkwater_2005"
+literal "false"
+
+\end_inset
+
+ and where we also have a consistently sampled population since the late 1990s. The principal conclusion of this study is that the novel proposed model is informative and demonstrates utility in understanding snow crab dynamics more coherently and versatility in incorporating ecosystem effects upon habitat viability. It is flexible in approach to permit other ecosystem factors such as classical inter-specific interactions and movement which are planned for future studies.
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%------------------------------------------------
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Methods
+\end_layout
+
+\begin_layout Standard
+Data collection and subsequent index estimation are described in 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Choi_2020, Choi_et_al_2022"
+literal "false"
+
+\end_inset
+
+. In short, sampling in an unbiased manner under complex hydrodynamic conditions is particularly difficult as the random stratified sampling (i.e., spatial) that is usually adopted to account for such variability, fail to do so due to the large dynamic (i.e.,spatiotemporal) structures operating on scales comparable to the domain. A model-based approach (
+\emph on
+Conditional AutoRegressive Spatiotemporal Models
+\emph default
+, 
+\series bold
+CARSTM
+\series default
+, 
+\begin_inset Flex URL
+status collapsed
+
+\begin_layout Plain Layout
+https://github.com/jae0/carstm
+\end_layout
+
+\end_inset
+
+) are used to address the estimation problem. More specifically, biases induced by differential spatiotemporal variability in habitat for differing life stages which upon aggregation across space, permits an index of abundance comparable across time (years). This study focuses upon the indices of abundance derived from this process for the period from 1999 to 2022. Importantly, no survey was conducted in 2020 due to Covid-19 related uncertainties. The index generation method being Bayesian, imputes these estimates, but variability attached to this year is large. These aggregate timeseries data and supporting 
+\series bold
+Julia
+\series default
+ models used in this paper are available at: 
+\begin_inset Flex URL
+status collapsed
+
+\begin_layout Plain Layout
+https://github.com/jae0/dynamical_model/tree/master/snowcrab
+\end_layout
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+In the area of study, the continental shelf of the northwest Atlantic Ocean (Figure
+\begin_inset space ~
+
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig2"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+), snow crab are exposed to high bottom temperature variability due to the confluence of a number of oceanic currents: the warm Gulf Stream, the cold Labrador current, low salinity outflow from the St. Lawrence river and the cold coastal Nova Scotia current. In this region, snow crab are generally observed between depths of 50 to 300 m and between temperatures of 
+\begin_inset Formula $-1$
+\end_inset
+
+ to 
+\begin_inset Formula $11^{\circ}C$
+\end_inset
+
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Choi_2011"
+literal "false"
+
+\end_inset
+
+. As the focal area is thermally complex, their spatial distributions can fluctuate seasonally and annually.
+\end_layout
+
+\begin_layout Standard
+There have only been a small number of attempts at modeling the dynamics of snow crab populations. Being long-lived, sexually dimorphic, deep water, benthic organisms, usually living far offshore, they are not easily surveyed. Snow crab have a complex life history that spans up to 15 years from planktonic to benthic stages. They molt 2 times a year in the early stages and then approximately annually by instar 5 (about 15 mm carapace width) and can even skip molts when living conditions are poor. This life history complexity causes complexity in their dynamics and spatial distributions. Most population assessments approach abundance estimation as a fishery- or survey-based relative index of a narrow segment of the population (the fishable component). When modeled, these empirical estimates of abundance are assumed to be known without bias.
+\end_layout
+
+\begin_layout Standard
+Further, aging of snow crab is not possible due to a lack of retention of calcified body parts through molts. This has encouraged adoption of size-based models 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Siddeek_et_al_2009, Cadigan_et_al_2017, Ianelli_et_al_2022"
+literal "false"
+
+\end_inset
+
+, often with strong and questionable assumptions. For example, 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Siddeek_et_al_2009"
+literal "false"
+
+\end_inset
+
+ assume the male fishable component is the spawning stock biomass, though of course it is the females that are the reproductive component and completely unexploited with a shorter life span. Similarly, 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Choi_Zisserson_2011"
+literal "false"
+
+\end_inset
+
+ implicitly assumes that the fishable biomass regenerates itself by application of a biomass dynamics model. Importantly, sex and size-selectivity of sampling gear are almost always assumed to be a constant or some smooth monotonic function of body size, and so static across time and space. These are significant and biologically problematic assumptions. The problems encountered are fundamental issues shared with all other attempts at assessment. Specifically, they are the interplay between snow crab life history and behavior; our inability to observe them without bias due to sampling design being non-random with respects to the environmental factors controlling their distribution and abundance; and the sampling machinery (mesh size, trawls that cannot access rugose areas) that can only observe a small fraction of the population.
+\end_layout
+
+\begin_layout Standard
+The 
+\emph on
+phenomenological
+\emph default
+ single component model of Verhulst which was first used to describe Belgium's population growth is well understood 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Verhulst_1845, Bacaër_2011"
+literal "false"
+
+\end_inset
+
+; see Appendix
+\begin_inset space ~
+
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "logistic"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+:
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset Formula \begin{equation}
+	\frac{\mathit{dN}}{\mathit{dt}}_{}=\mathit{rN}{({1-\frac{N}{K}})}.
+\end{equation}
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+It is parameterized by an intrinsic rate of increase (
+\begin_inset Formula $r$
+\end_inset
+
+) representing the maximum exponential rate of increase and carrying capacity (
+\begin_inset Formula $K$
+\end_inset
+
+) the upper threshold. When numerical abundance 
+\begin_inset Formula $N\rightarrow0$
+\end_inset
+
+, the loss term also 
+\begin_inset Formula $\frac{N}{K}\rightarrow0$
+\end_inset
+
+, and so 
+\begin_inset Formula $\frac{\mathit{dN}}{\mathit{dt}}_{}\rightarrow\mathit{rN}$
+\end_inset
+
+. When 
+\begin_inset Formula $N\rightarrow K$
+\end_inset
+
+, then 
+\begin_inset Formula $\frac{N}{K}\rightarrow1$
+\end_inset
+
+ and so the loss rate approaches 
+\begin_inset Formula $\mathit{rN}$
+\end_inset
+
+ and the overall rate of change approaches zero 
+\begin_inset Formula ${\frac{\mathit{dN}}{\mathit{dt}}_{}\rightarrow0}{}$
+\end_inset
+
+. Parenthetically, this can be simplified further by dividing both sides by 
+\begin_inset Formula $K$
+\end_inset
+
+ to give: 
+\begin_inset Formula ${{\frac{\mathit{dN}}{\mathit{dt}}/K}_{}=\mathit{rN}}{{({{1-r}\frac{N}{K}})}/K}.$
+\end_inset
+
+ By focusing upon 
+\begin_inset Formula $n=\frac{N}{K}$
+\end_inset
+
+ as a non-dimensional number ranging from (0,1), this becomes: 
+\begin_inset Formula ${\frac{\mathit{dn}}{\mathit{dt}}_{}=\mathit{rn}}{({1-n})}$
+\end_inset
+
+. For parameter estimation/inference, this form is useful as it is simpler and the magnitudes of variables are mostly similar, with the exception of 
+\begin_inset Formula $K$
+\end_inset
+
+. This renders beneficial properties to numerical optimization procedures. The sigmoid nature of the equation has rendered it a frequently encountered model that shows versatility in phenomenologically describing population dynamics. Its discrete form is particularly common in fisheries settings 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Schaefer_1954, Meyer_Millar_1999"
+literal "false"
+
+\end_inset
+
+ and has also been used to describe snow crab dynamics in the area of study 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Choi_Zisserson_2011"
+literal "false"
+
+\end_inset
+
+. The focus is usually upon biomass 
+\begin_inset Formula $B$
+\end_inset
+
+ and its normalized value, 
+\begin_inset Formula ${{b=B}K^{-1}}_{},$
+\end_inset
+
+ rather than numerical abundance: 
+\begin_inset Formula ${b_{t+1}={b_{t}+\Delta}}b_{t},$
+\end_inset
+
+ where 
+\begin_inset Formula $\Delta b_{t} = rb_{t}{({1-b_{t}})}-\mathit{Fishing}_{t}K^{-1}.$
+\end_inset
+
+ Here, 
+\begin_inset Formula $\mathit{Fishing}_{t}$
+\end_inset
+
+ is scaled by 
+\begin_inset Formula $K$
+\end_inset
+
+ to make it non-dimensional and also in the interval (0,1); it is usually treated as an external factor (perturbation), measured without error. Of course, there is usually observation error and/or illegal removals that will get erroneously absorbed as a biological process; in this case by elevating the intrinsic rate of increase to compensate for the additional losses. This will have an effect of creating bias and uncertainty in related parameters (see below). Note also that the discretization to an annual basis is a significant assumption as the time span is large relative to the processes of most biota. This has the effect of averaging out sub-annual dynamics. This means temporal aliasing or discretization errors and censoring are introduced which ultimately increases process and observation errors (see subannual dynamics, below).
+\end_layout
+
+\begin_layout Standard
+From this 
+\emph on
+phenomenological
+\emph default
+ view, the minimal parameters required to estimate biological reference points, and the relative distance a system is from such reference points help delimit the status of a population 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Schaefer_1954, Meyer_Millar_1999"
+literal "false"
+
+\end_inset
+
+. Values such as Maximum sustainable yield 
+\begin_inset Formula $\left({\mathit{MSY}={\mathit{rK}/4}}\right)$
+\end_inset
+
+ and the fishing mortality associated with such a yield 
+\begin_inset Formula $\left({\mathit{FMSY}={r/2}}\right)$
+\end_inset
+
+ are commonly used to help define some consistent landmarks of scale for use as management reference points to guide the implementation of consistent 
+\emph on
+Precautionary Approach
+\emph default
+ for fishery exploitation.
+\end_layout
+
+\begin_layout Standard
+Many approaches exist to estimate these model parameters. Currently, 
+\emph on
+Maximum Likelihood
+\emph default
+ approaches dominate due to their computational speed. However, it has been the author's experience with this data that they do not navigate and optimize very high-dimensional parameter spaces reliably, especially in the delay differential equation models that we explore, below. This renders their utility in an operational setting, minimally useful. The related 
+\emph on
+Maximum A-Posteriori
+\emph default
+ solutions, where using the same optimization techniques but with the addition of 
+\begin_inset Quotes eld
+\end_inset
+
+prior-like
+\begin_inset Quotes erd
+\end_inset
+
+ constraints can result in marginally more stable results, but they still have tremendous difficulty with high dimensional parameter spaces and the associated numerous local optima/multiple equilibria.
+\end_layout
+
+\begin_layout Standard
+The operationally most viable approach encountered so far has been Bayesian inference, where informative priors for these parameters are explicit and variance propagation of index variables can be accomplished by using them as priors to respective likelihood error terms, rather than some adhoc nuisance constraint. They facilitate parameter estimates that are stable and credible, given some latent process and observation models 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Meyer_Millar_1999"
+literal "false"
+
+\end_inset
+
+. Previously, JAGS (Just Another Gibbs Sampler 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Plummer_2003"
+literal "false"
+
+\end_inset
+
+) and STAN 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Stan_2022"
+literal "false"
+
+\end_inset
+
+ were used to compute the posteriors via MCMC 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Choi_Zisserson_2011"
+literal "false"
+
+\end_inset
+
+. The latter uses the more efficient NUTS sampler which significantly speeds up the estimation process of these discrete difference equation models. Presently, we use 
+\series bold
+Julia
+\series default
+ programming environment 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Bezanson_et_al_2017"
+literal "false"
+
+\end_inset
+
+ and the supporting 
+\series bold
+Turing
+\series default
+ library 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Ge_et_al_2018"
+literal "false"
+
+\end_inset
+
+ for parameter inference and the 
+\series bold
+DifferentialEquations
+\series default
+ library 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Rackauckas_Nie_2017"
+literal "false"
+
+\end_inset
+
+ for modeling delay differential equation models; they demonstrate orders of magnitude greater efficiency and flexibility to simultaneously model and infer parameter values in such problems, relative to basic MCMC procedures due to use of automatic differentiation and heavily optimized solution engines.
+\end_layout
+
+\begin_layout Standard
+As a basic point of reference, we use the simplest possible (
+\emph on
+phenomenological
+\emph default
+) model discretized to an annual basis 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Choi_Zisserson_2011"
+literal "false"
+
+\end_inset
+
+. The latent (real but unobserved) biomass was assumed to have a 
+\emph on
+process model error
+\emph default
+ that is a recursive Gaussian or Normal distribution (
+\begin_inset Formula $N$
+\end_inset
+
+) with a standard deviation 
+\begin_inset Formula $\sigma_{p}$
+\end_inset
+
+ 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+{
+\end_layout
+
+\end_inset
+
+(Bolker 2008)
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+}
+\end_layout
+
+\end_inset
+
+ such that:
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset Formula \begin{equation}
+	\label{eq2}
+	b_{t+1}\sim N({{{b_{t}+r}b_{t}}{{({1-b_{t}})}-\mathit{Fishin}}g_{t}K^{-1},\sigma_{p}}). 
+	\end{equation}
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Here, 
+\begin_inset Quotes eld
+\end_inset
+
+
+\begin_inset Formula $\sim$
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+ indicates 
+\begin_inset Quotes eld
+\end_inset
+
+distributed as
+\begin_inset Quotes erd
+\end_inset
+
+. Marginally informative priors were assumed: 
+\begin_inset Formula $r\sim N\left({1.0,0.1}\right)$
+\end_inset
+
+, and 
+\begin_inset Formula $K\sim N\left({\kappa,0.1\cdot\kappa}\right)$
+\end_inset
+
+. The prior mean of the carrying capacity ( 
+\begin_inset Formula $\kappa={\lbrack{5.0,60,1.25}\rbrack}$
+\end_inset
+
+, in kt, for the North, South, and area 4X (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig1"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+), respectively) were based upon historical analyses with other analytical procedures, namely Geostatistical Kriging with External Drift and Generalized Additive Models 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Choi_et_al_2005b, Choi_2011"
+literal "false"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+It is further assumed that the real unobservable (latent) process 
+\begin_inset Formula $b$
+\end_inset
+
+ is sampled with error (observation standard deviation 
+\begin_inset Formula $\sigma_{o}$
+\end_inset
+
+ ). The 
+\emph on
+observation error model
+\emph default
+ in most fishery applications is a simple multiplicative factor, often referred to as a 
+\begin_inset Quotes eld
+\end_inset
+
+catchability
+\begin_inset Quotes erd
+\end_inset
+
+ coefficient 
+\begin_inset Formula $q$
+\end_inset
+
+. In this case we assume that: 
+\begin_inset Formula $q\sim N\left({1.0,0.1}\right)$
+\end_inset
+
+, and so the 
+\emph on
+observation error model
+\emph default
+ becomes:
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset Formula \begin{equation}
+	\label{eq3}
+	Y_{t}\sim N({q\mathit{Kb}_{t},\sigma_{o}}). 
+	\end{equation}
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+This means that the observed biomass indices 
+\begin_inset Formula $Y$
+\end_inset
+
+ are some constant fraction of the true abundance 
+\begin_inset Formula $b_{t},$
+\end_inset
+
+ across all sampling time (years, season) and locations. The recursive logistic process model (eq.
+\begin_inset space ~
+
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq2"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+) in tandem with the observation model (eq.
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq3"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+), we will refer to it as, 
+\begin_inset Quotes eld
+\end_inset
+
+
+\emph on
+Model 1
+\emph default
+
+\begin_inset Quotes erd
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset Float figure
+wide true
+sideways false
+status open
+
+
+\begin_layout Standard
+
+\begin_inset Graphics 
+	filename media/logistic_diagram.png
+	width 4.5cm
+
+\end_inset
+
+ 
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+A graphical representation of 
+\emph on
+Model 1
+\emph default
+ (simple logistic; eq. 1). Here, 
+\begin_inset Formula ${b=B}K^{-1}$
+\end_inset
+
+ is a non-dimensional number that ranges from (0, 1) that represents the biomass 
+\begin_inset Formula $B$
+\end_inset
+
+ after being scaled to 
+\begin_inset Formula $K$
+\end_inset
+
+. The loop 
+\begin_inset Formula $\mathit{rb}$
+\end_inset
+
+ identifies the growth rate and the loss term 
+\begin_inset Formula $rb^{2}$
+\end_inset
+
+ identifies the quadratic increase in 
+\begin_inset Quotes eld
+\end_inset
+
+mortality
+\begin_inset Quotes erd
+\end_inset
+
+ as 
+\begin_inset Formula $b\rightarrow1$
+\end_inset
+
+. Fishing is also scaled to 
+\begin_inset Formula $K$
+\end_inset
+
+, such that: 
+\begin_inset Formula ${\frac{\mathit{db}}{\mathit{dt}}_{}=\mathit{rb}}-\mathit{rb}\cdot{{b-f}={\mathit{birth}-\mathit{death}-\mathit{fishing}}}$
+\end_inset
+
+; and total mortality = death + fishing.
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "fig3"
+
+\end_inset
+
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+From the graphical representation of the processes of 
+\emph on
+Model 1
+\emph default
+ (Figure 4), one can immediately see that there is no input term from outside of the system: it is a simple 
+\emph on
+phenomenological
+\emph default
+ self-loop model with two outputs (death and fishing). The term 
+\begin_inset Formula $\mathit{rb}$
+\end_inset
+
+ can be referred to as the (net) 
+\begin_inset Quotes eld
+\end_inset
+
+birth process
+\begin_inset Quotes erd
+\end_inset
+
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Gillespie_1992, Qian_Bishop_2010, Albert_2016"
+literal "false"
+
+\end_inset
+
+, and represents a first order processes that increases 
+\begin_inset Formula $b$
+\end_inset
+
+ (via birth, growth, enhanced survival, improved food availability, immigration, strong year class strength, etc.), through the single (static) parameter 
+\begin_inset Formula $r$
+\end_inset
+
+. The mechanism is not identified and is implied to be some internal recycling of b. In reality, there are biological mechanisms involved and associated parameters that are not-static and non-stationary (in first and second order; across time and space). Growth in biomass or increase in numbers is seasonal and pulsed, due to the molting process and body mass increases, that progress at variable rates depending upon time of year and environmental variability. Across years, there are strong and weak year classes due to match-mismatch type processes 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Cushing_1969, Durant_et_al_2007"
+literal "false"
+
+\end_inset
+
+, and so also pulsed. These simple models cannot address these more realistic dynamics and so we obtain instead, an average state, with poor resolution of peaks and troughs and so parameter estimates that are likely to be in error.
+\end_layout
+
+\begin_layout Standard
+The strength of 
+\emph on
+Model 1
+\emph default
+ is simplicity; but this simplicity is also a weakness. As the biomass dynamics model is phenomenological; it is heuristic, without mechanism. For example, fishable biomass 
+\begin_inset Quotes eld
+\end_inset
+
+creates
+\begin_inset Quotes erd
+\end_inset
+
+ fishable biomass at a maximum exponential rate (r) to a limit of K. In reality, fishable biomass being mature male snow crab, does not produce more mature male snow crab; instead, it is the female mature population that creates the eggs and broods them to larvae, some fraction of which eventually mature into the fishable component. The dynamics and longevity of these females are very different from those of the males, often showing unbalanced sex ratios and differential utilization of habitat 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Choi_et_al_2022"
+literal "false"
+
+\end_inset
+
+. The rate of increase in biomass is not a simple exponential rate; instead, a certain number of fishable crab die from various causes (predation, disease, competitive fighting), a certain number of recruits terminally molt to a size in the fishable range to increase their numbers, they grow in weight as they eat, some fraction move in and out of a given area, and some are fished; these rates are not constant in time nor space and there are many lags in time. Fundamentally it is a numerical process. So 
+\emph on
+Model 1
+\emph default
+ from the perspective of 
+\begin_inset Quotes eld
+\end_inset
+
+biomass dynamics
+\begin_inset Quotes erd
+\end_inset
+
+ is less than satisfactory in terms of biological realism. However, in the heuristic perspective, it implies that the biomass in one year is related to the biomass in the previous year within some constraints, constraints that are only diffusely/indirectly related to the 
+\begin_inset Quotes eld
+\end_inset
+
+real
+\begin_inset Quotes erd
+\end_inset
+
+ mechanistic processes represented by individual-individual interactions. As such, they can be seen as a temporal autoregressive model.
+\end_layout
+
+\begin_layout Standard
+These constraints unfortunately result in a model that is sometimes not responsive enough to large fluctuations in dynamics caused by intrinsic and/or extrinsic factors. For example, due to the pulse-like dynamics observed since the late 1990s, no recruits entered fishable components for a number of years, even though their abundance was low 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Choi_2011"
+literal "false"
+
+\end_inset
+
+. 
+\emph on
+Model 1
+\emph default
+ expected recruitment simply because biomass was low. This was an erroneous expectation given the low numbers of pre-recruits that lasted for an extended period of time, nor the extremes of bottom temperature and associated shifts in their distributions nor the increase in abundance of predators that followed which reduced the further the strength of that recruitment. 
+\emph on
+Model 1
+\emph default
+ is too simple to express the expectations of such highly nonlinear pulse-like dynamics and interactions with environment and predators. In another example, there was an extreme warming event in 2021 that significantly altered and constricted the spatial distribution of snow crab 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Choi_et_al_2022"
+literal "false"
+
+\end_inset
+
+. Again a simple model such as 
+\emph on
+Model 1
+\emph default
+, with static expectations of environmental conditions are not able to account for such effects.
+\end_layout
+
+\begin_layout Standard
+In an attempt to 
+\emph on
+begin
+\emph default
+ addressing these issues, we entertain 
+\emph on
+Model 2
+\emph default
+ (Figure
+\begin_inset space ~
+
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig4"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+) which resolves some size groups, sex and maturity and permits time-varying viable habitat area. 
+\emph on
+Model 2
+\emph default
+ is, therefore, an intermediately complex, marginally more structural and mechanistic (
+\emph on
+ontological
+\emph default
+) model relative to 
+\emph on
+Model 1
+\emph default
+ (Appendix
+\begin_inset space ~
+
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "continuum"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+).
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset Float figure
+wide true
+sideways false
+status open
+
+
+\begin_layout Standard
+
+\begin_inset Graphics 
+	filename media/delay_differential_diagram.png
+	width 10.5cm
+
+\end_inset
+
+ 
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Graphical structure of the six-component 
+\emph on
+Model 2
+\emph default
+ of snow crab with associated numerical flows. 
+\begin_inset Formula $F$
+\end_inset
+
+ indicates mature females, determined from size range and morphometric maturity. Associated with each component is a carrying capacity (
+\begin_inset Formula $K_{i}$
+\end_inset
+
+), and a death rate 
+\begin_inset Formula $w_{i},$
+\end_inset
+
+ and molt rates 
+\begin_inset Formula $v_{\mathit{ij}}$
+\end_inset
+
+ ; and birth/survival rates 
+\begin_inset Formula $b_{i}$
+\end_inset
+
+. 
+\begin_inset Formula $F_{t-8}$
+\end_inset
+
+ is the state of mature females 
+\begin_inset Formula $F$
+\end_inset
+
+ from 8 years prior. Fishing is considered an external, deterministic sink imposed by external factors.
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "fig4"
+
+\end_inset
+
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+There is approximately an 8+ year period that is required for females 
+\begin_inset Formula $F_{t-8}$
+\end_inset
+
+ to produce the next generation of instar 9 females and males, denoted by 
+\begin_inset Formula $F_{t}$
+\end_inset
+
+ and 
+\begin_inset Formula $M_{5,t}$
+\end_inset
+
+, respectively. They represent crabs in the range of approximately 40 to 60 mm carapace width. The 
+\begin_inset Quotes eld
+\end_inset
+
+birth
+\begin_inset Quotes erd
+\end_inset
+
+ rates represent a combination of egg production and larval survival to instar 9+. If the population is stable, 
+\begin_inset Quotes eld
+\end_inset
+
+birth
+\begin_inset Quotes erd
+\end_inset
+
+ rates are expected to be similar in magnitude to overall death rates. Note that 
+\begin_inset Quotes eld
+\end_inset
+
+stage
+\begin_inset Quotes erd
+\end_inset
+
+ is defined based upon size-sex-morphometric traits and so misclassification is likely. The error in such knife-edge stage determinations can be substantial if growth and maturity schedules vary significantly. It is assumed, here, that in the aggregate, this has been stable in the survey record (1999 to 2021). This may of course be incorrect if persistent size/stage/age related mortality occurs due to exploitation/predation patterns and/or directional environmental change such as climate warming or food availability shifts.
+\end_layout
+
+\begin_layout Standard
+Some fraction of instar 9 males transition to instar 10 (
+\begin_inset Formula $M_{4}$
+\end_inset
+
+), and then 11 (
+\begin_inset Formula $M_{3}$
+\end_inset
+
+) to 12 (
+\begin_inset Formula $M_{2}$
+\end_inset
+
+) and 13+ (
+\begin_inset Formula $M_{1}$
+\end_inset
+
+); each transition rate parameterized by 
+\begin_inset Formula $v$
+\end_inset
+
+, with numeric indices identifying the instar pairs. Due to the knife edge-cut of stages, there will be misclassification issues which will be absorbed by these transition rates. For example, a small fraction of instar 11 crab (
+\begin_inset Formula $M_{3}$
+\end_inset
+
+) will be large enough to be considered a fishable size (
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+\backslash
+textgreater
+\end_layout
+
+\end_inset
+
+95mm carapace width); but most will molt into instar 12 (
+\begin_inset Formula $M_{2}$
+\end_inset
+
+); this would result in a reduced molt transition rate. 
+\begin_inset Formula $M_{2}$
+\end_inset
+
+ will represent a composite group of most crab that have entered fishable size but are still immature. Some fraction of this group will mature into the fishable component in the next year; the fractional nature will result in a smaller molt transition rate. Others will continue to molt to instar 13 and higher; for our purposes, all morphologically mature males of fishable size will be considered 
+\begin_inset Formula $M_{1}$
+\end_inset
+
+ and so it represents a range of different ages. This is especially the case as terminally molted crab can live for up to another 5 years; this aggregation will effectively decrease mortality rate of the group.
+\end_layout
+
+\begin_layout Standard
+Survey sampling and estimation of instar 9 to 13+ (40 mm to 130+ mm carapace width) is reasonably informative. Earlier instars tend to have more divergent habitat preferences relative to those of the fishable component and are also known to be poorly/erratically sampled due to their being small enough to be significantly affected by sampling mesh size. This is because the snow crab surveys are primarily optimized for sampling the fishable component (
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+\backslash
+textgreater
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+{}
+\end_layout
+
+\end_inset
+
+ 95 mm carapace width), both in terms of mesh size and choices of sampling location. The utility of these additional compartments is that they also permit more stable parameter estimation and forward projections that are biologically more reasonable (mechanistic). The challenge is to keep track of much more information due to the increased realism and computational limits. Each state variable 
+\begin_inset Formula $U={({M_{1},M_{2},M_{3},M_{4},M_{5},F})}$
+\end_inset
+
+, is scaled by their respective carrying capacity 
+\begin_inset Formula $K_{i}$
+\end_inset
+
+, such that they are non-dimensional numbers: 
+\begin_inset Formula ${u_{i}={({U_{1}K_{1}^{-1},U_{2}K_{2}^{-1},U_{3}K_{3}^{-1},U_{4}K_{4}^{-1},U_{5}K_{5}^{-1},U_{6}K_{6}^{-1}})}}.$
+\end_inset
+
+ Thus, for example, in the molt transition process from 
+\begin_inset Formula $i=2$
+\end_inset
+
+ to 
+\begin_inset Formula $j=1$
+\end_inset
+
+, the instantaneous rate is: 
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset Formula $v_{21}u_{2,{t-1}}{a_{21}=v_{21}}{({U_{2,{t-1}}K_{2}^{-1}})}K_{2}K_{1}^{-1} = v_{21}U_{2,{t-1}}K_{1}^{-1}$
+\end_inset
+
+. 
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The multiplier 
+\begin_inset Formula ${a_{21}=K_{2}}K_{1}^{-1}$
+\end_inset
+
+ is required to convert normalized density of category 2 to that of category 1 via the ratio of the respective normalizing constants, 
+\begin_inset Formula $K_{i}.$
+\end_inset
+
+ As with 
+\emph on
+Model 1
+\emph default
+, first order birth/survival rates 
+\begin_inset Formula $b_{i}$
+\end_inset
+
+ are assumed: 
+\begin_inset Formula ${\beta_{i}=b_{i}}u_{i}.$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+So far, most of the core model has been the same as 
+\emph on
+Model 1
+\emph default
+, only applied to more components with some appropriate time lags. Where 
+\emph on
+Model 2
+\emph default
+ diverges from 
+\emph on
+Model 1
+\emph default
+ is by decomposing mortality into two components: the first component is a simple background mortality parameterized as a first order decay 
+\begin_inset Formula ${({\omega_{i}u_{i,t}})};$
+\end_inset
+
+ the second component is mortality associated with fluctuations of viable habitat, parameterized as in the logistic equation as in 
+\emph on
+Model 1
+\emph default
+ as a second order process 
+\begin_inset Formula $\psi_{i}\frac{U_{i,t}}{K_{i,t}H_{\mathit{it}}}\cdot U_{i,t}$
+\end_inset
+
+. Note the congruence with the 
+\begin_inset Formula $r\frac{N}{K}\cdot N$
+\end_inset
+
+ loss term of 
+\emph on
+Model 1
+\emph default
+ (see Fig. 4, eq. 1), such that upon normalization to 
+\begin_inset Formula $u$
+\end_inset
+
+, we obtain: 
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset Formula ${w_{i,t}=\omega_{i}}{u_{i,t}+\psi_{i}}\frac{{u}_{i,t}}{H_{i,t}}\cdot{u}_{i,t}.$
+\end_inset
+
+ 
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Here, 
+\begin_inset Formula ${H={V/\mathit{\max}}}{(V)},$
+\end_inset
+
+ represents the viable habitat surface area 
+\begin_inset Formula $V{}$
+\end_inset
+
+ normalized to a maximum value of 1, where the maximum is defined in the reference/focal time period. This modifies the carrying capacity proportionately and so 
+\begin_inset Formula $\mathit{KH}$
+\end_inset
+
+ can be seen as the 
+\begin_inset Quotes eld
+\end_inset
+
+effective carrying capacity
+\begin_inset Quotes erd
+\end_inset
+
+, adjusting for viable habitat fluctuations. The assumption here is that when viable habitat area declines by some fraction 
+\begin_inset Formula $H$
+\end_inset
+
+, so too does the effective carrying capacity, proportionately.
+\end_layout
+
+\begin_layout Standard
+The inclusion of predator-prey and other ecological processes are therefore straightforward extensions as additional terms in this type of model formalism are well understood in the literature 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Lotka_1920, Bertalanffy_1950, Pianka_1970, Wangersky_1978"
+literal "false"
+
+\end_inset
+
+. Such extensions are planned for future research and evaluation.
+\end_layout
+
+\begin_layout Standard
+The full set of delay differential equations are, therefore: 
+\begin_inset Formula \begin{align*} 
+\frac{\mathrm{d} u_{1}}{\mathrm{d} t} &= v_{21}u_{2,{t-1}}a_{21}-w_{1,t}-\mathit{Landings}_{t}K_{1,t}^{-1} \\ 
+\frac{\mathrm{d} u_{2}}{\mathrm{d} t} &= v_{32}u_{3,{t-1}}a_{32}-v_{21}u_{2,t-1}-w_{2,t} \\
+\frac{\mathrm{d} u_{3}}{\mathrm{d} t} &= v_{43}u_{4,t-1}a_{43}-v_{32}u_{3,t-1}-w_{3,t} \\
+\frac{\mathrm{d} u_{4}}{\mathrm{d} t} &= v_{54}u_{5,t-1}a_{54}-v_{43}u_{4,t-1}-w_{4,t} \\
+\frac{\mathrm{d} u_{5}}{\mathrm{d} t} &= b_{5}u_{6,t-8}a_{56}-v_{54}u_{5,t-1}-w_{5,t} \\
+\frac{\mathrm{d} u_{6}}{\mathrm{d} t} &= b_{6}u_{6,t-8}-w_{6,t}.
+\end{align*}
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+Model 2
+\emph default
+ is, therefore, a slightly more mechanistic (structured) extension of 
+\emph on
+Model 1
+\emph default
+ that brings to bear additional information available about the abundance of other size and sex classes and transition rates between them, and mortality rates that depend upon variations of numerical density in viable habitat surface area.
+\end_layout
+
+\begin_layout Standard
+Fishery landings were converted to number based upon annual average weight of the fishable component estimated from surveys and discretized to a two week time step within each year. The latter was to avoid strong discontinuities which facilitates differential equation modeling and parameter inference. Survey-based indices of numerical abundance were estimated using a Hurdle process, where probability of observation and the numerical abundance of positive-valued observations were modeled as an extension of small-area analysis (Conditional AutoRegressive Models in space and time; see methods in 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Choi_et_al_2022, Choi_2022"
+literal "false"
+
+\end_inset
+
+. Modeled average weights, also analyzed using the same small-area space-time analyses were used to convert numbers back to biomass to make comparisons with 
+\emph on
+Model 1
+\emph default
+.
+\end_layout
+
+\begin_layout Standard
+In 
+\emph on
+Model 1
+\emph default
+, the meaning of 
+\begin_inset Formula $q$
+\end_inset
+
+ is clear: a survey catches only some (fixed) fraction of the true abundance. This is a reasonable first approximation. However, what is implied is: first, this fraction is unchanging, applying equally in high abundance and low abundance years and areas, whether they are in the mating or molting season or not. Ignored are issues such as differential net saturation, aggregation behavior, even when bottom temperatures can force aggregation and dispersal away from or into other areas. The second issue implied by 
+\begin_inset Formula $q$
+\end_inset
+
+ is that when a survey fails to capture snow crab, that there truly is no snow crab in the area: an observation of zero is a true zero. 
+\series bold
+
+\emph on
+This is clearly false
+\emph default
+
+\series default
+. Visual observation of trawl operation through video monitoring have shown that crabs are missed: when they are in a slight depression, when they are close to protruding rocks or on bedrock, when bottom topography is complex or simply by the gear jumping off of the bottom due to tidal currents. That is, sampling gear is biased. Furthermore, it is not just sampling gear that is problematic. Survey design is biased: in design, each areal unit is expected to be homogeneous in space AND time. External factors being factored out such as bottom temperatures, food availability and predation, aggregation behavior are not homogeneous, no matter how well designed a sampling design may be. Further, there is the notion of 
+\emph on
+trawlable bottom
+\emph default
+: some areas cannot be sampled without tearing or losing nets. These areas are of course not sampled and only habitats that are easier to sample will be used and consequently, over represented. Though allocation may be 
+\emph on
+random
+\emph default
+ in design and theory, in application, it is at best, 
+\emph on
+almost random
+\emph default
+ and depending upon bottom type, usually biased.
+\end_layout
+
+\begin_layout Standard
+As such, the observation model is also more complex in 
+\emph on
+Model 2
+\emph default
+. The assumption of zero values in survey abundance indicating a true zero is a very strong assumption. This is especially tenuous when it is known that surveys sample many size ranges very poorly. The observation model of 
+\emph on
+Model 2
+\emph default
+ is, therefore, a simple linear regression. Of course, higher order terms and other covariates can and should enter into the observation model to account for potential survey and behavior induced bias. In this paper, this is mostly accomplished via the statistical abundance index model 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Choi_et_al_2022"
+literal "false"
+
+\end_inset
+
+. Some additional freedom is given in the observation model in that the prior for the intercept term 
+\begin_inset Formula $c_{i}$
+\end_inset
+
+ was informed by 
+\begin_inset Formula $\mu_{i}$
+\end_inset
+
+, the fraction of the minimum observed value relative to the maximum value.
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset Formula $m_i \sim N(1.0, 0.1)$
+\end_inset
+
+,
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset Formula $c_i \sim N(\mu_i, 0.1)$
+\end_inset
+
+, and
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset Formula $y_{\mathit{ti}} \sim N(\mu_i n_{\mathit{ti}} + c_i, \sigma_{ti})$
+\end_inset
+
+. Here, 
+\begin_inset Formula ${y_{\mathit{ti}}={Y_{\mathit{ti}}/\mathit{\max}}}{(Y_{i})},$
+\end_inset
+
+ constrains abundance to the interval (0, 1) and helps to confer better numerical properties (faster and more stable optimization, integration) in that variables are of similar magnitudes. Additionally, the variability of the observations was propagated into 
+\emph on
+Model 2
+\emph default
+ by assuming that the coefficient of variation of observations were modal estimates of the observation model using a Lognormal (LN) prior with a mode of log(CV) specific to each component 
+\begin_inset Formula $i$
+\end_inset
+
+ and survey time 
+\begin_inset Formula $t$
+\end_inset
+
+ and a SD of 0.25 (
+\begin_inset Formula $\approx 128\%$
+\end_inset
+
+ error on the normal scale):
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset Formula $\sigma_{ti} \sim \mathrm{LN}(\log(\mathrm{CV}_{ti}), 0.25)$
+\end_inset
+
+. This works as 
+\begin_inset Formula $y_{\mathit{ti}}$
+\end_inset
+
+ are already normalized to (0,1). The other priors used for the 
+\emph on
+Model 2
+\emph default
+ are also informative based upon expected biological constraints and some very wide distributions for the variance components to provide well mixed posterior samples as determined by Effective Sample Size (given autocorrelation in samples within chains) and 
+\emph on
+Rhat
+\emph default
+ (convergence criterion across chains):
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset Formula $K\sim\mathrm{LN}\left(\log(\kappa),0.25 \right)$
+\end_inset
+
+,
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset Formula $b\sim\mathrm{LN}\left(\log(1),0.5 \right)$
+\end_inset
+
+,
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset Formula $d\sim\mathrm{LN}\left(\log(0.22),0.25 \right)$
+\end_inset
+
+,
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset Formula $\psi\sim\mathrm{LN}\left(\log(0.49),0.5 \right)$
+\end_inset
+
+, and
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset Formula ${v\sim\mathrm{LN}\left(\log(1.46),0.5 \right)}.$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Fixed reference points analogous to the concepts of MSY and FMSY are not readily identifiable in 
+\emph on
+Model 2
+\emph default
+ as 
+\begin_inset Quotes eld
+\end_inset
+
+production
+\begin_inset Quotes erd
+\end_inset
+
+ is now dependent upon multiple system components each of which have externally imposed effective habitat viability trends and related natural and fishing mortalities (perturbations). It is, however, possible to compute a related concept, which we will call the 
+\emph on
+fisheries footprint
+\emph default
+; it is computed as the difference in trajectories between the system state estimated for the fishable component with and without fishing. The biological parameters are estimated under conditions of fishing activity. In the absence of fishing, these parameters may be expected to be different, especially when fishing activity is extreme. In some cases, maturity and growth schedules can shift 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Zwanenburg_et_al_2002, Choi_et_al_2004, Choi_et_al_2005a"
+literal "false"
+
+\end_inset
+
+. The assumption here is that extreme fishing activity has not occurred with sufficient pressure nor time to generate phenotypic or genotypic change. The difference in predicted trajectories between the fished and unfished conditions, therefore, provides a crude, first order estimate of the impact of fishing, without assumptions beyond that the model reasonably approximates reality. This fisheries footprint is placed on a relative scale from 0 to 1, by normalizing with the expected unfished abundance. As such, the 
+\emph on
+fisheries footprint
+\emph default
+ identifies the fraction of potential biomass that was reduced by fishery exploitation.
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%------------------------------------------------
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Results and Discussion
+\end_layout
+
+\begin_layout Standard
+Estimates of abundance (biomass) of the exploited component are shown for each region for each model in Figure
+\begin_inset space ~
+
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig5_predictions"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+. In NENS, the discrete 
+\emph on
+Model 1
+\emph default
+ showed two troughs in (pre-fishery) abundance in 2005 and 2017. The surveyed index after adjustment for the observation model tends to be lower relative to the pre-fishery abundance, which is consistent with the removal of biomass during the fishing season. The exception to this pattern was in late 2013 and 2019 when strong recruitment was also observed. 
+\emph on
+Model 2
+\emph default
+ shows a similar pattern of fall fishable biomass, though with a reduced magnitude. The post 2019 period showed significant divergence relative to the survey index and especially in 2020 when no surveys were completed due to Covid-19 related disruptions. SENS also demonstrated a similar periodicity to NENS in both models (Figure
+\begin_inset space ~
+
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig5_predictions"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+). 
+\emph on
+Model 2
+\emph default
+ suggests a dampened time series, attributable to the dynamics of the recruitment being estimated to be very smooth (Figure
+\begin_inset space ~
+
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig6_m2f"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+). In CFA 4X, 
+\emph on
+Model 1
+\emph default
+ suggests an important decline following a peak in 2010. 
+\emph on
+Model 2
+\emph default
+ suggests a similar trajectory, though one that is much more variable. This area is subject to crab movement from the adjoining area as well as spatial aggregation due to extreme temperature conditions, elevated mortality from other predators and disease. 
+\emph on
+Model 2
+\emph default
+ also suggests overall abundance that is much lower than the very optimistic expectations of 
+\emph on
+Model 1
+\emph default
+.
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset Float figure
+wide true
+sideways false
+status open
+
+
+\begin_layout Standard
+
+\begin_inset Graphics 
+	filename media/predictions.png
+	width 100line%
+
+\end_inset
+
+ 
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Posterior median biomass (dark orange) for each area of study and model. Posterior realizations of dynamics are shown to demonstrate variability of solutions. For 
+\emph on
+Model 1
+\emph default
+ (left), 
+\emph on
+pre-fishery
+\emph default
+ posterior estimates of fishable biomass are shown. For 
+\emph on
+Model 2
+\emph default
+, the posterior estimates of fishable biomass are shown in orange. Overlaid (gray) in both are survey abundance estimates (
+\emph on
+post-fishery
+\emph default
+, except prior to 2004) after correction for their respective observation models. Overlaid in green are posterior samples of abundance trajectories expected had there been no fisheries exploitation (green); and dark green identifies their means.
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "fig5_predictions"
+
+\end_inset
+
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+It is important to note that 
+\emph on
+Model 1
+\emph default
+ will project an increase in abundance, even if recruitment does not exist. It will only project a decline if abundance is above carrying capacity. This structural expectation is of course unrealistic. 
+\emph on
+Model 2
+\emph default
+, which accounts for recruitment, navigates this problem a little more sensibly as increase can only occur if recruitment exceed mortality. For example, it projects for 4X, a decline, even in the absence of fishing. In SENS, abundance is projected to increase slightly in the absence of fishing. Only NENS was projected to have a rapid increase in abundance (Figure
+\begin_inset space ~
+
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig5_predictions"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+).
+\end_layout
+
+\begin_layout Standard
+Another observation is that abundance may be overestimated by 
+\emph on
+Model 1
+\emph default
+. For example, in 4X where we have supporting information of very high natural mortality rates associated with predation and environmental variability, through the loss of strong year classes, abundance estimates are extremely optimistic. The same issues also exist for N-ENS, where strong adolescent crab year classes seem to disappear at a rate faster than might be expected, possibly due to predation. By extension, S-ENS also likely exhibits overly optimistic time trends, given the very strong year classes diminishing rapidly before entry into the fishable component. As a result of this potential overestimation of abundance, fishing mortality estimates by 
+\emph on
+Model 1
+\emph default
+ may in fact be overly low. 
+\emph on
+Model 2
+\emph default
+'s solutions seem more reasonable given the supporting contextual information known of the different areas. The overall relative shapes of abundance and fishing mortality are, however, similar (Figure
+\begin_inset space ~
+
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig7"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+).
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset Float figure
+wide true
+sideways false
+status open
+
+
+\begin_layout Standard
+
+\begin_inset Graphics 
+	filename media/fishing_mortality.png
+	width 100line%
+
+\end_inset
+
+ 
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Instantaneous fishing mortality estimated from 
+\emph on
+Model 1
+\emph default
+ and 2 across time. The overall patterns of fishing mortality are similar across models. However, the overall magnitudes are much higher in 
+\emph on
+Model 2
+\emph default
+. Fishing in 4X was closed in 2018 due to low abundance estimates and warm environmental conditions.
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "fig7"
+
+\end_inset
+
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The continuous form of 
+\emph on
+Model 2
+\emph default
+ also permits us to infer the subannual dynamics of the snow crab. The saw tooth pattern of abundance (Figure
+\begin_inset space ~
+
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig5_predictions"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+) suggests that during the fishing season, the rate of exploitation far surpasses the slower rate of growth of the fishable component. It also identifies how important temporal aliasing might be if observations of landings or survey sample times are not properly accounted. The fishery footprint across the different areas (Figure
+\begin_inset space ~
+
+\end_inset
+
+
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig8"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+) indicates that they are very similar to fishing mortality in overall form (as they should be, as the numerator, catch are the same). The former is on a scale that is the same as abundance and so simpler to understand than the exponential scale of an instantaneous rate. 
+\emph on
+Fishery footprint
+\emph default
+ also has a reasonably direct relationship to a question that is often asked in applied situations: 
+\emph on
+How much of an effect is fishing activity having?
+\emph default
+ In the case of the areas studied, the fishery footprint has declined to conservative and manageable levels since the mid-2000's. SENS, in particular, has been consistently sustainable in the historical record. In the presence of strong environmental variability, it will be necessary to continue to maintain a small fisheries footprint such that the species does not undergo extreme changes in abundance as has been the case for many collapsing fisheries, such as Atlantic cod. This is especially the case as heavy exploitation in the long-term can result in reduced reproductive success of females; loss of dominance by invasion of habitat by competitors and even genetic/phenotypic selection for reduced size at maturity 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Comeau_Conan_1992, Choi_2011"
+literal "false"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset Float figure
+wide true
+sideways false
+status open
+
+
+\begin_layout Standard
+
+\begin_inset Graphics 
+	filename media/footprint.png
+	width 12cm
+
+\end_inset
+
+ 
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Posterior realizations of Fisheries footprint for each area of study derived from 
+\emph on
+Model 2
+\emph default
+.
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "fig8"
+
+\end_inset
+
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The first ever estimate of potential recruitment (
+\begin_inset Formula $M_{2}$
+\end_inset
+
+) and mature female abundance (
+\begin_inset Formula $F$
+\end_inset
+
+) for the area in focus are shown in Figure
+\begin_inset space ~
+
+\end_inset
+
+(
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig6_m2f"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+). It shows that 
+\emph on
+Model 2
+\emph default
+ has difficulty tracking these components. However, peaks and troughs are identified and they seem to be coherent across areas. The lack of concordance with the observations suggest that other, as yet unmodeled processes likely need to be better accounted. The most likely missing processes include movement (inshore-offshore, shallow-deep) as well as predation, as the areas of study are not 
+\emph on
+well mixed
+\emph default
+ and show spatiotemporal structure and increases in the relative abundance of predators such as Atlantic Halibut. Smaller areal units might be better than the three large areas we used in this study to be able to discriminate or at least account for some of these latter heterogenous processes.
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset Float figure
+wide true
+sideways false
+status open
+
+
+\begin_layout Standard
+
+\begin_inset Graphics 
+	filename media/m2_fem.png
+	width 100line%
+
+\end_inset
+
+ 
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\emph on
+Model 2
+\emph default
+posterior numerical abundance for 
+\begin_inset Formula $M_{2}$
+\end_inset
+
+ (recruits) and 
+\begin_inset Formula $F$
+\end_inset
+
+ (mature female). Overlaid (gray) are survey abundance estimates (post-fishery, except prior to 2004) after correction for observation models.
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "fig6_m2f"
+
+\end_inset
+
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%------------------------------------------------
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Conclusion
+\end_layout
+
+\begin_layout Standard
+In studies of exploited marine animal populations, most models focus upon age structure 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Quinn_2003"
+literal "false"
+
+\end_inset
+
+. Most also tend to be temporally discrete (annual) difference equation approximations. This is largely due to the annual cycle in temperate regions of exploitation, and data assimilation, survey and assessment cycles and historically due to limitations to computational capacity. With such discretizations, come various approximations and assumptions and ultimately potential error or bias from temporal (and spatial) aliasing. Space is treated as an externality or more usually, completely ignored, though of course, advection-diffusion differential equation models are readily formulated.
+\end_layout
+
+\begin_layout Standard
+The continuous approach that we developed in this study addresses mechanisms in a structured manner. The additional model complexity succeeds in providing a similar and perhaps more reasonable understanding of snow crab population dynamics than the classical biomass dynamics model. It also permits a promising way forward towards describing the footprint of a fishery measured relative to potential abundance in the absence of fishing. It also identifies that there are difficulties that need to be addressed: most notably the 
+\emph on
+non-well-mixed
+\emph default
+ nature of the areas studied show spatial and temporal structures that require further parameterization and development.
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% This statement requires citation 
+\backslash
+cite{Smith:2023qr}. This statement requires multiple citations 
+\backslash
+cite{Smith:2023qr, Smith:2024jd}. This statement contains an in-text citation, for directly referring to a citation like so: 
+\backslash
+textcite{Smith:2024jd}.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%----------------------------------------------------------------------------------------
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%	 REFERENCES
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%----------------------------------------------------------------------------------------
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset bibtex
+LatexCommand bibtex
+bibfiles "biblio"
+options ""
+
+\end_inset
+
+ 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% Output the bibliography
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%% optional
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%
+\backslash
+supplementary{The following supporting information can be downloaded at:  
+\backslash
+linksupplementary{s1}, Figure S1: title; Table S1: title; Video S1: title.}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% Only for journal Methods and Protocols:
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% If you wish to submit a video article, please do so with any other supplementary material.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 
+\backslash
+supplementary{The following supporting information can be downloaded at: 
+\backslash
+linksupplementary{s1}, Figure S1: title; Table S1: title; Video S1: title. A supporting video article is available at doi: link.}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% Only for journal Hardware:
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% If you wish to submit a video article, please do so with any other supplementary material.
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 
+\backslash
+supplementary{The following supporting information can be downloaded at: 
+\backslash
+linksupplementary{s1}, Figure S1: title; Table S1: title; Video S1: title.
+\backslash
+vspace{6pt}
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%
+\backslash
+begin{tabularx}{
+\backslash
+textwidth}{lll}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%
+\backslash
+toprule
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%
+\backslash
+textbf{Name} & 
+\backslash
+textbf{Type} & 
+\backslash
+textbf{Description} 
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%
+\backslash
+midrule
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%S1 & Python script (.py) & Script of python source code used in XX 
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%S2 & Text (.txt) & Script of modelling code used to make Figure X 
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%S3 & Text (.txt) & Raw data from experiment X 
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%S4 & Video (.mp4) & Video demonstrating the hardware in use 
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%... &... &... 
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%
+\backslash
+bottomrule
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%
+\backslash
+end{tabularx}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%
+\backslash
+authorcontributions{}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 
+\backslash
+funding{This research received no external funding.}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 
+\backslash
+dataavailability{Data supporting reported results and model code can be found in the source code repository for this project: 
+\backslash
+url{https://github.com/jae0/dynamical_model/tree/master/snowcrab}.} 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+% 
+\backslash
+acknowledgments{Reviews of earlier drafts of this MS were kindly provided by B. Hubley and C. den Heyer.}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+\backslash
+begin{appendices}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%
+\backslash
+renewcommand{
+\backslash
+thesection}{
+\backslash
+Roman{section}}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+%
+\backslash
+renewcommand{
+\backslash
+thesubsection}{
+\backslash
+fnsymbol{subsection}}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Model continuum
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset CommandInset label
+LatexCommand label
+name "continuum"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Population dynamics can be studied in many ways. Arguably, the simplest is to see it as a single component such as the total number of individuals, as in the logistic equation (eq. 1). Such single component models have a long tradition 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Verhulst_1845, McKendrick_Pai_1912, Pearl_Reed_1920, Lotka_1925, Bacaër_2011"
+literal "false"
+
+\end_inset
+
+. This is a 
+\emph on
+phenomenological
+\emph default
+ perspective in that it abstracts a multitude of processes and interactions into very few externally facing parameters and one state variable (population size). Often used for such cases, the logistic model specifies dynamics with two parameters: a maximum specific rate of change, and some upper limit. Their utility and properties are well known and used in many domains.
+\end_layout
+
+\begin_layout Standard
+Discriminating subcomponents of a population, as in 
+\emph on
+Model 2
+\emph default
+, such as sex, age or size groups, phenotype and genotypes, one can follow increasingly more refined components over time and space. This we will refer to as an aggregate, more 
+\begin_inset Quotes eld
+\end_inset
+
+
+\emph on
+mechanistic
+\emph default
+
+\begin_inset Quotes erd
+\end_inset
+
+ perspective, as it is a continuum. For example, ecophysiological models characterize the average aggregate level processes under the assumption that individual-level metabolic rates (e.g., per capita rates of consumption, egestion, excretion, respiration, predation, somatic, gonadal growth, etc.) are relevant to aggregate level estimates to create mass-balance, mean-field type models 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Kitchell_1974, Boudreau_Dickie_1992, Bundy_et_al_2004"
+literal "false"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+When this discrimination extends to each individual with equally unique rules of interactions for every individual, these models are known as 
+\emph on
+individual-based
+\emph default
+ models. They too are simple, but this simplicity is in the types of interactions rather than the number of components. With increasing specificity, the interactions become biologically more recognizable mechanisms: this individual grew X cm, this individual died at Y years, this individual reproduced and gave birth to N females, and this individual moved D km to find good habitat. Some individuals will grow faster and this has consequences upon other aspects of their interactions with other organisms and reproduction and death.
+\end_layout
+
+\begin_layout Standard
+Though simple in concept, the application of 
+\emph on
+individual-based
+\emph default
+ models is actually quite difficult in that the rules need to be carefully constructed to describe correlated mean processes and also the variability between individuals. The rules thus tend to be probabilistic and context dependent. The rules can be modified to explore 
+\emph on
+what if
+\emph default
+ scenarios via stochastic simulation and eventually aggregated to offer insights on dynamic and spatial control measures. They tend to be most expressive when the number of individuals are low and stochastic effects become significant and observable (e.g., a countable population of whales). But estimating these rules is a challenge due to the open-ended and contingent manner in which they apply to a particular set of environmental conditions, in a particular population, with a particular phylogenetic history, surrounded by predators and prey that are themselves also subject to their own particularities. Their open-endedness means that some other factor may have been missed or misrepresented and so inferences are difficult to generalize beyond the model domain.
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+Mechanistic
+\emph default
+ models with some intermediate number of subcomponents, therefore, represent a reasoned balance between number of components and number of interactions. Their focus is upon the manner in which the mean (and sometimes the variability) changes with time, usually specified by differential equations. Identifying informative subcomponents is dependent upon the peculiarities of a particular system (species or population) that permit useful abstraction or simplifying assumptions. The drawback of these models is that they still require a lot of information and skill to parameterize them, and information that is usually not available or observable, causing assumptions to be made that are not always justified.
+\end_layout
+
+\begin_layout Section
+Logistic model
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset CommandInset label
+LatexCommand label
+name "logistic"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Verhulst's original formulation of the logistic equation was used to model Belgium's population growth 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+{
+\end_layout
+
+\end_inset
+
+(Verhulst 1845, Bacaër 2011)
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+}
+\end_layout
+
+\end_inset
+
+. His arguments alluded to Malthusian geometric (exponential) growth with some upper limit. The intrinsic rate of increase (r) representing the exponential rate of increase while carrying capacity (K) represented this limit. Subsequently 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "McKendrick_Pai_1912"
+literal "false"
+
+\end_inset
+
+ used it for bacterial growth and then 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Pearl_Reed_1920, Lotka_1925"
+literal "false"
+
+\end_inset
+
+ used it for the US population. It continues to be used today in numerous fields due to its underlying sigmoid shape 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Beverton_Holt_1957, Pianka_1970, Bohner_Chieochan_2013"
+literal "false"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+Lotka 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Lotka_1925"
+literal "false"
+
+\end_inset
+
+ recognized that the logistic equation can more simply be seen as a 2nd order Taylor series approximation of any general function 
+\begin_inset Formula ${\frac{\mathit{dN}}{\mathit{dt}}_{}=G}{(N)}$
+\end_inset
+
+, evaluated at N=0 and 
+\begin_inset Formula $O{(N^{h})}$
+\end_inset
+
+ are higher order terms greater of power h
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+\backslash
+textgreater
+\end_layout
+
+\end_inset
+
+2: 
+\begin_inset Formula ${\frac{\mathit{dN}}{\mathit{dt}}_{}=\mathit{rN}}-{({rK^{-1}})}{N^{2}+O}{(N^{h})}.$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Pianka 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Pianka_1970"
+literal "false"
+
+\end_inset
+
+ (in Fig. 9.5 of his paper) suggested a slightly different perspective on the logistic equation. He begins with birth and death rates that are linear functions of abundance: 
+\begin_inset Formula ${\beta=\beta}_{0}-\mathit{eN}$
+\end_inset
+
+, and 
+\begin_inset Formula $\delta={\delta_{0}+\mathit{fN}}$
+\end_inset
+
+. At equilibrium, K, 
+\begin_inset Formula $\beta=\delta$
+\end_inset
+
+ due to the intersection of the lines, which gives 
+\begin_inset Formula ${\beta_{0}-\mathit{eK}}={\delta_{0}+\mathit{fK}}$
+\end_inset
+
+, and so: 
+\begin_inset Formula ${r_{0}={\beta_{0}-\delta_{0}}={({e-f})}}K$
+\end_inset
+
+. Away from equilibrium, after some algebra, we obtain the logistic equation: 
+\begin_inset Formula $\frac{\mathit{dN}}{\mathit{dt}}_{}=\mathit{rN}={{({{({\beta{0-\mathit{eN}}})}-{({\delta_{0}+\mathit{fN}})}})}{N=r_{0}}{N-r_{0}}N^{2}.}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Interestingly, the sigmoid Beverton-Holt difference equation has also been shown to be related to the logistic equation 
+\begin_inset CommandInset citation
+LatexCommand cite
+after ""
+before ""
+key "Beverton_Holt_1957, Bohner_Chieochan_2013"
+literal "false"
+
+\end_inset
+
+: 
+\begin_inset Formula ${n_{t+1}=\frac{\nu Kn_{t}}{{K_{t}+{({\nu-1})}}n_{t}}}.$
+\end_inset
+
+ It is discrete in time and also sigmoid in shape with asymptotic limit (carrying capacity that varies with time) 
+\begin_inset Formula ${K_{t}}>0$
+\end_inset
+
+ and growth rate 
+\begin_inset Formula $\nu>1$
+\end_inset
+
+, for number 
+\begin_inset Formula $n_{t}>0$
+\end_inset
+
+. If we define: 
+\begin_inset Formula $r={{({\nu-1})}/\nu}$
+\end_inset
+
+ then 
+\begin_inset Formula $\nu={1/{({1-r})}}$
+\end_inset
+
+, then substitution and solving for 
+\begin_inset Formula $n_{t}$
+\end_inset
+
+ and then 
+\begin_inset Formula ${\Delta n}_{t}$
+\end_inset
+
+ gives: 
+\begin_inset Formula ${{\Delta n}_{t}=r}n_{t+1}{{({K_{t}-n_{t+1}})}/{({{K_{t}-r}n_{t+1}})}},$
+\end_inset
+
+ which simplifies further to the discrete logistic difference equation: 
+\begin_inset Formula ${{\Delta n}_{t}=r}n_{t+1}{({1-{n_{t}/K_{t}}})}$
+\end_inset
+
+. In the limit as 
+\begin_inset Formula $\Delta t\rightarrow0$
+\end_inset
+
+, this becomes the differential form of the logistic equation: 
+\begin_inset Formula ${{{\mathit{dn}/\mathit{dt}}=\mathit{rn}}{({1-{n/K_{t}}})}.}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Finally, another similar model, the 
+\emph on
+logistic discrete map
+\emph default
+, could be used for parameter estimation. The 
+\emph on
+discrete logistic map
+\emph default
+ is often represented as a Euler approximation of the logistic differential equation, 
+\begin_inset Formula ${\frac{\mathit{dZ}}{\mathit{dt}}=r}Z{({{1-Z}K^{-1}})}$
+\end_inset
+
+. Normalization of 
+\begin_inset Formula $Z$
+\end_inset
+
+ to 
+\begin_inset Formula $z={Z/K}$
+\end_inset
+
+ allows simplification to: 
+\begin_inset Formula ${\frac{\mathit{dz}}{\mathit{dt}}=r}z{({1-z})}.$
+\end_inset
+
+ The Euler approximation for a small increment of time 
+\begin_inset Formula ${\tau_{t+1}={\tau_{t}+\Delta}}\tau$
+\end_inset
+
+, 
+\begin_inset Formula $z$
+\end_inset
+
+ in the next time interval is estimated as: 
+\begin_inset Formula ${z_{t+1}={z_{t}+\Delta}}\tau\cdot\frac{\mathit{dz}}{\mathit{dt}}{}_{z_{t}}$
+\end_inset
+
+, which upon substitution of the differential equation and simplification gives: 
+\begin_inset Formula ${z_{t+1}={({{1+\Delta}\tau r})}}{z_{t}-\Delta}\tau r{z_{t}}^{2}$
+\end_inset
+
+. The identities: 
+\begin_inset Formula ${\rho={1+\Delta}}\tau r,$
+\end_inset
+
+ and 
+\begin_inset Formula ${n_{t}=\frac{\Delta\tau rz_{t}}{\rho}},$
+\end_inset
+
+ help to simplify further: 
+\begin_inset Formula ${n_{t+1}=\frac{\Delta\tau rz_{t+1}}{\rho}}.$
+\end_inset
+
+ Substitution of the identity of 
+\begin_inset Formula $z_{t+1}$
+\end_inset
+
+ to gives: 
+\begin_inset Formula $n_{t+1}={}$
+\end_inset
+
+ 
+\begin_inset Formula ${\frac{\Delta\tau r{({{({{1+\Delta}\tau r})}{z_{t}-\Delta}\tau r{z_{t}}^{2}})}}{\rho}=\rho}n_{t}{({1-n_{t}})}.$
+\end_inset
+
+ Note that 
+\begin_inset Formula $\rho$
+\end_inset
+
+ is 
+\begin_inset Formula ${1+\mathit{rescaled}}{(r)}$
+\end_inset
+
+, where recalled means it is a fractional change relative to the previous 
+\emph on
+time step
+\emph default
+. Similarly, 
+\begin_inset Formula $n$
+\end_inset
+
+ are rescaled values of z, more meaningful with a time step of 
+\begin_inset Formula $\Delta t$
+\end_inset
+
+. Importantly, this derivation is for infinitesimal changes in time. If the increment in time is relatively large, such as 
+\begin_inset Formula $\Delta{t=1}\mathit{year}$
+\end_inset
+
+, as it is commonly used in fisheries applications, the 
+\emph on
+infinitesimal
+\emph default
+ change assumption is not biologically reasonable.
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+\backslash
+end{appendices}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\begin_inset Note Note
+status open
+\begin_layout Plain Layout
+
+\begin_inset CommandInset bibtex
+LatexCommand bibtex
+bibfiles "biblio"
+
+\end_inset
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document
