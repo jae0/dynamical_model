@@ -16,11 +16,12 @@ This instance is a developmental branch. Current models:
 - [documentation](https://www.biorxiv.org/content/10.1101/2023.02.13.528296v3)  
 
 - example data in RData form: 
-    - biodyn_number_size_struct.RData (time series by large areal units, number, s
-ize, habitat, etc)
+
+    - biodyn_number_size_struct.RData (time series by large areal units, number, size, habitat, etc)
+
     - biodyn_biomass.RData (time series by large areal units in biomass)
     
-- main program: 04.snowcrab_fishery_model.jl, adjust file paths as required
+- [main program](https://github.com/jae0/dynamical_model/blob/master/snowcrab/README.md), adjust file paths as required
 
 - Julia startup files define environment, adjust as required.
 
