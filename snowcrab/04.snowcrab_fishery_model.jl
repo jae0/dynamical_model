@@ -91,7 +91,7 @@ model_variation = "size_structured_dde_normalized"  #      24hrs, >24 hrs
       model_variation = "logistic_discrete"              # q and intercept for observation model
       model_variation = "logistic_discrete_map"  # logistic map ... more extreme fluctuations
       model_variation = "size_structured_dde_normalized"  #      24hrs, >24 hrs
-      model_variation = "size_structured_dde_unnormalized"  # basic continuous model without normaliztion ... very very slow .. do not use
+      model_variation = "size_structured_dde_unnormalized"  # basic continuous model without normalization ... very very slow .. do not use
   (incomplete params need tweaking) ::   24hrs, >24 hrs
   =#
 
@@ -437,7 +437,7 @@ Using model solutions, compute other variables of interest via posterior simulat
 
 
 -------------
-# Tests of other methods of parameter estimation (ignore)
+### Tests of other methods of parameter estimation (ignore)
 
 ```julia
 restart_method = false
