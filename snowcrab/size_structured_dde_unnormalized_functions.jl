@@ -494,7 +494,7 @@ function fishery_model_harvest_control_rule(res, yrs; FM=FM, fb=fb, n_sample=500
   pl = vline!(pl, [quantile(K, 0.025)]/4.0;  alpha=0.5, color=:darkred, lw=2, line=:dash )
 
   nt = length(survey_time)
-  colours = get(colorschemes[:tab20c], 1:nt, :extrema )[rand(1:nt, nt)]
+  colours = get(ColorSchemes.tab20c, 1:nt, :extrema )[rand(1:nt, nt)]
 
   # scatter!( fb, FM ;  alpha=0.3, color=colours, markersize=4, markerstrokewidth=0)
 
@@ -898,7 +898,7 @@ function fishery_model_plot(; toplot=("fishing", "nofishing", "survey"),
     pl = vline!(pl, [quantile(K, 0.025)]/4.0;  alpha=0.5, color=:darkred, lw=2, line=:dash )
   
     nt = length(survey_time)
-    colours = get(colorschemes[:tab20c], 1:nt, :extrema )[rand(1:nt, nt)]
+    colours = get(ColorSchemes.tab20c, 1:nt, :extrema )[rand(1:nt, nt)]
   
     # scatter!( fb, FM ;  alpha=0.3, color=colours, markersize=4, markerstrokewidth=0)
   
@@ -951,7 +951,7 @@ function fishery_model_plot(; toplot=("fishing", "nofishing", "survey"),
     pl = vline!(pl, [quantile(K, 0.025)]/4.0;  alpha=0.5, color=:darkred, lw=2, line=:dash )
   
     nt = length(survey_time)
-    colours = get(colorschemes[:tab20c], 1:nt, :extrema )[rand(1:nt, nt)]
+    colours = get(ColorSchemes.tab20c, 1:nt, :extrema )[rand(1:nt, nt)]
   
     # scatter!( fb, FM ;  alpha=0.3, color=colours, markersize=4, markerstrokewidth=0)
   

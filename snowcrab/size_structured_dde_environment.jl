@@ -37,13 +37,8 @@ gr()
 # ---------------
 # make a copy of the input data in case ... 
 
-fndat_source = joinpath( bio_data_directory, "biodyn_number_size_struct.RData" )
-
-# fndat_source = joinpath( bio_data_directory, "bio.snowcrab", "modelled", 
-#    "1999_present_fb", "fishery_model_results", "turing1", "biodyn_number_size_struct.RData" )
-
-fndat = joinpath( model_outdir, basename(fndat_source) )
-
+fndat  = joinpath( bio_data_directory, "biodyn_number_size_struct.RData" )
+#= 
 if (!isfile(fndat)) 
   # prompt to input
   print("\nData file not found. Copy from: \n")
@@ -56,6 +51,7 @@ if (!isfile(fndat))
     cp( fndat_source, fndat; force=true )
   end
 end
+=#
 
 o = load( fndat, convert=true)
 

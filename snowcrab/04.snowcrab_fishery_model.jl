@@ -22,16 +22,18 @@
       # NOTE::: this requires 03.snowcrab_carstm.r to be completed
       source( file.path( code_root, "bio_startup.R" )  )
       loadfunctions("bio.snowcrab")
-      
+      year.assessment = 2022
+
       # prep data for discrete version
       if (grepl("logistic_discrete", model_variation )) {
-          fishery_model_data_inputs( year.assessment=year.assessment, type="biomass_dynamics", for_julia=TRUE   )
+        fishery_model_data_inputs( year.assessment=year.assessment, type="biomass_dynamics", for_julia=TRUE )
       }
 
       # prep data for continuous version: 
       if (grepl("size_structured", model_variation)) {
           # fishery landings has a weekly time step = 2/52 ~ 0.0385 ~ 0.04  X dt=0.01 seems to work best
-          fishery_model_data_inputs( year.assessment=year.assessment, type="size_structured_numerical_dynamics", for_julia=TRUE, time_resolution=2/52  )
+          carstm_results_directory = file.path( homedir, "projects", "dynamical_model", "snowcrab", "data" )
+          fishery_model_data_inputs( year.assessment=year.assessment, type="size_structured_numerical_dynamics", for_julia=TRUE, time_resolution=2/52, save_location=carstm_results_directory   )
       }
 
     # R-code ==== end
@@ -41,16 +43,23 @@
   # these need to be defined  ... if not in start up call or ".julia/config/startup.jl" or  local startup.jl
   current_directory =  @__DIR__()
 
-  project_directory = current_directory
-  bio_data_directory = current_directory
-  outputs_directory = current_directory
+  # choose correct directories
+  runtype = "operational"
+  runtype = "development"
 
-  # these are for operational work
-  # project_directory = joinpath( homedir(), "bio", "bio.snowcrab", "inst", "julia" ) 
-  # bio_data_directory = joinpath( homedir(), "bio.data" )  
-  # outputs_directory = joinpath( homedir(), "bio.data", "bio.snowcrab", "fishery_model" ) 
+  if runtype == "operational"
+    project_directory = joinpath( homedir(), "bio", "bio.snowcrab", "inst", "julia" ) 
+    bio_data_directory = joinpath( homedir(), "bio.data" )  
+    outputs_directory = joinpath( homedir(), "bio.data", "bio.snowcrab", "fishery_model" ) 
+    
+  elseif runtype == "development"
+    project_directory = joinpath( homedir(), "projects", "dynamical_model", "snowcrab" ) 
+    bio_data_directory = joinpath( project_directory, "data" )  
+    outputs_directory = joinpath( project_directory, "outputs" ) 
+  end
+
   
-
+   
 # RUN LEVEL OPTIONS: time, area model 
   year_assessment = 2022   # <<<<<<<<-- change
   yrs = 1999:year_assessment  
@@ -139,11 +148,18 @@
       turing_sampler_test = Turing.HMCDA(0.25, 0.65)  #  total leapfrog length, target accept ratio.
       turing_sampler_test = Turing.NUTS{Turing.ReverseDiffAD{true}}( n_adapts_test, 0.65 ) # , init_ϵ=0.001
       turing_sampler_test = Turing.NUTS( 0.65 ) # , init_ϵ=0.001
+
   =#
 
   turing_sampler_test = Turing.NUTS(n_adapts_test, 0.65; max_depth=7, init_ϵ=0.0125 )
- 
+
+  
   #=
+  
+    using DistributionsAD, AdvancedVI
+    qq = vi(fmod, ADVI(10, 1000) )  # num_elbo_samples, max_iters;; optimizer=Flux.ADAM(1e-1))
+    res = rand(qq, 1000); 
+
       # collect good seeds. criteria: (g10
 
       # must re-run if redefining params:
@@ -212,17 +228,20 @@
  
   #=
       # params tweaks if required: most are defined in environments 
-      n_adapts=200
-      n_samples=500
+      n_adapts=500
+      n_samples=1000
       n_chains=4
       rejection_rate = 0.65
       max_depth = 7
       init_ϵ = 0.0125
       turing_sampler = Turing.NUTS(n_samples, rejection_rate; max_depth=max_depth, init_ϵ=init_ϵ )
+
+      # 13 hrs for 4X (turing 500, 1000, 4)
   =#
  
   # choose one:
   res  =  sample( fmod, turing_sampler, MCMCThreads(), n_samples, n_chains ) 
+
 
   #= alternative: restart from pre-determined means
     res  =  sample( fmod, turing_sampler, MCMCThreads(), 
