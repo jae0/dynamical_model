@@ -363,7 +363,7 @@ end
 
 
 function fishery_model_predictions( res; prediction_time=prediction_time, solver_params=solver_params, PM=PM, 
-  n_sample=-1, lower_bound=0.0, override_negative_solution=false, ntries_mult=5 )
+  n_sample=-1, lower_bound=0.0, override_negative_solution=false, ntries_mult=10 )
 
   nchains = size(res)[3]
   nsims = size(res)[1]
@@ -429,8 +429,7 @@ function fishery_model_predictions( res; prediction_time=prediction_time, solver
       end
       
       z += 1
-
-      # likelihood of the data
+ 
       MS0 = Array(msol0) 
       MS1 = Array(msol1) 
 
@@ -840,8 +839,11 @@ function project_with_constant_catch( res; solver_params=solver_params, PM=PM, C
   
   # n scaled, n unscaled, biomass of fb with and without fishing, model_traces, model_times 
   # override_negative_solution=true makes it more permissive .. but tuncates at 0, so be careful
-  m, num, bio, trace, trace_bio, trace_time = fishery_model_predictions(res, solver_params=sp, PM=PM , 
-    lower_bound=-0.05, override_negative_solution=true, ntries_mult=10 )
+  m, num, bio, trace, trace_bio, trace_time = fishery_model_predictions(
+    res, solver_params=sp, PM=PM , 
+    lower_bound=-0.05, override_negative_solution=true, ntries_mult=10 
+  )
+
   return m, num, bio, trace, trace_bio, trace_time
 end
 
