@@ -1,4 +1,13 @@
-# Dynamical models for fishery assessment made possible by [Julia](https://julialang.org/), [SciML](https://sciml.ai/) and [Turing](https://turing.ml/). 
+# Dynamical models for fishery assessment
+
+They are made possible by some excellent work:
+
+- [Julia](https://julialang.org/)
+- [SciML](https://sciml.ai/) 
+- [Turing](https://turing.ml/) 
+- [DifferentialEquations](https://github.com/SciML/DifferentialEquations.jl)
+  
+- Other important libraries used can be found in the set up environment (*.environment.jl) for each project.
 
 
 ---
