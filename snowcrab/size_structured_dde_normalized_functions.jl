@@ -843,7 +843,7 @@ function project_with_constant_catch( res; solver_params=solver_params, PM=PM, C
     res, solver_params=sp, PM=PM , 
     lower_bound=-0.05, override_negative_solution=true, ntries_mult=10 
   )
-
+  fishery_model_predictions
   return m, num, bio, trace, trace_bio, trace_time
 end
 
