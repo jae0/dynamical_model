@@ -50,13 +50,10 @@ gr()
 # gr(size=(1000,1000),legend=false,markerstrokewidth=0,markersize=4)
 
 # allsavetimes = unique( vcat( survey_time, prediction_time  ) )
-
-fndat_source = joinpath( bio_data_directory,"biodyn_biomass.RData" )
-# fndat_source = joinpath( bio_data_directory, "bio.snowcrab", "modelled", 
-"1999_present_fb", "fishery_model_results", "turing1", "biodyn_biomass.RData" )
-
-fndat = joinpath( model_outdir, basename(fndat_source) )
-
+ 
+fndat  = joinpath( bio_data_directory, "biodyn_biomass.RData" )
+# fndat = "/home/jae/bio.data/bio.snowcrab/modelled/1999_present_fb/fishery_model_results/turing1/biodyn_biomass.RData"
+#= 
 if (!isfile(fndat)) 
   # prompt to input
   print("\nData file not found. Copy from: \n")
@@ -69,8 +66,8 @@ if (!isfile(fndat))
     cp( fndat_source, fndat; force=true )
   end
 end
-
-# fndat = "/home/jae/bio.data/bio.snowcrab/modelled/1999_present_fb/fishery_model_results/turing1/biodyn_biomass.RData"
+=#
+ 
 o = load( fndat, convert=true)
  
 Y = o["Y"][∈(yrs).(o["Y"].yrs), :]
