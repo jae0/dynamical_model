@@ -1,6 +1,6 @@
 # Snow crab dynamical model results 
 
-Current year: 2022
+Assessment year: 2022
 
 This is a convenience wrapper to links/views of figures in one spot.
 
@@ -57,6 +57,9 @@ This is a convenience wrapper to links/views of figures in one spot.
 
 
 
+---
+
+~
 
 ---
 
