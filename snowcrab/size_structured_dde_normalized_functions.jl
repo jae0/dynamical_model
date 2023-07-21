@@ -1,41 +1,33 @@
-using Turing
-  
+
+
 
 function size_structured_dde!( du, u, h, p, t )
   # here u, du are actual numbers .. not normalized by K due to use of callbacks
-
-  # b, K, d, d2, v, tau, hsa  = p
-  b, K, d, d2, v  = p  # hsa is global 
- 
+  b5, b6, K, d, d2, v  = p  # hsa is global 
   @inbounds begin
-
-      # this break down seems to speed it up a bit ... not sure why
-      br =  b .* h(p, t-8.0)[6]  
-      tr =  v .* h(p, t-1.0)[2:5]
+      trg = [h(p, t-j)[6] for j in BLY ]
+      tr =  v .* h(p, t-1)[2:5]
       dh = d2 .* u ./ hsa(t, 1:6)
       dr = d .* u  .+  dh .* u 
-      
-      du[1] = tr[1] * K[2] / K[1]            - dr[1]       # note:
-      du[2] = tr[2] * K[3] / K[2]   - tr[1]  - dr[2]
-      du[3] = tr[3] * K[4] / K[3]   - tr[2]  - dr[3]
-      du[4] = tr[4] * K[5] / K[4]   - tr[3]  - dr[4]
-      du[5] = br[1] * K[6] / K[5]   - tr[4]  - dr[5]
-      du[6] = br[2]                          - dr[6]      # fem mat simple logistic with lag tau and density dep on present numbers
-    
+      du[1] = tr[1] * K[2] / K[1]              - dr[1]       # note:
+      du[2] = tr[2] * K[3] / K[2]     - tr[1]  - dr[2]
+      du[3] = tr[3] * K[4] / K[3]     - tr[2]  - dr[3]
+      du[4] = tr[4] * K[5] / K[4]     - tr[3]  - dr[4]
+      du[5] = b5' * trg * K[6] / K[5] - tr[4]  - dr[5]
+      du[6] = b6' * trg                        - dr[6]      # fem mat simple logistic with lag tau and density dep on present numbers
     end
-
 end
 
 
 function dde_parameters()
     # these are dummy initial values .. just to get things started
-    b=[1.7, 0.5]
+    b5= repeat( [1.0], nB )
+    b6= repeat( [1.0], nB )
     K=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0] .*kmu;
     d=[0.15, 0.11, 0.14, 0.17, 0.16, 0.19];
     d2 = [0.4, 0.4, 0.4, 0.4, 0.4, 0.4] 
     v=[0.65, 0.68, 0.61, 0.79];
-    # params = ( b, K, d, d2, v, tau, hsa)
-    params = ( b, K, d, d2, v)
+    params = ( b5, b6, K, d, d2, v)
     return params
 end
 
@@ -58,21 +50,22 @@ function β( mode, conc )
 end 
 
  
-@model function size_structured_dde_turing( ; PM, solver_params )
+Turing.@model function size_structured_dde_turing( ; PM, solver_params )
  
   K ~ filldist( LogNormal( PM.logkmu[1], PM.logkmu[2]), PM.nS )  # kmu already on log scale # is max of a multiyear group , serves as upper bound for all
-  q ~ filldist( Normal( PM.q[1], PM.q[2] ), PM.nS )
-  qc ~ arraydist([Normal( PM.qc[1][i], PM.qc[2]) for i in 1:PM.nS])  # informative prior on relative height 
+  q1 ~ filldist( Normal( PM.q1[1], PM.q1[2] ), PM.nS )
+  q0 ~ arraydist([Normal( PM.q0[1][i], PM.q0[2] ) for i in 1:PM.nS])  # informative prior on relative height 
   model_sd ~  arraydist(LogNormal.( PM.logScv[1], PM.logScv[2]) ) # working: β(0.1, 10.0);  plot(x->pdf(β(0.3,12), x), xlim=(0,1)) # uniform 
-  b ~   filldist( LogNormal( PM.b[1],  PM.b[2] ), PM.nB )   # centered on 1; plot(x->pdf(LogNormal(log(10), 1.0), x), xlim=(0,10)) # mode of 5
+  b5 ~   filldist( LogNormal( PM.b[1],  PM.b[2] ), nB )   # centered on 1; plot(x->pdf(LogNormal(log(10), 1.0), x), xlim=(0,10)) # mode of 5
+  b6 ~   filldist( LogNormal( PM.b[1],  PM.b[2] ), nB )   # centered on 1; plot(x->pdf(LogNormal(log(10), 1.0), x), xlim=(0,10)) # mode of 5
   d ~   filldist( LogNormal( PM.d[1],  PM.d[2] ), PM.nS ) # plot(x->pdf(LogNormal(0.2, 1.0), x), xlim=(0, 2)) 
   d2 ~  filldist( LogNormal( PM.d2[1], PM.d2[2]), PM.nS ) # plot(x->pdf(LogNormal(-0.7096, 0.25 ), x), xlim=(0, 2)) 
-  v ~   filldist( LogNormal( PM.v[1],  PM.v[2] ), PM.nG ) # transsition rates # plot(x->pdf(LogNormal( 0.3782, 0.5 ), x), xlim=(0,1))  
-  u0 ~  filldist( Beta(2, 2), nS )  # plot(x->pdf(Beta(1, 1), x), xlim=(0,1)) # uniform 
+  v ~   filldist( LogNormal( PM.v[1],  PM.v[2] ), PM.nG ) # transition rates # plot(x->pdf(LogNormal( 0.3782, 0.5 ), x), xlim=(0,1))  
+  u0 ~  filldist( Uniform(0, 1), nS )  # plot(x->pdf(Beta(1, 1), x), xlim=(0,1)) # uniform 
 
   # process model
   prob_new = remake( solver_params.prob; u0=u0, h=solver_params.h, 
-    tspan=solver_params.tspan, p=( b, K, d, d2, v ) )
+    tspan=solver_params.tspan, p=( b5, b6, K, d, d2, v ) )
 
   msol = solve(
       prob_new,
@@ -80,8 +73,9 @@ end
       callback=solver_params.cb,
       abstol=solver_params.abstol, 
       reltol=solver_params.reltol, 
-      # tstops=solver_params.saveat,  
-      saveat=solver_params.dt
+      tstops=solver_params.saveat,  
+      saveat=solver_params.dt,
+      alg_hints=[:stiff]
       # ,
       # saveat=solver_params.saveat
   )
@@ -101,11 +95,19 @@ end
   end
 
   
-  # likelihood of the data
-  A = view( Array(msol), :, ii) .* q .+ qc
-  sigma = view(  model_sd, PM.Si, : )
+  # map S <=> m  where S = observation index on unit scale; m = latent, scaled abundance on unit scale
+  # observation model: S = (m - q0)/ q1   <=>   m = S * q1 + q0  
+  A = ( view( Array(msol), :, ii) .- q0) ./ q1  
   
+  if any( x -> x < 0.0, A)
+    Turing.@addlogprob! -Inf
+    return nothing
+  end
+  
+  sigma = view( model_sd, PM.Si, : )
+   
   @. PM.data ~ Normal( A', sigma )  
+  # equivalent representations:
   # @. PM.data ~ Normal( A', model_sd[PM.Si, :] )   
   # PM.datavector ~ MvNormal( vec(A'), Diagonal(vec(sigma).^2.0)  )  # no real speed gain using MVN .. JC: Feb 2023
 
@@ -121,20 +123,21 @@ function fishery_model_test( test=("basic", "random_external_forcing", "fishing"
   theme(:default)
   solver_test =  MethodOfSteps(Tsit5())
 
+
   if any( occursin.( r"basic", test )  )
 
     ##  h, hsa, cb, tau, etc. are defined in the *_environment.jl file
     
-    b=[0.8, 0.5]
-    K=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0] .* kmu;
-    v=[0.65, 0.68, 0.61, 0.79];
-    d=[0.15, 0.11, 0.14, 0.17, 0.16, 0.19];
-    d2 =[0.5, 0.5, 0.5, 0.5, 0.5, 0.5] 
+    b5 = repeat( [0.6], nB )
+    b6 = repeat( [0.6], nB )
+    K  = repeat( [1.0], nS ) .* kmu;
+    d  = repeat( [0.2], nS );
+    d2 = repeat( [0.5], nS ) 
+    v  = repeat( [0.8], nS-2 );
     
-    u0 = [ 0.65, 0.6, 0.52, 0.62, 0.58, 0.32 ]  ; 
+    u0 = rand(nS)  ; 
     tau=[1.0] 
-    # params = ( b, K, d, d2, v, tau, hsa )
-    params = ( b, K, d, d2, v  )
+    params = ( b5, b6, K, d, d2, v  )
  
     prob1 = DDEProblem( size_structured_dde!, u0, h, tspan, params, constant_lags=tau  )  # tau=[1]
 
@@ -147,24 +150,25 @@ function fishery_model_test( test=("basic", "random_external_forcing", "fishing"
     # testing DDE version -- initial values for size_structured_dde! 
     # basic run
     ks = 1000
-    u0 = [ 0.1, 0.2, 0.3, 0.4, 0.5, 0.6 ] ;
-    b=[ 0.6, 0.6 ]
-    K=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0] .* ks;
-    d=[0.4, 0.4, 0.4, 0.4, 0.4, 0.4];
-    v=[0.9, 0.9, 0.9, 0.9];  
-    d2=[0.5, 0.5, 0.5, 0.5, 0.5, 0.5] 
+    u0 = rand(nS)  ; 
+    K  = repeat( [1.0], nS ) .* ks;
+
+    b5 = repeat( [0.6], nB )
+    b6 = repeat( [0.6], nB )
+    d  = repeat( [0.4], nS );
+    d2 = repeat( [0.5], nS ) 
+    v  = repeat( [0.8], nS-2 );  
     tau=[1.0] 
   
     survey_time = 1999:2021
     
-    external_forcing = ones(length(survey_time),6)  # turns it off
-    # external_forcing = rand(length(survey_time),6) # random
+    external_forcing = ones(length(survey_time), nS)  # turns it off
+    # external_forcing = rand(length(survey_time), nS) # random
     
     efc = extrapolate( interpolate( external_forcing, (BSpline(Linear()), NoInterp()) ), Interpolations.Flat() )
-    hsa = Interpolations.scale(efc, 1999:2021, 1:6 )
+    hsa = Interpolations.scale(efc, 1999:2021, 1:nS )
     
-    # p = ( b, K, d, d2, v, tau, hsa )   
-    p = ( b, K, d, d2, v )   
+    p = ( b5, b6, K, d, d2, v )   
     
     tspan = (1990.0, 2050.0)
     nS = length(u0)  # n components
@@ -183,12 +187,14 @@ function fishery_model_test( test=("basic", "random_external_forcing", "fishing"
   elseif  any( occursin.( r"nofishing", test ) )
 
     ks = 1.0e9
-    K=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0] .* ks;
-    u0 = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5];
-    b=[0.6, 0.4]
-    v=[0.8066539263878958, 0.7165358852484025, 0.8341124383106499, 0.7857601054678678]
-    d=[0.20223639702656727, 0.18864211980978104, 0.18063928527606177, 0.23030220100440996, 0.19713968752681676, 0.40151610614035915]
-    d2=[0.6, 0.6, 0.6, 0.6, 0.6, 0.6] 
+    u0 = rand(nS)  ; 
+    K  = repeat( [1.0], nS ) .* ks;
+
+    b5 = repeat( [0.6], nB )
+    b6 = repeat( [0.6], nB )
+    d  = repeat( [0.4], nS );
+    d2 = repeat( [0.5], nS ) 
+    v  = repeat( [0.8], nS-2 );  
     tau=[1.0] 
 
     h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS) .* 0.5
@@ -202,8 +208,7 @@ function fishery_model_test( test=("basic", "random_external_forcing", "fishing"
     efc1 = extrapolate( interpolate( external_forcing, (BSpline(Linear()), NoInterp()) ), Interpolations.Flat() )
     hsa = Interpolations.scale(efc1, 1999:2021, 1:6 )
     
-    # p = ( b, K, d, d2, v, tau, hsa )   
-    p = ( b, K, d, d2, v )   
+    p = ( b5, b6, K, d, d2, v )   
     
     prob3 = DDEProblem( size_structured_dde!, u0, h, tspan, p; constant_lags=tau )
     
@@ -222,12 +227,14 @@ function fishery_model_test( test=("basic", "random_external_forcing", "fishing"
   elseif  any( occursin.( r"fishing", test )  | occursin( r"nofishing", test ) )
 
     ks = 1.0e9
-    K = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0] .* ks;
-    u0 = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5];
-    b=[0.8, 0.5]
-    v=[0.8066539263878958, 0.7165358852484025, 0.8341124383106499, 0.7857601054678678]
-    d=[0.20223639702656727, 0.18864211980978104, 0.18063928527606177, 0.23030220100440996, 0.19713968752681676, 0.40151610614035915]
-    d2=[0.4, 0.4, 0.4, 0.4, 0.4, 0.4] 
+    u0 = rand(nS)  ; 
+    K  = repeat( [1.0], nS ) .* ks;
+
+    b5 = repeat( [0.6], nB )
+    b6 = repeat( [0.6], nB )
+    d  = repeat( [0.4], nS );
+    d2 = repeat( [0.5], nS ) 
+    v  = repeat( [0.8], nS-2 );  
     tau=[1.0] 
 
     h(p, t; idxs=nothing) = typeof(idxs) <: Number ? 1.0 : ones(nS) .* ks
@@ -242,8 +249,7 @@ function fishery_model_test( test=("basic", "random_external_forcing", "fishing"
     efc2 = extrapolate( interpolate( external_forcing, (BSpline(Linear()), NoInterp()) ), Interpolations.Flat() )
     hsa = Interpolations.scale(efc2, 1999:2021, 1:6 )
    
-    #p = ( b, K, d, d2, v, tau, hsa)   
-    p = ( b, K, d, d2, v )   
+    p = ( b5, b6, K, d, d2, v )   
    
     prob4 = DDEProblem( size_structured_dde!, u0, h, tspan, p; constant_lags=tau )
     # prob4 = remake( prob; u0=u0, h=h, tspan=tspan, p=p )
@@ -271,16 +277,6 @@ end
 
 # -----------
 
-function abundance_from_index( aindex, res, k )
-  u = size(res)
-  v = aindex .* ones(length(aindex), u[1]) # expand to matrix
-  yhat = ( v' .- res[:,Symbol("qc[$k]"),:]  )  ./  res[:,Symbol("q[$k]"),:] .* res[:,Symbol("K[$k]"),:]  
-  return yhat'
-end
-
-
-# -----------
-
   
 
 
@@ -292,11 +288,11 @@ function fishery_model_predictions_timeseries( num; prediction_time, plot_k )
   pl = plot!(pl; legend=false )
   pl = plot!(pl; ylim=(0, maximum(gk)*1.01 ) )
 
-  # back transform S to normal scale .. do sims too (TODO)
-  yhat = ( S[:,plot_k] .- mean(res[:,Symbol("qc[$plot_k]"),:]  ) ) ./ mean(res[:,Symbol("q[$plot_k]"),:]) .* mean(res[:,Symbol("K[$plot_k]"),:]  )
+  S_K_sims = abundance_from_index( S[:,plot_k], res; k=plot_k )
+  S_K = mean(S_K_sims, dims=2)  # average by year
 
-  pl = plot!(pl, survey_time, yhat, color=:gray, lw=2 )
-  pl = scatter!(pl, survey_time, yhat, markersize=4, color=:grey)
+  pl = plot!(pl, survey_time, S_K, color=:gray, lw=2 )
+  pl = scatter!(pl, survey_time, S_K, markersize=4, color=:grey)
   pl = plot!(pl; legend=false )
   return (gk, pl)
 end
@@ -363,7 +359,7 @@ end
 
 
 function fishery_model_predictions( res; prediction_time=prediction_time, solver_params=solver_params, PM=PM, 
-  n_sample=-1, lower_bound=0.0, override_negative_solution=false, ntries_mult=10 )
+  n_sample=-1, lower_bound=0.0, override_negative_solution=false, ntries_mult=5 )
 
   nchains = size(res)[3]
   nsims = size(res)[1]
@@ -394,22 +390,23 @@ function fishery_model_predictions( res; prediction_time=prediction_time, solver
     j = rand(1:nsims)  # nsims
     l = rand(1:nchains) # nchains
 
-    b = [ res[j, Symbol("b[$k]"), l] for k in 1:2]
+    b5 = [ res[j, Symbol("b5[$k]"), l] for k in 1:nB]
+    b6 = [ res[j, Symbol("b6[$k]"), l] for k in 1:nB]
     K = [ res[j, Symbol("K[$k]"), l] for k in 1:nS]
     v = [ res[j, Symbol("v[$k]"), l] for k in 1:4]
     d = [ res[j, Symbol("d[$k]"), l] for k in 1:nS]
     d2=[ res[j, Symbol("d2[$k]"), l] for k in 1:nS]
     u0 = [ res[j, Symbol("u0[$k]"), l] for k in 1:nS]
 
-    prb = remake( solver_params.prob; u0=u0 , h=solver_params.h, tspan=solver_params.tspan, p=( b, K, d, d2, v ) )
+    prb = remake( solver_params.prob; u0=u0 , h=solver_params.h, tspan=solver_params.tspan, p=( b5, b6, K, d, d2, v ) )
     msol1 = solve( prb, solver_params.solver, callback=solver_params.cb, 
       saveat=solver_params.dt ,
-      isoutofdomain=(y,p,t)->any(x -> x<lower_bound, y)  # permit exceeding K
+      isoutofdomain=(y,p,t)->any(x -> x<lower_bound, y)  # permit exceeding K, only check lower
     )
 
     msol0 = solve( prb, solver_params.solver,  
       saveat=solver_params.dt,
-      isoutofdomain=(y,p,t)->any(x -> x<lower_bound, y)  # permit exceeding K
+      isoutofdomain=(y,p,t)->any(x -> x<lower_bound, y)  # permit exceeding K, only check lower
     )
 
     if msol1.retcode == :Success && msol0.retcode == :Success
@@ -429,7 +426,8 @@ function fishery_model_predictions( res; prediction_time=prediction_time, solver
       end
       
       z += 1
- 
+
+      # likelihood of the data
       MS0 = Array(msol0) 
       MS1 = Array(msol1) 
 
@@ -487,14 +485,37 @@ function fishery_model_mortality( ; removed=removed, bio=bio, survey_time=survey
   return ( Fkt, FR, FM  )
 end
 
+
 # -----------
 
 
-function fishery_model_plot(; toplot=("fishing", "nofishing", "survey"), n_sample=200,
+
+
+function abundance_from_index( Sai, res; k=1, model_variation="size_structured_dde_normalized"  )
+  # map S <=> m  where S = observation index on unit scale; m = latent, scaled abundance on unit scale
+  # observation model: S = (m - q0)/ q1   <=>   m = S * q1 + q0  
+  if model_variation=="size_structured_dde_normalized"  
+    q0 =  vec(res[:,Symbol("q0[$k]"),:])'
+    q1 =  vec(res[:,Symbol("q1[$k]"),:])'
+    K =  vec(res[:,Symbol("K[$k]"),:])'
+    S_m = (( Sai  .* q1) .+ q0 ) .*  K   # abundance_from_index  now on latent scale
+  elseif model_variation=="size_structured_dde_unnormalized"  
+    q0 =  vec(res[:,Symbol("q0[$k]"),:])'
+    q1 =  vec(res[:,Symbol("q1[$k]"),:])'
+    # K =  vec(res[:,Symbol("K[$k]"),:])'
+    S_m = (( Sai  .* q1) .+ q0 )    # abundance_from_index  now on latent scale
+  return S_m
+end
+
+
+# -----------
+
+
+function fishery_model_plot(; toplot=("fishing", "nofishing", "survey"), n_sample=min(250, size(bio)[2]),
   res=res, bio=bio, num=num, trace=trace, trace_bio=trace_bio, FM=FM, 
   S=S, si=1, scale_factor=scale_factor, 
   prediction_time=prediction_time, survey_time=survey_time, yrs=yrs, 
-  alphav=0.05, 
+  alphav=0.05, labelsize=16,
   pl= Plots.plot(), 
   time_range=(floor(minimum(survey_time))-0.25, ceil(maximum(survey_time))+0.25 ),
   time_range_predictions=(floor(minimum(survey_time))-1.0, ceil(maximum(prediction_time)) )
@@ -536,22 +557,25 @@ function fishery_model_plot(; toplot=("fishing", "nofishing", "survey"), n_sampl
   end
 
   if any(isequal.("survey", toplot))  
-    # back transform S to normal scale .. do sims too (TODO)
-    k = 1
-    qcm = mean(res[:,Symbol("qc[$k]"),:])
-    qm  = mean(res[:,Symbol("q[$k]"),:])
-    Km = mean(res[:,Symbol("K[$k]"),:]  )
-    yhat = ( S[:,k] .- qcm  ) ./ qm .* Km   # abundance_from_index S[:,1]  
+
+    # map S -> m and then multiply by K
+    # where S=observation on unit scale; m=latent, scaled abundance on unit scale
+    # observation model is: S = (m - q0)/ q1 
+    # inverse is : m = S * q1 + q0  
+
+    S_K_sims = abundance_from_index( S[:,1], res; k=1 )
+ 
     if nameof(typeof(mw)) == :ScaledInterpolation
-      yhat = yhat .* mw(yrs) ./ 1000.0  ./ 1000.0
+      S_K_sims = S_K_sims .* mw(yrs) ./ 1000.0  ./ 1000.0
     else
-      yhat = yhat .* scale_factor
+      S_K_sims = S_K_sims .* scale_factor
     end
-    pl = plot!(pl, survey_time, yhat, color=:gray, lw=2 )
-    pl = scatter!(pl, survey_time, yhat, markersize=4, color=:darkgray)
+
+    S_K = mean(S_K_sims, dims=2)  # average by year
+    pl = plot!(pl, survey_time, S_K, color=:gray, lw=2 )
+    pl = scatter!(pl, survey_time, S_K, markersize=4, color=:darkgray)
     pl = plot!(pl; legend=false )
     pl = plot!(pl; xlim=time_range )
-
   end
   
 
@@ -563,11 +587,11 @@ function fishery_model_plot(; toplot=("fishing", "nofishing", "survey"), n_sampl
     pl = plot!(pl; legend=false )
     pl = plot!(pl; ylim=(0, maximum(gk)*1.01 ) )
 
-    # back transform S to normal scale .. do sims too (TODO)
-    yhat = ( S[:,si] .- mean(res[:,Symbol("qc[$si]"),:]  ) ) ./ mean(res[:,Symbol("q[$si]"),:]) .* mean(res[:,Symbol("K[$si]"),:]  )
-
-    pl = plot!(pl, survey_time, yhat, color=:gray, lw=2 )
-    pl = scatter!(pl, survey_time, yhat, markersize=4, color=:grey)
+    S_K_sims = abundance_from_index( S[:,si], res; k=si )
+    S_K = mean(S_K_sims, dims=2)  # average by year
+ 
+    pl = plot!(pl, survey_time, S_K, color=:gray, lw=2 )
+    pl = scatter!(pl, survey_time, S_K, markersize=4, color=:grey)
     pl = plot!(pl; legend=false )
     pl = plot!(pl; xlim=time_range )
   end
@@ -580,11 +604,11 @@ function fishery_model_plot(; toplot=("fishing", "nofishing", "survey"), n_sampl
     pl = plot!(pl; legend=false )
     pl = plot!(pl; ylim=(0, maximum(gk)*1.01 ) )
 
-    # back transform S to normal scale .. do sims too (TODO)
-    yhat = ( S[:,si] .- mean(res[:,Symbol("qc[$si]"),:]  ) ) ./ mean(res[:,Symbol("q[$si]"),:]) .* mean(res[:,Symbol("K[$si]"),:]  )
+    S_K_sims = abundance_from_index( S[:,si], res; k=si )
+    S_K = mean(S_K_sims, dims=2)  # average by year
 
-    pl = plot!(pl, survey_time, yhat, color=:gray, lw=2 )
-    pl = scatter!(pl, survey_time, yhat, markersize=4, color=:grey)
+    pl = plot!(pl, survey_time, S_K, color=:gray, lw=2 )
+    pl = scatter!(pl, survey_time, S_K, markersize=4, color=:grey)
     pl = plot!(pl; legend=false )
     pl = plot!(pl; xlim=time_range )
   end
@@ -705,10 +729,10 @@ function fishery_model_plot(; toplot=("fishing", "nofishing", "survey"), n_sampl
     pl = plot!(pl, fb_mean, g_mean ;  alpha=0.8, color=:slateblue, lw=3)
   
     pl = scatter!(pl,  fb_mean, g_mean ;  alpha=0.8, color=colours,  markersize=4, markerstrokewidth=0,
-      series_annotations = text.(trunc.(Int, survey_time), :top, :left, pointsize=4) )
-    pl = scatter!(pl,  [fb_mean[nt]], [g_mean[nt]] ;  alpha=0.8, color=:yellow, markersize=8, markerstrokewidth=1)
+      series_annotations = text.(trunc.(Int, survey_time), :top, :left, pointsize=6) )
+    pl = scatter!(pl,  [fb_mean[nt]], [g_mean[nt]] ;  alpha=0.8, color=:yellow, markersize=10, markerstrokewidth=2)
     
-    ub = max( quantile(K, 0.95), maximum( fb_mean ) ) * 1.05
+    ub = max( quantile(K, 0.75), maximum( fb_mean ) ) * 1.05
     pl = plot!(pl; legend=false, xlim=(0, ub ), ylim=(0, maximum(g_mean ) * 1.05  ) )
  
   end
@@ -751,13 +775,14 @@ function fishery_model_plot(; toplot=("fishing", "nofishing", "survey"), n_sampl
     pl = plot!(pl, fb_mean, fm_mean ;  alpha=0.8, color=:slateblue, lw=3)
   
     pl = scatter!(pl,  fb_mean, fm_mean ;  alpha=0.8, color=colours,  markersize=4, markerstrokewidth=0,
-      series_annotations = text.(trunc.(Int, survey_time), :top, :left, pointsize=4) )
-    pl = scatter!(pl,  [fb_mean[nt]], [fm_mean[nt]] ;  alpha=0.8, color=:yellow, markersize=8, markerstrokewidth=1)
+      series_annotations = text.(trunc.(Int, survey_time), :top, :left, pointsize=6) )
+    pl = scatter!(pl,  [fb_mean[nt]], [fm_mean[nt]] ;  alpha=0.8, color=:yellow, markersize=10, markerstrokewidth=2)
     
-    ub = max( quantile(K, 0.95), maximum( fb_mean ) ) * 1.05
+    ub = max( quantile(K, 0.75), maximum( fb_mean ) ) * 1.05
     pl = plot!(pl; legend=false, xlim=(0, ub ), ylim=(0, maximum(fm_mean ) * 1.05  ) )
  
   end
+  pl = plot!(pl, xguidefontsize=labelsize, yguidefontsize=labelsize, xtickfontsize=labelsize,ytickfontsize=labelsize )
    
   return(pl)
 
@@ -822,7 +847,7 @@ function project_with_constant_catch( res; solver_params=solver_params, PM=PM, C
 
   fishing_pattern_seasonal = fishing_pattern_from_data(fish_time, removed, ny_fishing_pattern ) # fraction of annual total .. fishing_pattern(0.1) gives fraction captured on average by 0.1 * 365 days 
   
-  condition_fp = function(u, t, integrator )
+  function condition_fp(u, t, integrator )
     t in fish_time_project
   end
 
@@ -839,11 +864,8 @@ function project_with_constant_catch( res; solver_params=solver_params, PM=PM, C
   
   # n scaled, n unscaled, biomass of fb with and without fishing, model_traces, model_times 
   # override_negative_solution=true makes it more permissive .. but tuncates at 0, so be careful
-  m, num, bio, trace, trace_bio, trace_time = fishery_model_predictions(
-    res, solver_params=sp, PM=PM , 
-    lower_bound=-0.05, override_negative_solution=true, ntries_mult=10 
-  )
-  fishery_model_predictions
+  m, num, bio, trace, trace_bio, trace_time = fishery_model_predictions(res, solver_params=sp, PM=PM , 
+    lower_bound=-0.05, override_negative_solution=true, ntries_mult=10 )
   return m, num, bio, trace, trace_bio, trace_time
 end
 

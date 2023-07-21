@@ -1,4 +1,5 @@
 
+  print( "\n\nWARNING: if this is the initial run, it will take a while to precompile/download all libraries. \n\n" )
 
   if ! @isdefined project_directory 
     # defaulting to location of this file "bio.snowcrab/inst/julia" 
@@ -7,6 +8,7 @@
   end
  
   print( "project_directory: ", project_directory, "\n\n" )
+
 
   import Pkg  # or using Pkg
   Pkg.activate(project_directory)  # so now you activate the package
@@ -55,6 +57,13 @@
   include( "startup.jl" )
 
 
+  function discretize_decimal( x, delta=0.01 ) 
+    num_digits = Int(ceil( log10(1.0 / delta)) )   # time floating point rounding
+    out = round.( round.( x ./ delta; digits=0 ) .* delta; digits=num_digits)
+    return out
+  end
+  
+ 
 # ---------------
 # LOAD environment (libs and functions)
   if  occursin( r"size_structured", model_variation ) 

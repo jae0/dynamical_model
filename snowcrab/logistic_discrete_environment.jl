@@ -1,10 +1,6 @@
 
-# starting environment for the DDE snow crab model
-
-
-print( "WARNING: if this is the initial run, it will take a while to precompile/download all libraries" )
-
-
+# starting environment for the discrete logistic  snow crab model
+ 
 if false
 
   # if doing manual startup .. this is done automatically on start but in case it fails:
@@ -13,25 +9,11 @@ if false
   push!(LOAD_PATH, project_directory)  # add the directory to the load path, so it can be found
   include( "startup.jl" )
   # include( joinpath( project_directory, "startup.jl" ))    # alt
- 
-  # translate model-specific functions, etc to generics
-  # if model_variation=="logistic_discrete_basic"
-  #   fn_env = joinpath( project_directory, "logistic_discrete_environment.jl" )  
-  # end
-
-  # if model_variation=="logistic_discrete" 
-  #   fn_env = joinpath( project_directory, "logistic_discrete_environment.jl" )  
-  # end
-
-  # if model_variation=="logistic_discrete_map" 
-  #   fn_env = joinpath( project_directory, "logistic_discrete_environment.jl" )  
-  # end
-
+  
   fn_env = joinpath( project_directory, "logistic_discrete_environment.jl" )  
 
   include(  fn_env )
  
-
 end
 
 
@@ -44,30 +26,14 @@ theme(:default)  # defaults for graphics
 #theme(:vibrant)
 #theme(:bright)
 
-gr()
 
 # to start a graphics window
 # gr(size=(1000,1000),legend=false,markerstrokewidth=0,markersize=4)
-
-# allsavetimes = unique( vcat( survey_time, prediction_time  ) )
+gr()
  
 fndat  = joinpath( bio_data_directory, "biodyn_biomass.RData" )
 # fndat = "/home/jae/bio.data/bio.snowcrab/modelled/1999_present_fb/fishery_model_results/turing1/biodyn_biomass.RData"
-#= 
-if (!isfile(fndat)) 
-  # prompt to input
-  print("\nData file not found. Copy from: \n")
-  print(fndat_source)
-  print("\nTo: \n")
-  print( fndat )
-  print( "\nType 'Yes' to proceed >  ")
-  confirm = readline()
-  if confirm=="Yes"
-    cp( fndat_source, fndat; force=true )
-  end
-end
-=#
- 
+  
 o = load( fndat, convert=true)
  
 Y = o["Y"][∈(yrs).(o["Y"].yrs), :]
@@ -101,24 +67,15 @@ Kmu = [5.0, 60.0, 1.25]
         plot(  Y[:,:yrs], Y[:,:cfasouth] )
         plot(  Y[:,:yrs], Y[:,:cfasouth_M0] )
         plot!( Y[:,:yrs] .+1 , Y[:,:cfasouth_M1] )
-        plot!( Y[:,:yrs] .+2, Y[:,:cfasouth_M2] )
-        plot!( Y[:,:yrs] .+3, Y[:,:cfasouth_M3] )
-        plot!( Y[:,:yrs] .+4, Y[:,:cfasouth_M4] )
-
+ 
         plot(  Y[:,:yrs], Y[:,:cfanorth_M0] )
         plot!( Y[:,:yrs] .+1 , Y[:,:cfanorth_M1] )
-        plot!( Y[:,:yrs] .+2 , Y[:,:cfanorth_M2] )
-        plot!( Y[:,:yrs] .+3, Y[:,:cfanorth_M3] )
-        plot!( Y[:,:yrs] .+4, Y[:,:cfanorth_M4] )
-
-
+        
+        
         plot(  Y[:,:yrs], Y[:,:cfa4x_M0] )
         plot!( Y[:,:yrs] .+1 , Y[:,:cfa4x_M1] )
-        plot!( Y[:,:yrs] .+2 , Y[:,:cfa4x_M2] )
-        plot!( Y[:,:yrs] .+3, Y[:,:cfa4x_M3] )
-        plot!( Y[:,:yrs] .+4, Y[:,:cfa4x_M4] )
-    end
-
+        
+      end
 
  
 nT = length(yrs)
@@ -195,16 +152,26 @@ PM = (
   r = (1.0, 0.1, 0.5, 1.5),
   bpsd = ( 0.1, 0.05, 0.01, 0.5 ),
   bosd = ( 0.1, 0.05, 0.01, 0.5 ),
-  q = (  1.0, 0.1,  0.01, 10.0 ),
-  qc = (-SminFraction, 0.1, -1.0, 1.0 ),
+  q1 = (  1.0, 0.1,  0.01, 10.0 ),
+  q0 = ( SminFraction, 0.1, -1.0, 1.0 ),
   m0 = ( 0.9, 0.2, 0.1, 1.0), 
   mlim =(0.0, 1.0),
   removed=removed,
   S = S,
-  SminFraction = SminFraction,
   iok = iok,
   yeartransition = 0
 ) 
+
+
+
+# run model estimations / overrides
+Turing.setprogress!(false);
+
+# Turing specific default options
+n_adapts, n_samples, n_chains = 6000, 5000, 4
+
+# Turing NUTS-specific default options  ..  see write up here: https://turing.ml/dev/docs/using-turing/sampler-viz
+target_acceptance_rate, max_depth, init_ϵ = 0.65, 7, 0.01
 
 
 # translate model-specific functions, etc to generics
@@ -218,11 +185,11 @@ if model_variation=="logistic_discrete_historical"
   PM = @set PM.r = (1.0, 0.1, 0.25, 2.0)
   PM = @set PM.bpsd = (0, 0.1, 1.0e-9, 0.5) 
   PM = @set PM.bosd = (0, kmu*0.5, 1.0e-9, kmu/2.0)
-  PM = @set PM.q = (1.0, 0.5,  1.0e-1, 10.0)
+  PM = @set PM.q1 = (1.0, 0.5,  1.0e-1, 10.0)
   PM = @set PM.m0 = ( 5, 5)
   PM = @set PM.mlim = ( 0.0, 1.25)
   
-  fmod = logistic_discrete_turing_historical( PM )  # q only
+  fmod = logistic_discrete_turing_historical( PM )  # q1 only
 
 elseif model_variation=="logistic_discrete_basic"
   
@@ -232,7 +199,7 @@ elseif model_variation=="logistic_discrete_basic"
 
   PM = @set PM.bpsd = ( 0.1, 0.05, 0.01, 0.25 )
   PM = @set PM.bosd = ( 0.1, 0.05, 0.01, 0.25 )
-  PM = @set PM.q = (  1.0, 0.1,  0.5, 1.5 )
+  PM = @set PM.q1 = (  1.0, 0.1,  0.5, 1.5 )
   
   fmod = logistic_discrete_turing_basic( PM )   
 
@@ -255,41 +222,27 @@ elseif model_variation=="logistic_discrete_map"
   PM = @set PM.r = (1.0, 0.1, 0.5, 3.0)
   PM = @set PM.bpsd = (0, 0.05, 0.01, 0.25) 
   PM = @set PM.bosd = (0, 0.05, 0.01, 0.25)
-  PM = @set PM.q = (1.0, 0.1,  0.01, 10.0)
-  PM = @set PM.qc = (0.0, 0.1, -1.0, 1.0)
+  PM = @set PM.q1 = (1.0, 0.1,  0.01, 10.0)
+  PM = @set PM.q0 = (0.0, 0.1, -1.0, 1.0)
 
   fmod = logistic_discrete_map_turing( PM )  
 
 end
  
 
-# run model estimations / overrides
-Turing.setprogress!(false);
-n_adapts=6000
-n_samples=5000
-n_chains=4
-
-
-# NUTS-specific
-# see write up here: https://turing.ml/dev/docs/using-turing/sampler-viz
-rejection_rate = 0.65  ## too high and it become impossibly slow .. this is a good balance between variability and speed
-max_depth = 7  ## too high and it become impossibly slow
-init_ϵ = 0.01
-
 if model_variation=="logistic_discrete_historical"   # pre-2022, mimic STAN defaults
-  n_adapts=10000
-  n_samples=5000
-  rejection_rate = 0.99  
+  n_adapts, n_samples, n_chains = 10000, 10000, 4
+  target_acceptance_rate = 0.99
   max_depth=14  ## too high and it become impossibly slow
 end
 
- 
-turing_sampler = Turing.NUTS(n_samples, rejection_rate; max_depth=max_depth, init_ϵ=init_ϵ )
 
+# by default use NUTS sampler ... SMC is another good option if NUTS is too slow
+turing_sampler = Turing.NUTS(n_samples, target_acceptance_rate; max_depth=max_depth, init_ϵ=init_ϵ )
 print( model_variation, ": ", aulab, year_assessment )
 
+# mcmc save file name and location
 res_fn = joinpath( model_outdir, string("results_turing", "_", aulab, ".hdf5" ) )  
-
 print( "results file:",  res_fn )
 
 

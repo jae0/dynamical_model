@@ -10,8 +10,8 @@ using Turing
   r ~  TruncatedNormal( PM.r[1], PM.r[2], PM.r[3], PM.r[4])   # (mu, sd)
   bpsd ~  TruncatedNormal( PM.bpsd[1], PM.bpsd[2], PM.bpsd[3], PM.bpsd[4] )  ;  # slightly informative .. center of mass between (0,1)
   bosd ~  TruncatedNormal( PM.bosd[1], PM.bosd[2], PM.bosd[3], PM.bosd[4] )  ;  # slightly informative .. center of mass between (0,1)
-  q ~ TruncatedNormal( PM.q[1], PM.q[2], PM.q[3], PM.q[4] )    
-  qc ~ TruncatedNormal(PM.qc[1], PM.qc[2], PM.qc[3], PM.qc[4]  ) 
+  q1 ~ TruncatedNormal( PM.q1[1], PM.q1[2], PM.q1[3], PM.q1[4] )    
+  q0 ~ TruncatedNormal(PM.q0[1], PM.q0[2], PM.q0[3], PM.q0[4]  ) 
 
   m = tzeros( PM.nM )
   m[1] ~  TruncatedNormal( PM.m0[1], PM.m0[2], PM.m0[3], PM.m0[4] )  ; # starting b prior to first catch event
@@ -30,7 +30,9 @@ using Turing
   end
  
   # likelihood
-  # observation model: Y = q X + qc ; X = (Y - qc) / q
+    # map S <=> m  where S = observation index on unit scale; m = latent, scaled abundance on unit scale
+    # observation model: S = (m - q0)/ q1   <=>   m = S * q1 + q0  
+    # see function: abundance_from_index      
 
   # m = abundance (prefishery)
   # survey timing: spring before 2004 and fall afterwards 
@@ -41,18 +43,17 @@ using Turing
   if PM.yeartransition == 0
     # 4X
     for i in PM.iok
-      PM.S[i] ~ Normal( q * (m[i] -  PM.removed[i]/K) + qc, bosd )  ;
+      PM.S[i] ~ Normal( (m[i] -  PM.removed[i]/K - q0 ) / q1, bosd )  ;
     end 
-
   else 
     # NENS, SENS
     for i in PM.iok
       if i < PM.yeartransition
-        PM.S[i] ~ Normal( q * ( m[i] ) + qc, bosd )  ;  # spring survey
+        PM.S[i] ~ Normal( ( m[i] - q0 ) / q1, bosd )  ;  # spring survey
       elseif i == PM.yeartransition
-        PM.S[i] ~ Normal( q * ( m[i] - (PM.removed[i-1] + PM.removed[i]) / (2.0*K ) )+ qc, bosd )  ;  # transition year  .. averaging should be done before .. less computation
+        PM.S[i] ~ Normal( ( m[i] - (PM.removed[i-1] + PM.removed[i]) / (2.0*K ) - q0 ) / q1  , bosd )  ;  # transition year  .. averaging should be done before .. less computation
       else
-        PM.S[i] ~ Normal( q * ( m[i] - PM.removed[i]/K )+ qc, bosd )  ; # fall survey
+        PM.S[i] ~ Normal( ( m[i] - PM.removed[i]/K - q0 ) / q1, bosd )  ; # fall survey
       end
     end
   
@@ -69,7 +70,7 @@ end
   r ~  TruncatedNormal( PM.r[1], PM.r[2], PM.r[3], PM.r[4])   # (mu, sd)
   bpsd ~  TruncatedNormal( PM.bpsd[1], PM.bpsd[2], PM.bpsd[3], PM.bpsd[4] )  ;  # slightly informative .. center of mass between (0,1)
   bosd ~  TruncatedNormal( PM.bosd[1], PM.bosd[2], PM.bosd[3], PM.bosd[4] )  ;  # slightly informative .. center of mass between (0,1)
-  q ~ TruncatedNormal( PM.q[1], PM.q[2], PM.q[3], PM.q[4] )    
+  q1 ~ TruncatedNormal( PM.q1[1], PM.q1[2], PM.q1[3], PM.q1[4] )    
 
   m = tzeros( PM.nM )
   m[1] ~  TruncatedNormal( PM.m0[1], PM.m0[2], PM.m0[3], PM.m0[4]  )  ; # starting b prior to first catch event
@@ -89,20 +90,22 @@ end
    
 
   # likelihood
-  # observation model: Y = q X  ; X = (Y ) / q
+    # map S <=> m  where S = observation index on unit scale; m = latent, scaled abundance on unit scale
+    # observation model: S = (m - q0)/ q1   <=>   m = S * q1 + q0  
+    # see function: abundance_from_index      
   if PM.yeartransition == 0
     # 4X
     for i in PM.iok
-      PM.S[i] ~ Normal( q * (m[i] - PM.removed[i]/K), bosd )  ;
+      PM.S[i] ~ Normal( (m[i] - PM.removed[i]/K) / q1, bosd )  ;
     end 
   else
     for i in PM.iok
       if i < PM.yeartransition
-        PM.S[i] ~ Normal( q * ( m[i] ) , bosd )  ;  # spring survey
+        PM.S[i] ~ Normal( ( m[i] ) / q1 , bosd )  ;  # spring survey
       elseif i == PM.yeartransition
-        PM.S[i] ~ Normal( q * ( m[i] - (PM.removed[i-1] + PM.removed[i]) / (2.0*K ) ) , bosd )  ;  # transition year  .. averaging should be done before .. less computation
+        PM.S[i] ~ Normal( ( m[i] - (PM.removed[i-1] + PM.removed[i]) / (2.0*K ) ) / q1 , bosd )  ;  # transition year  .. averaging should be done before .. less computation
       else
-        PM.S[i] ~ Normal( q * ( m[i] - PM.removed[i]/K ) , bosd )  ; # fall survey
+        PM.S[i] ~ Normal( ( m[i] - PM.removed[i]/K ) / q1 , bosd )  ; # fall survey
       end
     end
   
@@ -120,9 +123,9 @@ end
   r ~  TruncatedNormal( PM.r[1], PM.r[2], PM.r[3], PM.r[4])   # (mu, sd)
   bpsd ~  truncated( Cauchy( PM.bpsd[1], PM.bpsd[2]), PM.bpsd[3], PM.bpsd[4] )  ;  # slightly informative .. center of mass between (0,1)
   bosd ~  truncated( Cauchy( PM.bosd[1], PM.bosd[2]), PM.bosd[3], PM.bosd[4] )    ;  # slightly informative .. center of mass between (0,1)
-  q ~ TruncatedNormal( PM.q[1], PM.q[2], PM.q[3], PM.q[4] )    
+  q1 ~ TruncatedNormal( PM.q1[1], PM.q1[2], PM.q1[3], PM.q1[4] )    
 
-  # m's are "total avaialble for fishery"
+  # m's are "total avaialble for fishery" (latent truth)
   m = tzeros( PM.nM )
   m[1] ~ truncated( Beta(PM.m0[1], PM.m0[2]) )  ; # starting b prior to first catch event
 
@@ -140,11 +143,14 @@ end
   end
 
   # likelihood
-  # observation model: Y = q X  ; X = (Y ) / q
+    # map S <=> m  where S = observation index on unit scale; m = latent, scaled abundance on unit scale
+    # observation model: S = (m - q0)/ q1   <=>   m = S * q1 + q0  
+    # see function: abundance_from_index      
+
   if PM.yeartransition == 0
     # 4X
     for i in PM.iok
-      PM.S[i] ~ Normal( q * (K * m[i]  - PM.removed[i]), bosd )  ; # fall survey
+      PM.S[i] ~ Normal(  (K * m[i] - PM.removed[i]) / q1, bosd )  ; # fall survey
     end
 
   else
@@ -156,11 +162,11 @@ end
     for i in PM.iok
 
       if  i < PM.yeartransition
-        PM.S[i] ~ Normal( q * K * m[i], bosd )  ;  # spring survey
+        PM.S[i] ~ Normal(  K * m[i] / q1, bosd )  ;  # spring survey
       elseif i == PM.yeartransition
-        PM.S[i] ~ Normal( q * ( K * m[i] - (PM.removed[i-1] + PM.removed[i]) / 2.0), bosd )  ;  # transition year  .. averaging should be done before .. less computation 
+        PM.S[i] ~ Normal(  ( K * m[i] - (PM.removed[i-1] + PM.removed[i]) / 2.0) / q1, bosd )  ;  # transition year  .. averaging should be done before .. less computation 
       else
-        PM.S[i] ~ Normal( q * ( K * m[i] - PM.removed[i] ) , bosd )  ; # fall survey
+        PM.S[i] ~ Normal(  ( K * m[i] - PM.removed[i] ) / q1 , bosd )  ; # fall survey
       end
     end
   end
@@ -177,8 +183,8 @@ end
   r ~  TruncatedNormal( PM.r[1], PM.r[2], PM.r[3], PM.r[4])   # (mu, sd)
   bpsd ~  TruncatedNormal( PM.bpsd[1], PM.bpsd[2], PM.bpsd[3], PM.bpsd[4] )  ;  # slightly informative .. center of mass between (0,1)
   bosd ~  TruncatedNormal( PM.bosd[1], PM.bosd[2], PM.bosd[3], PM.bosd[4] )  ;  # slightly informative .. center of mass between (0,1)
-  q ~ TruncatedNormal( PM.q[1], PM.q[2], PM.q[3], PM.q[4] )    
-  qc ~ TruncatedNormal(PM.qc[1], PM.qc[2], PM.qc[3], PM.qc[4]  ) 
+  q1 ~ TruncatedNormal( PM.q1[1], PM.q1[2], PM.q1[3], PM.q1[4] )    
+  q0 ~ TruncatedNormal(PM.q0[1], PM.q0[2], PM.q0[3], PM.q0[4]  ) 
 
   m = tzeros( PM.nM )
   m[1] ~  TruncatedNormal( PM.m0[1], PM.m0[2], PM.m0[3], PM.m0[4] )  ; # starting b prior to first catch event
@@ -197,14 +203,16 @@ end
   end
 
   # likelihood
-  # observation model: Y = q X + qc ; X = (Y - qc) / q
+    # map S <=> m  where S = observation index on unit scale; m = latent, scaled abundance on unit scale
+    # observation model: S = (m - q0)/ q1   <=>   m = S * q1 + q0  
+    # see function: abundance_from_index      
   if PM.yeartransition == 0
 
     for i in PM.iok
       if i == 1
-        PM.S[i] ~ Normal( q * (m[i] ) + qc, bosd )  ;
+        PM.S[i] ~ Normal( (m[i] - q0 ) / q1, bosd )  ;
       else
-        PM.S[i] ~ Normal( q * (m[i] - PM.removed[i-1]/K ) + qc, bosd )  ;
+        PM.S[i] ~ Normal( (m[i] - PM.removed[i-1]/K - q0 ) / q1, bosd )  ;
       end
     end
 
@@ -212,11 +220,11 @@ end
     # NENS, SENS
     for i in PM.iok
       if i < PM.yeartransition
-        PM.S[i] ~ Normal( q * ( m[i] ) + qc, bosd )  ;  # spring survey
+        PM.S[i] ~ Normal( ( m[i] - q0 ) / q1, bosd )  ;  # spring survey
       elseif i == PM.yeartransition
-        PM.S[i] ~ Normal( q * ( m[i] - (PM.removed[i-1] + PM.removed[i]) / (2.0*K ) )+ qc, bosd )  ;  # transition year 
+        PM.S[i] ~ Normal( ( m[i] - (PM.removed[i-1] + PM.removed[i]) / (2.0*K ) - q0 ) / q1, bosd )  ;  # transition year 
       else
-        PM.S[i] ~ Normal( q * ( m[i] - PM.removed[i]/K )+ qc, bosd )  ; # fall survey
+        PM.S[i] ~ Normal( ( m[i] - PM.removed[i]/K - q0 ) / q1, bosd )  ; # fall survey
       end
     end
   end
@@ -399,25 +407,57 @@ end
 # -----------
 
 
-function fishery_model_plot(; toplot=("fishing", "survey"), n_sample=500,
+function abundance_from_index( Sai, res, model_variation="logistic_discrete_historical" )
+  # map S <=> m  where S = observation index on unit scale; m = latent, scaled abundance on unit scale
+  # observation model: S = (m - q0)/ q1   <=>   m = S * q1 + q0  
+
+  K =  vec( res[:,Symbol("K"),:] )'
+  
+  # if nameof(typeof(mw)) == :ScaledInterpolation
+  #   Sbacktransf = Sbacktransf .* mw(yrs) ./ 1000.0  ./ 1000.0
+
+  if model_variation=="logistic_discrete_basic"  
+    q1 =  vec( res[:,Symbol("q1"),:] )'
+    S_m = Sai .* q1 .* K
+  elseif model_variation=="logistic_discrete_historical"  
+    q1 =  vec( res[:,Symbol("q1"),:] )'
+    S_m = Sai .* q1   # already on K scale
+  elseif model_variation=="logistic_discrete"  
+    q0 =  vec( res[:,Symbol("q0"),:] )'
+    q1 =  vec( res[:,Symbol("q1"),:] )'
+    S_m = ( Sai .* q1 .+ q0 )  .* K
+  elseif model_variation=="logistic_discrete_map"  
+    q0 =  vec( res[:,Symbol("q0"),:] )'
+    q1 =  vec( res[:,Symbol("q1"),:] )'
+    S_m = (Sai .* q1 .+ q0 ) .* K
+  end
+
+  return S_m
+end
+
+# -----------
+
+
+
+function fishery_model_plot(; toplot=("fishing", "survey"), n_sample=min(250, size(bio)[2]),
   res=res, bio=bio, FM=FM, 
   S=S,
   prediction_time=prediction_time, survey_time=survey_time, yrs=yrs, 
   alphav=0.075, pl= plot(), time_range=(floor(minimum(survey_time))-1.0, ceil(maximum(survey_time))+1.0 )
 )
  
-nsims = size(bio)[2]
-ss = rand(1:nsims, n_sample)  # sample index
+  nsims = size(bio)[2]
+  ss = rand(1:nsims, n_sample)  # sample index
 
-if any(isequal.("trace", toplot))  
-  @warn "trace is not valid for a discrete model"
-  
-end 
+  if any(isequal.("trace", toplot))  
+    @warn "trace is not valid for a discrete model"
+    
+  end 
 
-if any(isequal.("nofishing", toplot))  
-  @warn "nofishing not implemented"
-  
-end 
+  if any(isequal.("nofishing", toplot))  
+    @warn "nofishing not implemented"
+    
+  end 
 
   # extract sims (with fishing)
   # plot biomass
@@ -435,23 +475,15 @@ end
     @warn "footprint not implemented"
     
   end
+   
 
   if any(isequal.("survey", toplot))  
-    # back transform S to normal scale .. do sims too (TODO)
-   
-    # S[i,k] ~ TruncatedNormal( msol.u[ii][k] * q[k] + qc[k], bpsd, 0.0, 1.0)
-    if model_variation=="logistic_discrete_basic"  
-      yhat = S ./ mean(res[:,Symbol("q"),:]) .* mean(res[:,Symbol("K"),:]  )
-    elseif model_variation=="logistic_discrete_historical"  
-      yhat = ( S ) ./ mean(res[:,Symbol("q"),:]) # .* mean(res[:,Symbol("K"),:]  )
-    elseif model_variation=="logistic_discrete"  
-      yhat = ( S .- mean(res[:,Symbol("qc"),:] ) ) ./ mean(res[:,Symbol("q"),:]) .* mean(res[:,Symbol("K"),:]  )
-    elseif model_variation=="logistic_discrete_map"  
-      yhat = ( S .- mean(res[:,Symbol("qc"),:] ) ) ./ mean(res[:,Symbol("q"),:]) .* mean(res[:,Symbol("K"),:]  )
-    end
-
-    pl = plot!(pl, survey_time, yhat, color=:gray, lw=2 )
-    pl = scatter!(pl, survey_time, yhat, markersize=4, color=:darkgray)
+    # map S -> m and then multiply by K
+    # where S=observation on unit scale; m=latent, scaled abundance on unit scale
+    S_m = abundance_from_index( S, res, model_variation )
+    S_K = mean(S_m, dims=2)  # average by year
+    pl = plot!(pl, survey_time, S_K, color=:gray, lw=2 )
+    pl = scatter!(pl, survey_time, S_K, markersize=4, color=:darkgray)
     pl = plot!(pl; legend=false )
     pl = plot!(pl; xlim=time_range )
 
@@ -533,7 +565,7 @@ end
     pl = scatter!(pl,  fb_mean .+0.051, fm_mean .-0.0025;  alpha=0.8, color=colours,  markersize=0, markerstrokewidth=0,
       series_annotations = text.(trunc.(Int, survey_time), :top, :left, pointsize=8) )
 
-    ub = max( quantile(K, 0.95), maximum( fb_mean ), maximum(fmsy) ) * 1.05
+    ub = max( quantile(K, 0.75), maximum( fb_mean ), maximum(fmsy) ) * 1.05
     pl = plot!(pl; legend=false, xlim=(0, ub ), ylim=(0, maximum(fm_mean ) * 1.05  ) )
     # TODO # add predictions ???
   
