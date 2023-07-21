@@ -1,5 +1,14 @@
 
 
+showall(x) = show(stdout, "text/plain", x)
+
+
+function discretize_decimal( x, delta=0.01 ) 
+  num_digits = Int(ceil( log10(1.0 / delta)) )   # time floating point rounding
+  out = round.( round.( x ./ delta; digits=0 ) .* delta; digits=num_digits)
+  return out
+end
+
 
 function size_structured_dde!( du, u, h, p, t )
   # here u, du are actual numbers .. not normalized by K due to use of callbacks
@@ -30,7 +39,6 @@ function dde_parameters()
     params = ( b5, b6, K, d, d2, v)
     return params
 end
-
 
 function firstindexin(a::AbstractArray, b::AbstractArray)
   bdict = Dict{eltype(b), Int}()
@@ -504,6 +512,7 @@ function abundance_from_index( Sai, res; k=1, model_variation="size_structured_d
     q1 =  vec(res[:,Symbol("q1[$k]"),:])'
     # K =  vec(res[:,Symbol("K[$k]"),:])'
     S_m = (( Sai  .* q1) .+ q0 )    # abundance_from_index  now on latent scale
+  end
   return S_m
 end
 

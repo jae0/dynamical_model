@@ -339,7 +339,7 @@ PM = (
 
 
 # Turing specific default options
-n_adapts, n_samples, n_chains = 3000, 1500, 4
+n_adapts, n_samples, n_chains = 3000, 5000, 4
 
 # Turing NUTS-specific default options  ..  see write up here: https://turing.ml/dev/docs/using-turing/sampler-viz
 target_acceptance_rate, max_depth, init_ϵ = 0.65, 7, 0.01
@@ -385,8 +385,9 @@ elseif  model_variation=="size_structured_dde_unnormalized"
 end
  
  
-# by default use NUTS sampler ... SMC is another good option if NUTS is too slow
-turing_sampler = Turing.NUTS(n_samples, target_acceptance_rate; max_depth=max_depth, init_ϵ=init_ϵ )
+# by default use SMC sampler ... SMC is another good option if NUTS is too slow
+# turing_sampler = Turing.NUTS(n_samples, target_acceptance_rate; max_depth=max_depth, init_ϵ=init_ϵ )
+turing_sampler = Turing.SMC()
 print( string( model_variation, " : ", aulab, " - ", year_assessment) )
 
 # mcmc save file name and location

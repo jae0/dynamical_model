@@ -1,7 +1,16 @@
 
-using Turing
- 
- 
+
+
+showall(x) = show(stdout, "text/plain", x)
+
+
+function discretize_decimal( x, delta=0.01 ) 
+  num_digits = Int(ceil( log10(1.0 / delta)) )   # time floating point rounding
+  out = round.( round.( x ./ delta; digits=0 ) .* delta; digits=num_digits)
+  return out
+end
+
+
 
 @model function logistic_discrete_turing( PM )
   # biomass process model: dn/dt = r n (1-n/K) - removed ; b, removed are not normalized by K  

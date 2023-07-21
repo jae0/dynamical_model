@@ -27,5 +27,3 @@ end
 colorscheme!("Monokai24bit") # for REPL
 
 print( "\n\n", "Additional functions: \n\n" )
-
-showall(x) = show(stdout, "text/plain", x)

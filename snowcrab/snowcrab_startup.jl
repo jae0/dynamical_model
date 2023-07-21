@@ -57,11 +57,17 @@
   include( "startup.jl" )
 
 
-  function discretize_decimal( x, delta=0.01 ) 
-    num_digits = Int(ceil( log10(1.0 / delta)) )   # time floating point rounding
-    out = round.( round.( x ./ delta; digits=0 ) .* delta; digits=num_digits)
-    return out
-  end
+  #= 
+    # should this be a first time run, to install libs:
+    # this is done automatically on first run (if file is not copied)
+    # cp( fndat_source, fndat; force=true )   # to force copy of data file 
+    for pk in pkgs; Pkg.add(string(Symbol(pk))); end   
+    
+    # or a single package at a time:, etc
+    Pkg.add( "Turing" ) # etc ...
+  =# 
+
+
   
  
 # ---------------
