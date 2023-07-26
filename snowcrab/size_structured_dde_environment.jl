@@ -268,9 +268,9 @@ u0 =
 # h(p, t; idxs=nothing) = typeof(idxs) <: Number ? u0 : u0 
 h(p, t) = u0 
 
-tau = [1.0]  # delay resolution
+tau = BLY  # delay resolution
 p = dde_parameters() # dummy values needed to bootstrap DifferentialEquations/Turing initialization
-prob = DDEProblem{true}( size_structured_dde!, u0, h, tspan, p, constant_lags=tau, neutral=true  )  #  create container for problem definition 
+prob = DDEProblem{true}( size_structured_dde!, u0, h, tspan, p, constant_lags=tau  )  #  , neutral=true create container for problem definition 
 
 # choose DiffEq solver:
 # stiff solvers: Rodas4()  ; Rosenbrock23()
@@ -321,13 +321,13 @@ PM = (
     nP = 5,  # number of predictions into future (with no fishing)
     nM = nP + nT,  # total number of prediction years
     logkmu = (logkmu, 0.25),
-    logScv = (logScv, 0.25),
-    b = ( log(1.0), 0.25),
-    d =  ( log( exp(0.25)-1.0 ), 0.25 ),
-    d2 = ( log( exp(0.75)-1.0 ), 0.25 ),
-    v =  ( log( exp(0.90)-1.0 ), 0.25 ),
-    q1 = ( 0.5, 0.25 ),  # assume about 50% overly optimistic estimation from CARSTM (due to assumption that each areal unit is homogenous)
-    q0 = ( SminFraction ./ 2.0, 0.25),  # lower detection limit of survey/CARSM
+    logScv = (logScv, 0.1),
+    b = ( log(1.0), 0.1),
+    d =  ( log( exp(0.25)-1.0 ), 0.1 ),
+    d2 = ( log( exp(0.75)-1.0 ), 0.1 ),
+    v =  ( log( exp(0.90)-1.0 ), 0.1 ),
+    q1 = ( 0.5, 0.1 ),  # assume about 50% overly optimistic estimation from CARSTM (due to assumption that each areal unit is homogenous)
+    q0 = ( SminFraction ./ 2.0, 0.1 ),  # lower detection limit of survey/CARSM
     BLY = BLY,
     Si = Si,
     S = S,
@@ -349,32 +349,32 @@ if model_variation=="size_structured_dde_normalized"
    
     if aulab=="cfanorth"
 
-        PM = @set PM.b =  ( log(2.0), 0.25 ) 
+        PM = @set PM.b =  ( log(2.0), 0.1 ) 
         
-        PM = @set PM.q0 = ( SminFraction ./ 2.0, 0.25)
-        PM = @set PM.q1 = ( 0.5, 0.25 )
+        PM = @set PM.q0 = ( SminFraction ./ 2.0, 0.1)
+        PM = @set PM.q1 = ( 0.5, 0.1 )
   
     elseif aulab=="cfasouth" 
         
         # higher birth rates expected due to temperaturess
-        PM = @set PM.b =  ( log(2.0), 0.25 )
+        PM = @set PM.b =  ( log(2.0), 0.1 )
 
-        PM = @set PM.q0 = ( SminFraction ./ 2.0, 0.25)
-        PM = @set PM.q1 = ( 0.5, 0.25 )
+        PM = @set PM.q0 = ( SminFraction ./ 2.0, 0.1)
+        PM = @set PM.q1 = ( 0.5, 0.1 )
         
     elseif aulab=="cfa4x" 
 
         # higher birth rates expected due to temperaturess
-        PM = @set PM.b =  ( log(2.0), 0.25 )
+        PM = @set PM.b =  ( log(2.0), 0.1 )
 
         # suggests CARSTM is less biased in 4X
-        PM = @set PM.q0 =  ( SminFraction, 0.25 )
-        PM = @set PM.q1 =  ( 1.0, 0.25 )
+        PM = @set PM.q0 =  ( SminFraction, 0.1 )
+        PM = @set PM.q1 =  ( 1.0, 0.1 )
   
     end
 
     # define model
-    fmod = size_structured_dde_turing( PM=PM, solver_params=solver_params )
+    fmod = size_structured_dde_turing( PM, solver_params )
 
 elseif  model_variation=="size_structured_dde_unnormalized"
      

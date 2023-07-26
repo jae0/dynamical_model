@@ -32,7 +32,7 @@ function dde_parameters()
     # these are dummy initial values .. just to get things started
     b5= repeat( [1.0], nB )
     b6= repeat( [1.0], nB )
-    K=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0] .*kmu;
+    K = repeat( [kmu], nS )  
     d=[0.15, 0.11, 0.14, 0.17, 0.16, 0.19];
     d2 = [0.4, 0.4, 0.4, 0.4, 0.4, 0.4] 
     v=[0.65, 0.68, 0.61, 0.79];
@@ -58,7 +58,7 @@ function β( mode, conc )
 end 
 
  
-Turing.@model function size_structured_dde_turing( ; PM, solver_params )
+Turing.@model function size_structured_dde_turing( PM, solver_params )
  
   K ~ filldist( LogNormal( PM.logkmu[1], PM.logkmu[2]), PM.nS )  # kmu already on log scale # is max of a multiyear group , serves as upper bound for all
   q1 ~ filldist( Normal( PM.q1[1], PM.q1[2] ), PM.nS )
@@ -69,7 +69,7 @@ Turing.@model function size_structured_dde_turing( ; PM, solver_params )
   d ~   filldist( LogNormal( PM.d[1],  PM.d[2] ), PM.nS ) # plot(x->pdf(LogNormal(0.2, 1.0), x), xlim=(0, 2)) 
   d2 ~  filldist( LogNormal( PM.d2[1], PM.d2[2]), PM.nS ) # plot(x->pdf(LogNormal(-0.7096, 0.25 ), x), xlim=(0, 2)) 
   v ~   filldist( LogNormal( PM.v[1],  PM.v[2] ), PM.nG ) # transition rates # plot(x->pdf(LogNormal( 0.3782, 0.5 ), x), xlim=(0,1))  
-  u0 ~  filldist( Uniform(0, 1), nS )  # plot(x->pdf(Beta(1, 1), x), xlim=(0,1)) # uniform 
+  u0 ~  filldist( Beta(5, 2), nS )  # plot(x->pdf(Beta(5, 2), x), xlim=(0,1)) # uniform 
 
   # process model
   prob_new = remake( solver_params.prob; u0=u0, h=solver_params.h, 
@@ -79,17 +79,17 @@ Turing.@model function size_structured_dde_turing( ; PM, solver_params )
       prob_new,
       solver_params.solver, 
       callback=solver_params.cb,
-      abstol=solver_params.abstol, 
-      reltol=solver_params.reltol, 
-      tstops=solver_params.saveat,  
-      saveat=solver_params.dt,
-      alg_hints=[:stiff]
+  #    abstol=solver_params.abstol, 
+  #    reltol=solver_params.reltol, 
+      saveat=solver_params.saveat
+      # saveat=solver_params.dt
+      # alg_hints=[:stiff]
       # ,
       # saveat=solver_params.saveat
   )
 
   # @show msol.retcode
-  if msol.retcode != :Success
+  if msol.retcode != :Success  
     Turing.@addlogprob! -Inf
     return nothing
   end
@@ -101,22 +101,25 @@ Turing.@model function size_structured_dde_turing( ; PM, solver_params )
     Turing.@addlogprob! -Inf
     return nothing
   end
-
   
   # map S <=> m  where S = observation index on unit scale; m = latent, scaled abundance on unit scale
   # observation model: S = (m - q0)/ q1   <=>   m = S * q1 + q0  
-  A = ( view( Array(msol), :, ii) .- q0) ./ q1  
-  
+  A = ( Array(msol)[:, ii] .- q0 ) ./ q1
+
+  if any( x -> !isfinite(x), A)  
+    Turing.@addlogprob! -Inf
+    return nothing
+  end
+
   if any( x -> x < 0.0, A)
     Turing.@addlogprob! -Inf
     return nothing
   end
-  
+    
   sigma = view( model_sd, PM.Si, : )
    
   @. PM.data ~ Normal( A', sigma )  
   # equivalent representations:
-  # @. PM.data ~ Normal( A', model_sd[PM.Si, :] )   
   # PM.datavector ~ MvNormal( vec(A'), Diagonal(vec(sigma).^2.0)  )  # no real speed gain using MVN .. JC: Feb 2023
 
 end
