@@ -12,7 +12,7 @@ end
 
 
 
-@model function logistic_discrete_turing( PM )
+Turing.@model function logistic_discrete_turing( PM )
   # biomass process model: dn/dt = r n (1-n/K) - removed ; b, removed are not normalized by K  
 
   K ~ TruncatedNormal( PM.K[1], PM.K[2], PM.K[3], PM.K[4])  
@@ -71,7 +71,7 @@ end
 end
  
 
-@model function logistic_discrete_turing_basic( PM )
+Turing.@model function logistic_discrete_turing_basic( PM )
   # biomass process model: dn/dt = r n (1-n/K) - removed ; b, removed are not normalized by K  
   # priors 
 
@@ -125,18 +125,18 @@ end
     
 
 
-@model function logistic_discrete_turing_historical( PM )
+Turing.@model function logistic_discrete_turing_historical( PM )
   # biomass process model: dn/dt = r n (1-n/K) - removed ; b, removed are not normalized by K  
   # priors 
   K ~ TruncatedNormal( PM.K[1], PM.K[2], PM.K[3], PM.K[4])  
   r ~  TruncatedNormal( PM.r[1], PM.r[2], PM.r[3], PM.r[4])   # (mu, sd)
-  bpsd ~  truncated( Cauchy( PM.bpsd[1], PM.bpsd[2]), PM.bpsd[3], PM.bpsd[4] )  ;  # slightly informative .. center of mass between (0,1)
-  bosd ~  truncated( Cauchy( PM.bosd[1], PM.bosd[2]), PM.bosd[3], PM.bosd[4] )    ;  # slightly informative .. center of mass between (0,1)
+  bpsd ~  TruncatedNormal( PM.bpsd[1], PM.bpsd[2], PM.bpsd[3], PM.bpsd[4] )  ;  # slightly informative .. center of mass between (0,1)
+  bosd ~  TruncatedNormal( PM.bosd[1], PM.bosd[2], PM.bosd[3], PM.bosd[4] )    ;  # slightly informative .. center of mass between (0,1)
   q1 ~ TruncatedNormal( PM.q1[1], PM.q1[2], PM.q1[3], PM.q1[4] )    
 
   # m's are "total avaialble for fishery" (latent truth)
   m = tzeros( PM.nM )
-  m[1] ~ truncated( Beta(PM.m0[1], PM.m0[2]) )  ; # starting b prior to first catch event
+  m[1] ~ TruncatedNormal(PM.m0[1], PM.m0[2], PM.m0[3], PM.m0[4])   ; # starting b prior to first catch event
 
   for i in 2:PM.nT
     m[i] ~ TruncatedNormal( m[i-1] + r * m[i-1] * ( 1.0 - m[i-1] ) - PM.removed[i-1]/K, bpsd, PM.mlim[1], PM.mlim[2])  ;
@@ -184,7 +184,7 @@ end
   
 
 
-@model function logistic_discrete_map_turing( PM )
+Turing.@model function logistic_discrete_map_turing( PM )
   # biomass process model: n(t+1) = r n (1-n/K) - removed ; b, removed are not normalized by K  
   # priors 
 

@@ -17,6 +17,10 @@
   cd( project_directory )
 
   
+  if ! @isdefined bio_data_directory 
+    bio_data_directory = joinpath( homedir(), "bio.data" )  
+  end
+
    
   if ! @isdefined outputs_directory 
     # tailor to your specific installation

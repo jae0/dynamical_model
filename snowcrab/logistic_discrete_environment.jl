@@ -39,8 +39,7 @@ o = load( fndat, convert=true)
 Y = o["Y"][∈(yrs).(o["Y"].yrs), :]
 removals = o["L"][∈(yrs).(o["L"].yrs), :]
 
-Kmu = [5.0, 60.0, 1.25]
-
+Kmu = [5.0, 65.0, 1.5]
 
     if false
         # alternatively, if running manually:
@@ -152,7 +151,7 @@ PM = (
   r = (1.0, 0.1, 0.5, 1.5),
   bpsd = ( 0.1, 0.05, 0.01, 0.5 ),
   bosd = ( 0.1, 0.05, 0.01, 0.5 ),
-  q1 = (  1.0, 0.1,  0.01, 10.0 ),
+  q1 = (  1.0, 0.2,  0.01, 10.0 ),
   q0 = ( SminFraction, 0.1, -1.0, 1.0 ),
   m0 = ( 0.9, 0.2, 0.1, 1.0), 
   mlim =(0.0, 1.0),
@@ -168,7 +167,8 @@ PM = (
 Turing.setprogress!(false);
 
 # Turing specific default options
-n_adapts, n_samples, n_chains = 6000, 5000, 4
+n_adapts, n_samples, n_chains = 10000, 10000, 4
+thin = 0
 
 # Turing NUTS-specific default options  ..  see write up here: https://turing.ml/dev/docs/using-turing/sampler-viz
 target_acceptance_rate, max_depth, init_ϵ = 0.65, 7, 0.01
@@ -177,29 +177,94 @@ target_acceptance_rate, max_depth, init_ϵ = 0.65, 7, 0.01
 # translate model-specific functions, etc to generics
 if model_variation=="logistic_discrete_historical"
 
-  if (aulab=="cfanorth") | (aulab=="cfasouth")
+  if (aulab=="cfanorth")  
     PM = @set PM.yeartransition = 6
+    PM = @set PM.K = kmu .* (1.0, 0.1, 1.0/4.0, 4.0 )
+    PM = @set PM.r = (1.0, 0.1, 0.25, 1.75)
+    PM = @set PM.bpsd = ( 0.1, 0.1, 0.01, 0.25 )
+    PM = @set PM.bosd = kmu .* ( 0.1, 0.1, 0.01, 0.25 )
+    PM = @set PM.q1 = ( 1.0, 0.5, 0.01, 2.0 )
+    PM = @set PM.mlim =( 0.01, 1.25 )
+    PM = @set PM.m0 = (0.5, 0.25, 0.0, 1.25 )
+     
+    target_acceptance_rate, max_depth, init_ϵ = 0.65, 8, 0.01
+
   end
 
-  PM = @set PM.K = (kmu, 0.25*kmu, kmu/10.0, kmu*10.0 )
-  PM = @set PM.r = (1.0, 0.1, 0.25, 2.0)
-  PM = @set PM.bpsd = (0, 0.1, 1.0e-9, 0.5) 
-  PM = @set PM.bosd = (0, kmu*0.5, 1.0e-9, kmu/2.0)
-  PM = @set PM.q1 = (1.0, 0.5,  1.0e-1, 10.0)
-  PM = @set PM.m0 = ( 5, 5)
-  PM = @set PM.mlim = ( 0.0, 1.25)
+  if (aulab=="cfasouth")
+    PM = @set PM.yeartransition = 6
+    PM = @set PM.K = kmu .* (1.0, 0.1, 1.0/4.0, 4.0 )
+    PM = @set PM.r = (1.0, 0.1, 0.25, 1.75)
+    PM = @set PM.bpsd = ( 0.1, 0.1, 0.01, 0.25 )
+    PM = @set PM.bosd = kmu .* ( 0.1, 0.1, 0.01, 0.25 )
+    PM = @set PM.q1 = ( 1.0, 0.5, 0.01, 2.0 )
+    PM = @set PM.mlim =( 0.01, 1.25 )
+    PM = @set PM.m0 = (0.5, 0.25, 0.0, 1.25 )
+    
+    target_acceptance_rate, max_depth, init_ϵ = 0.65, 8, 0.01
+
+  end
+
+  if (aulab=="cfa4x")  
+    PM = @set PM.yeartransition = 0
+    PM = @set PM.K = kmu .* (1.0, 0.1, 1.0/4.0, 4.0 )
+    PM = @set PM.r = (1.0, 0.1, 0.25, 1.75)
+    PM = @set PM.bpsd = ( 0.1, 0.1, 0.01, 0.25 )
+    PM = @set PM.bosd = kmu .* ( 0.1, 0.1, 0.01, 0.25 )
+    PM = @set PM.q1 = ( 1.0, 0.5, 0.01, 2.0 )
+    PM = @set PM.mlim =( 0.01, 1.25 )
+    PM = @set PM.m0 = (0.5, 0.25, 0.0, 1.25 )
+     
+    target_acceptance_rate, max_depth, init_ϵ = 0.65, 8, 0.01
+
+  end
+  
   
   fmod = logistic_discrete_turing_historical( PM )  # q1 only
 
 elseif model_variation=="logistic_discrete_basic"
-  
-  if (aulab=="cfanorth") | (aulab=="cfasouth")
+  # same as historical but normalize to reduce influce of large magnitudes and faster convergence
+
+  if (aulab=="cfanorth")  
     PM = @set PM.yeartransition = 6
+    PM = @set PM.K = (kmu, 0.25*kmu, kmu/4.0, kmu*4.0 )
+    PM = @set PM.r = (1.0, 0.1, 0.25, 1.75)
+    PM = @set PM.bpsd = ( 0.1, 0.1, 0.01, 0.25 )
+    PM = @set PM.bosd = ( 0.1, 0.1, 0.01, 0.25 )
+    PM = @set PM.q1 = (  1.0, 0.1,  0.25, 1.25 )
+    PM = @set PM.mlim =( 0.1, 1.25 )
+    PM = @set PM.m0 = ( 0.9, 0.2, 0.2, 1.25)
+
   end
 
-  PM = @set PM.bpsd = ( 0.1, 0.05, 0.01, 0.25 )
-  PM = @set PM.bosd = ( 0.1, 0.05, 0.01, 0.25 )
-  PM = @set PM.q1 = (  1.0, 0.1,  0.5, 1.5 )
+  if (aulab=="cfasouth")
+    PM = @set PM.yeartransition = 6
+    PM = @set PM.K = (kmu, 0.25*kmu, kmu/4.0, kmu*4.0 )
+    PM = @set PM.r = (1.0, 0.1, 0.25, 1.75)
+    PM = @set PM.bpsd = ( 0.1, 0.1, 0.001, 0.25 )
+    PM = @set PM.bosd = ( 0.1, 0.1, 0.001, 0.25 )
+    PM = @set PM.q1 = (  1.0, 0.1,  0.25, 1.25 )
+    PM = @set PM.mlim =( 0.2, 1.25 )
+    PM = @set PM.m0 = ( 0.5, 0.2, 0.0, 1.25)
+
+    target_acceptance_rate, max_depth, init_ϵ = 0.65, 7, 0.25
+
+  end
+
+  if (aulab=="cfa4x")  
+
+    PM = @set PM.yeartransition = 0
+    PM = @set PM.K = (kmu, 0.2*kmu, kmu/4.0, kmu*4.0 )
+    PM = @set PM.r = (1.0, 0.2, 0.25, 1.75)
+    PM = @set PM.bpsd = ( 0.1, 0.1, 0.001, 0.25 )
+    PM = @set PM.bosd = ( 0.1, 0.1, 0.001, 0.25 )
+    PM = @set PM.q1 = ( 1.0, 0.2, 0.25, 1.25 )
+    PM = @set PM.mlim =( 0.1, 1.25 )
+    PM = @set PM.m0 = ( 0.5, 0.2, 0.25, 1.25)
+
+    target_acceptance_rate, max_depth, init_ϵ = 0.65, 7, 0.05
+
+  end
   
   fmod = logistic_discrete_turing_basic( PM )   
 
@@ -211,7 +276,6 @@ elseif model_variation=="logistic_discrete"
 
   fmod = logistic_discrete_turing( PM )   
 
-  
 elseif model_variation=="logistic_discrete_map"
 
   # not used .. just for testing
@@ -232,8 +296,9 @@ end
 
 if model_variation=="logistic_discrete_historical"   # pre-2022, mimic STAN defaults
   n_adapts, n_samples, n_chains = 10000, 10000, 4
-  target_acceptance_rate = 0.99
-  max_depth=14  ## too high and it become impossibly slow
+  target_acceptance_rate =  0.65  #0.99
+  max_depth=  7  # 14  ## too high and it become impossibly slow
+  thin=0
 end
 
 

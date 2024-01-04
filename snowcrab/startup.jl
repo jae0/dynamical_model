@@ -19,10 +19,18 @@ else
 end
     
 print( "Loading libraries:\n\n" )
-for pk in pkgs; 
-    print(pk, "\n")
-    @eval using $(Symbol(pk)); 
-end    
+
+  # load libs and check settings
+  # pkgs are defined in snowcrab_startup.jl
+  using Pkg
+  for pk in pkgs; 
+      if Base.find_package(pk) === nothing
+          Pkg.add(pk)
+      else
+        @eval using $(Symbol(pk)); 
+      end
+  end   # Pkg.add( pkgs ) # add required packages
+
 
 
 # functions required before loading environment
