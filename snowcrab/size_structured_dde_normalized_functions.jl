@@ -14,10 +14,11 @@ function size_structured_dde!( du, u, h, p, t )
   # here u, du are actual numbers .. not normalized by K due to use of callbacks
   b5, b6, K, d, d2, v  = p  # hsa is global 
   @inbounds begin
+      ux =  max.(1e-9, u)
       trg = [h(p, t-j)[6] for j in BLY ]
-      tr =  v .* h(p, t-1)[2:5]
-      dh = d2 .* u ./ hsa(t, 1:6)
-      dr = d .* u  .+  dh .* u 
+      tr = v  .* h(p, t-1)[2:5] 
+      dh = d2 .* ux ./ hsa(t, 1:6) 
+      dr = d  .* ux .+  dh .* ux
       du[1] = tr[1] * K[2] / K[1]              - dr[1]       # note:
       du[2] = tr[2] * K[3] / K[2]     - tr[1]  - dr[2]
       du[3] = tr[3] * K[4] / K[3]     - tr[2]  - dr[3]
@@ -79,8 +80,9 @@ Turing.@model function size_structured_dde_turing( PM, solver_params )
       prob_new,
       solver_params.solver, 
       callback=solver_params.cb,
-  #    abstol=solver_params.abstol, 
-  #    reltol=solver_params.reltol, 
+      # abstol=solver_params.abstol, 
+      # reltol=solver_params.reltol, 
+      # isoutofdomain=(y,p,t)->any(x -> x < PM.eps, y),  # permit exceeding K, only check lower
       saveat=solver_params.saveat
       # saveat=solver_params.dt
       # alg_hints=[:stiff]
@@ -89,7 +91,7 @@ Turing.@model function size_structured_dde_turing( PM, solver_params )
   )
 
   # @show msol.retcode
-  if msol.retcode != :Success  
+  if !SciMLBase.successful_retcode(msol)  
     Turing.@addlogprob! -Inf
     return nothing
   end
@@ -111,7 +113,7 @@ Turing.@model function size_structured_dde_turing( PM, solver_params )
     return nothing
   end
 
-  if any( x -> x < 0.0, A)
+  if any( x -> x < 1e-9, A)
     Turing.@addlogprob! -Inf
     return nothing
   end
@@ -287,7 +289,6 @@ end
  
 
 # -----------
-
   
 
 
@@ -299,7 +300,7 @@ function fishery_model_predictions_timeseries( num; prediction_time, plot_k )
   pl = plot!(pl; legend=false )
   pl = plot!(pl; ylim=(0, maximum(gk)*1.01 ) )
 
-  S_K_sims = abundance_from_index( S[:,plot_k], res; k=plot_k )
+  S_K_sims = abundance_from_index( S, res; k=plot_k )
   S_K = mean(S_K_sims, dims=2)  # average by year
 
   pl = plot!(pl, survey_time, S_K, color=:gray, lw=2 )
@@ -370,7 +371,7 @@ end
 
 
 function fishery_model_predictions( res; prediction_time=prediction_time, solver_params=solver_params, PM=PM, 
-  n_sample=-1, lower_bound=0.0, override_negative_solution=false, ntries_mult=5 )
+  n_sample=-1, lower_bound=-0.001, override_negative_solution=true, ntries_mult=5 )
 
   nchains = size(res)[3]
   nsims = size(res)[1]
@@ -395,8 +396,8 @@ function fishery_model_predictions( res; prediction_time=prediction_time, solver
 
   while z <= n_sample 
     ntries += 1
-    ntries > ntries_mult * n_sample && break 
-    z >= n_sample && break
+    (ntries > ntries_mult * n_sample) && break 
+    (z >= n_sample) && break
 
     j = rand(1:nsims)  # nsims
     l = rand(1:nchains) # nchains
@@ -406,22 +407,18 @@ function fishery_model_predictions( res; prediction_time=prediction_time, solver
     K = [ res[j, Symbol("K[$k]"), l] for k in 1:nS]
     v = [ res[j, Symbol("v[$k]"), l] for k in 1:4]
     d = [ res[j, Symbol("d[$k]"), l] for k in 1:nS]
-    d2=[ res[j, Symbol("d2[$k]"), l] for k in 1:nS]
+    d2= [ res[j, Symbol("d2[$k]"), l] for k in 1:nS]
     u0 = [ res[j, Symbol("u0[$k]"), l] for k in 1:nS]
 
-    prb = remake( solver_params.prob; u0=u0 , h=solver_params.h, tspan=solver_params.tspan, p=( b5, b6, K, d, d2, v ) )
-    msol1 = solve( prb, solver_params.solver, callback=solver_params.cb, 
-      saveat=solver_params.dt ,
-      isoutofdomain=(y,p,t)->any(x -> x<lower_bound, y)  # permit exceeding K, only check lower
-    )
+    prb = remake( solver_params.prob; u0=u0, h=solver_params.h, tspan=solver_params.tspan, p=( b5, b6, K, d, d2, v ) )
+    msol1 = solve( prb, solver_params.solver, saveat=solver_params.dt, callback=solver_params.cb ) #, # with callback == with fishing
+    #  isoutofdomain=(y,p,t)->any(x -> x<lower_bound, y) )  # permit exceeding K, only check lower
 
-    msol0 = solve( prb, solver_params.solver,  
-      saveat=solver_params.dt,
-      isoutofdomain=(y,p,t)->any(x -> x<lower_bound, y)  # permit exceeding K, only check lower
-    )
+    msol0 = solve( prb, solver_params.solver, saveat=solver_params.dt ) # ,  # no callback == no fishing
+    #  isoutofdomain=(y,p,t)->any(x -> x<lower_bound, y) )  # permit exceeding K, only check lower
 
-    if msol1.retcode == :Success && msol0.retcode == :Success
-     
+    if SciMLBase.successful_retcode(msol1) && SciMLBase.successful_retcode(msol0)
+      
       ii0 = firstindexin( prediction_time, msol0.t )
       ii1 = firstindexin( prediction_time, msol1.t )
       
@@ -435,17 +432,25 @@ function fishery_model_predictions( res; prediction_time=prediction_time, solver
       if length(jj0) != ntt | length(jj1) != ntt
         continue
       end
-      
-      z += 1
 
       # likelihood of the data
       MS0 = Array(msol0) 
       MS1 = Array(msol1) 
+      
+      iv0 = findall(x -> x<0.0, skipmissing(MS0) )
+      iv1 = findall(x -> x<0.0, skipmissing(MS1) )
 
       if override_negative_solution
-        MS0[ findall(x -> x<0.0, skipmissing(MS0) ) ] .= 0.0
-        MS1[ findall(x -> x<0.0, skipmissing(MS1) ) ] .= 0.0
+        # arguably, negative values suggest extirpation and is something to track ..
+        MS0[ iv0 ] .= 0.0
+        MS1[ iv1 ] .= 0.0
       end
+
+      if length(iv0) > 0 | length(iv1) > 0 
+        continue
+      end
+
+      z += 1
 
       sf  = nameof(typeof(mw)) == :ScaledInterpolation ? mw(msol1.t[ii1])  ./ 1000.0 ./ 1000.0  :  scale_factor   # n to kt
       
@@ -492,7 +497,7 @@ function fishery_model_mortality( ; removed=removed, bio=bio, survey_time=survey
   Fkt = removed_annual_kt[:,:rem_sum] ./1000.0 ./ 1000.0  # removal in kg -> kt
   FR =  Fkt ./ ( Fkt .+  fb )  # relative F
   FM = -1 .* log.(  1.0 .- min.( FR, 0.99) )  # instantaneous F
-  # FM[ FM .< eps(0.0)] .= zero(eltype(FM))
+  FM[ FM .< eps(0.0)] .= zero(eltype(FM))
   return ( Fkt, FR, FM  )
 end
 
@@ -502,19 +507,19 @@ end
 
 
 
-function abundance_from_index( Sai, res; k=1, model_variation="size_structured_dde_normalized"  )
+function abundance_from_index( S, res; k=1, model_variation="size_structured_dde_normalized"  )
   # map S <=> m  where S = observation index on unit scale; m = latent, scaled abundance on unit scale
   # observation model: S = (m - q0)/ q1   <=>   m = S * q1 + q0  
+
   if model_variation=="size_structured_dde_normalized"  
     q0 =  vec(res[:,Symbol("q0[$k]"),:])'
     q1 =  vec(res[:,Symbol("q1[$k]"),:])'
     K =  vec(res[:,Symbol("K[$k]"),:])'
-    S_m = (( Sai  .* q1) .+ q0 ) .*  K   # abundance_from_index  now on latent scale
+    S_m = (( S[:,k]  .* q1) .+ q0 ) .*  K   # abundance_from_index  now on latent scale
   elseif model_variation=="size_structured_dde_unnormalized"  
     q0 =  vec(res[:,Symbol("q0[$k]"),:])'
-    q1 =  vec(res[:,Symbol("q1[$k]"),:])'
-    # K =  vec(res[:,Symbol("K[$k]"),:])'
-    S_m = (( Sai  .* q1) .+ q0 )    # abundance_from_index  now on latent scale
+    q1 =  vec(res[:,Symbol("q1[$k]"),:])' 
+    S_m = (( S[:,k]  .* q1) .+ q0 )    # abundance_from_index  now on latent scale
   end
   return S_m
 end
@@ -569,13 +574,10 @@ function fishery_model_plot(; toplot=("fishing", "nofishing", "survey"), n_sampl
   end
 
   if any(isequal.("survey", toplot))  
-
-    # map S -> m and then multiply by K
-    # where S=observation on unit scale; m=latent, scaled abundance on unit scale
-    # observation model is: S = (m - q0)/ q1 
-    # inverse is : m = S * q1 + q0  
-
-    S_K_sims = abundance_from_index( S[:,1], res; k=1 )
+ 
+    # map S <=> m  where S = observation index on unit scale; m = latent, scaled abundance on unit scale
+    # observation model: S = (m - q0)/ q1   <=>   m = S * q1 + q0  
+    S_K_sims = abundance_from_index( S, res; k=1 )
  
     if nameof(typeof(mw)) == :ScaledInterpolation
       S_K_sims = S_K_sims .* mw(yrs) ./ 1000.0  ./ 1000.0
@@ -599,7 +601,7 @@ function fishery_model_plot(; toplot=("fishing", "nofishing", "survey"), n_sampl
     pl = plot!(pl; legend=false )
     pl = plot!(pl; ylim=(0, maximum(gk)*1.01 ) )
 
-    S_K_sims = abundance_from_index( S[:,si], res; k=si )
+    S_K_sims = abundance_from_index( S, res; k=si )
     S_K = mean(S_K_sims, dims=2)  # average by year
  
     pl = plot!(pl, survey_time, S_K, color=:gray, lw=2 )
@@ -616,7 +618,7 @@ function fishery_model_plot(; toplot=("fishing", "nofishing", "survey"), n_sampl
     pl = plot!(pl; legend=false )
     pl = plot!(pl; ylim=(0, maximum(gk)*1.01 ) )
 
-    S_K_sims = abundance_from_index( S[:,si], res; k=si )
+    S_K_sims = abundance_from_index( S, res; k=si )
     S_K = mean(S_K_sims, dims=2)  # average by year
 
     pl = plot!(pl, survey_time, S_K, color=:gray, lw=2 )
@@ -735,9 +737,22 @@ function fishery_model_plot(; toplot=("fishing", "nofishing", "survey"), n_sampl
   
     g = g[1:length(survey_time),:]
   
-    g_mean = mean(g, dims=2)
+    for ir in 1:size(g)[1]
+      gm = mean(Iterators.filter(!isnan, g[ir,:]))
+      g[ir, isnan.(g[ir,:])] .= gm
+    end 
+
+    g_mean = mean( g, dims=2)
   
-    # scatter!( [fb[nt,:]], [FM[nt,:]] ;  alpha=0.3, color=:yellow, markersize=6, markerstrokewidth=0)
+    fbbb = [quantile(fb[nt,:], 0.025), quantile(fb[nt,:], 0.975) ]
+
+    gbb = [quantile(g[nt,:], 0.975), quantile(g[nt,:], 0.025) ]
+    
+    pl = scatter!(pl, [fb[nt,:]], [g[nt,:]] ;  alpha=0.01, color=:goldenrod1, markersize=2.5, markerstrokewidth=0)
+    pl = scatter!(pl, fbbb, gbb;  alpha=0.5, color=:goldenrod3, markershape=:star, markersize=6, markerstrokewidth=1)
+
+    pl = scatter!(pl,  [fb_mean[nt]], [g_mean[nt]] ;  alpha=0.9, color=:gold, markersize=8, markerstrokewidth=1)
+  
     pl = plot!(pl, fb_mean, g_mean ;  alpha=0.8, color=:slateblue, lw=3)
   
     pl = scatter!(pl,  fb_mean, g_mean ;  alpha=0.8, color=colours,  markersize=4, markerstrokewidth=0,
@@ -778,19 +793,24 @@ function fishery_model_plot(; toplot=("fishing", "nofishing", "survey"), n_sampl
     nt = length(survey_time)
     colours = get(ColorSchemes.tab20c, 1:nt, :extrema )[rand(1:nt, nt)]
   
-    # scatter!( fb, FM ;  alpha=0.3, color=colours, markersize=4, markerstrokewidth=0)
-  
     fb_mean = mean(fb, dims=2)
     fm_mean = mean(FM, dims=2)
   
-    # scatter!( [fb[nt,:]], [FM[nt,:]] ;  alpha=0.3, color=:yellow, markersize=6, markerstrokewidth=0)
-    pl = plot!(pl, fb_mean, fm_mean ;  alpha=0.8, color=:slateblue, lw=3)
-  
-    pl = scatter!(pl,  fb_mean, fm_mean ;  alpha=0.8, color=colours,  markersize=4, markerstrokewidth=0,
-      series_annotations = text.(trunc.(Int, survey_time), :top, :left, pointsize=6) )
-    pl = scatter!(pl,  [fb_mean[nt]], [fm_mean[nt]] ;  alpha=0.8, color=:yellow, markersize=10, markerstrokewidth=2)
+    fbbb = [quantile(fb[nt,:], 0.025), quantile(fb[nt,:], 0.975) ]
+
+    FMbb = [quantile(FM[nt,:], 0.975), quantile(FM[nt,:], 0.025) ]
     
-    ub = max( quantile(K, 0.75), maximum( fb_mean ) ) * 1.05
+    pl = scatter!(pl, [fb[nt,:]], [FM[nt,:]] ;  alpha=0.01, color=:goldenrod1, markersize=2.5, markerstrokewidth=0)
+    pl = scatter!(pl, fbbb, FMbb;  alpha=0.5, color=:goldenrod3, markershape=:star, markersize=6, markerstrokewidth=1)
+
+    pl = scatter!(pl,  [fb_mean[nt]], [fm_mean[nt]] ;  alpha=0.9, color=:gold, markersize=8, markerstrokewidth=1)
+    
+    pl = plot!(pl, fb_mean, fm_mean ;  alpha=0.8, color=:slateblue, lw=3)
+    pl = scatter!(pl,  fb_mean, fm_mean;  alpha=0.8, color=colours,  markersize=4, markerstrokewidth=0  )
+    pl = scatter!(pl,  fb_mean .+0.051, fm_mean .-0.0025;  alpha=0.8, color=colours,  markersize=0, markerstrokewidth=0,
+      series_annotations = text.(trunc.(Int, survey_time), :top, :left, pointsize=8) )
+
+    ub = max( quantile(K, 0.75), maximum( fb_mean )  ) * 1.05
     pl = plot!(pl; legend=false, xlim=(0, ub ), ylim=(0, maximum(fm_mean ) * 1.05  ) )
  
   end
@@ -843,6 +863,11 @@ function fishing_pattern_from_data(  fish_time, removed, ny=5 )
   return fishing_pattern_seasonal_interpolation_function
 end
 
+function impute_mean!(v)
+  m = mean(Iterators.filter(!isnan, v))
+  v[isnan.(v)] .= m
+  v
+end
 
 function project_with_constant_catch( res; solver_params=solver_params, PM=PM, Catch=0, ny_fishing_pattern=5 )
   

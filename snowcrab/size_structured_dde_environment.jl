@@ -275,12 +275,12 @@ prob = DDEProblem{true}( size_structured_dde!, u0, h, tspan, p, constant_lags=ta
 # choose DiffEq solver:
 # stiff solvers: Rodas4()  ; Rosenbrock23()
 # diffeq_solver = MethodOfSteps(Rosenbrock23()) # slow
-# diffeq_solver = MethodOfSteps(AutoTsit5(Rodas5()))
+diffeq_solver = MethodOfSteps(AutoTsit5(Rodas5()))
 # diffeq_solver = MethodOfSteps(AutoTsit5(KenCarp47()))
 # diffeq_solver = MethodOfSteps(KenCarp47())  
 # diffeq_solver = MethodOfSteps(Tsit5())   # faster
 # diffeq_solver = MethodOfSteps( Rodas4() )
-diffeq_solver = MethodOfSteps(Rodas5())  # safer
+# diffeq_solver = MethodOfSteps(Rodas5())  # safer
  
 solver_params = (
   prob=prob,
@@ -320,7 +320,7 @@ PM = (
     nT = length(yrs),
     nP = 5,  # number of predictions into future (with no fishing)
     nM = nP + nT,  # total number of prediction years
-    logkmu = (logkmu, 0.25),
+    logkmu = (logkmu, 0.1),
     logScv = (logScv, 0.1),
     b = ( log(1.0), 0.1),
     d =  ( log( exp(0.25)-1.0 ), 0.1 ),
@@ -333,7 +333,8 @@ PM = (
     S = S,
     data = S[Si,:],
     # datavector = vec(S[Si,:]),  # for MVN .. no advantage
-    Stime = survey_time[Si]
+    Stime = survey_time[Si],
+    eps=1e-9
 ) 
 # the following tweak Lognormal priors by area  
 
@@ -357,10 +358,10 @@ if model_variation=="size_structured_dde_normalized"
     elseif aulab=="cfasouth" 
         
         # higher birth rates expected due to temperaturess
-        PM = @set PM.b =  ( log(2.0), 0.1 )
+        PM = @set PM.b =  ( log(2.0), 0.25 )
 
-        PM = @set PM.q0 = ( SminFraction ./ 2.0, 0.1)
-        PM = @set PM.q1 = ( 0.5, 0.1 )
+        PM = @set PM.q0 = ( SminFraction ./ 2.0, 0.15)
+        PM = @set PM.q1 = ( 0.5, 0.15 )
         
     elseif aulab=="cfa4x" 
 

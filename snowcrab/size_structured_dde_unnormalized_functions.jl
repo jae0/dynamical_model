@@ -87,7 +87,7 @@ end
     )
 
     # @show msol.retcode
-    if msol.retcode != :Success
+    if !SciMLBase.successful_retcode(msol)  
       Turing.@addlogprob! -Inf
       return nothing
     end
@@ -295,7 +295,7 @@ function fishery_model_predictions_old( res; prediction_time=prediction_time, n_
     msol = solve( prb, solver, callback=cb, saveat=dt  )
     msol2 = solve( prb, solver, saveat=dt   ) # no call backs
     
-    if (msol.retcode == :Success) && (msol2.retcode == :Success) 
+    if (SciMLBase.successful_retcode(msol)) && (SciMLBase.successful_retcode(msol2)) 
 
       for i in 1:nM
           ii = findall(x->x==prediction_time[i], msol.t)[1]
@@ -404,7 +404,7 @@ function fishery_model_predictions_trace_old( res; n_sample=10, plot_k=1, alpha=
             msol = solve( prb, solver, callback=cb, saveat=dt  )
             msol2 = solve( prb, solver, saveat=dt  ) # no call backs
 
-            if (msol.retcode == :Success) && (msol2.retcode == :Success) 
+            if (!SciMLBase.successful_retcode(msol)  ) && (!SciMLBase.successful_retcode(msol2)  ) 
 
               sf = nameof(typeof(mw)) == :ScaledInterpolation ? mw(msol.t) ./ 1000.0 ./ 1000.0 :  scale_factor
               sf2 = nameof(typeof(mw)) == :ScaledInterpolation ? mw(msol2.t) ./ 1000.0 ./ 1000.0  :  scale_factor   # n to kt
@@ -419,7 +419,7 @@ function fishery_model_predictions_trace_old( res; n_sample=10, plot_k=1, alpha=
               push!(out2, yval2)
             end
         else
-          if (msol.retcode == :Success) && (msol2.retcode == :Success) 
+          if (!SciMLBase.successful_retcode(msol)  ) && (!SciMLBase.successful_retcode(msol2)  ) 
 
             msol2 = solve( prb, solver, saveat=dt ) # no call backs
             yval2 = vec( reduce(hcat, msol2.u)'[:,plot_k])  
@@ -640,7 +640,7 @@ function fishery_model_predictions( res; prediction_time=prediction_time, n_samp
 
     msol0 = solve( prb, solver, saveat=trace_time[1] ) # no call backs
     
-    if msol1.retcode == :Success && msol0.retcode == :Success
+    if !SciMLBase.successful_retcode(msol1)   && !SciMLBase.successful_retcode(msol0)  
         z += 1
         
         # annual
