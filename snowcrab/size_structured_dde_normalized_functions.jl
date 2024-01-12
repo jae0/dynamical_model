@@ -444,10 +444,10 @@ function fishery_model_predictions( res; prediction_time=prediction_time, solver
         # arguably, negative values suggest extirpation and is something to track ..
         MS0[ iv0 ] .= 0.0
         MS1[ iv1 ] .= 0.0
-      end
-
-      if length(iv0) > 0 | length(iv1) > 0 
-        continue
+      else 
+        if length(iv0) > 0 | length(iv1) > 0 
+          continue
+        end
       end
 
       z += 1
@@ -848,6 +848,8 @@ function fishing_pattern_from_data(  fish_time, removed, ny=5 )
     fa = [mean(x[!,:rem ]) for x in groupby(f, :sy)]
   )
   sort!(ff, [order(:sy)])
+  replace!(ff.fa, missing=> 0)
+    
   ff.fa = ff.fa / sum(ff.fa)
 
   gg = DataFrame( mon=0:1:12 )
@@ -901,8 +903,8 @@ function project_with_constant_catch( res; solver_params=solver_params, PM=PM, C
   
   # n scaled, n unscaled, biomass of fb with and without fishing, model_traces, model_times 
   # override_negative_solution=true makes it more permissive .. but tuncates at 0, so be careful
-  m, num, bio, trace, trace_bio, trace_time = fishery_model_predictions(res, solver_params=sp, PM=PM , 
-    lower_bound=-0.05, override_negative_solution=true, ntries_mult=10 )
+  m, num, bio, trace, trace_bio, trace_time = fishery_model_predictions(res, solver_params=sp, PM=PM, ntries_mult=10 )
+
   return m, num, bio, trace, trace_bio, trace_time
 end
 
