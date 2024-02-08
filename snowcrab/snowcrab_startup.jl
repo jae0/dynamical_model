@@ -40,7 +40,7 @@
         pkgs = [
             "Revise", "MKL", "Logging", "StatsBase", "Statistics", "Distributions", "Random", "Setfield", "Memoization",
             "ForwardDiff", "DataFrames", "JLD2", "CSV", "PlotThemes", "Colors", "ColorSchemes", "RData",  
-            "Plots", "StatsPlots", "MultivariateStats", "StaticArrays", "LazyArrays", "FillArrays",
+            "Plots", "CairoMakie", "StatsPlots", "MultivariateStats", "StaticArrays", "LazyArrays", "FillArrays",
             "DynamicHMC", "Turing", "ModelingToolkit", "DifferentialEquations", "Interpolations", "LinearAlgebra"
         ]
   end  
@@ -51,7 +51,7 @@
             "MCMCChains", "DynamicPPL", "AdvancedHMC", "DistributionsAD",  "DynamicHMC", 
             "AbstractPPL", "Memoization", # "Enzyme", "Diffractor", "Bijectors", 
             "ForwardDiff", "DataFrames", "CSV", "JLD2", "PlotThemes", "Colors", "ColorSchemes", "RData", 
-            "MKL", "Plots", "StatsPlots",  "MultivariateStats", "StaticArrays", "LazyArrays", "FillArrays",
+            "MKL", "Plots", "CairoMakie", "StatsPlots",  "MultivariateStats", "StaticArrays", "LazyArrays", "FillArrays",
             "Turing", "ModelingToolkit", "DifferentialEquations", "Interpolations", "LinearAlgebra"
         ]
   end

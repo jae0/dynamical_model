@@ -584,5 +584,17 @@ function fishery_model_plot(; toplot=("fishing", "survey"), n_sample=min(250, si
 
 end
 
+ 
 
+function plot_prior_posterior( vn, prior, posterior; bw=0.02 )
+  pri =  vec(collect( prior[:,Symbol(vn),:] ))
+  pos =  vec(collect( posterior[:,Symbol(vn),:] ))
+  f = Figure() 
+  ax = Axis(f[1, 1], xlabel = vn, ylabel = "Density", title = "")
+  vectors = randn(1000)  
+  CairoMakie.density!( pri,  color = (:slateblue, 0.4), bandwidth = bw)
+  CairoMakie.density!( pos,  color = (:purple, 0.3), bandwidth = bw)
+  return(f)
+end
 
+ 
