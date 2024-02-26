@@ -977,15 +977,15 @@ end
 
  
 
+
+
 function plot_prior_posterior( vn, prior, posterior; bw=0.02 )
   pri =  vec(collect( prior[:,Symbol(vn),:] ))
   pos =  vec(collect( posterior[:,Symbol(vn),:] ))
-  f = Figure() 
-  ax = Axis(f[1, 1], xlabel = vn, ylabel = "Density", title = "")
-  vectors = randn(1000)  
-  CairoMakie.density!( pri,  color = (:slateblue, 0.4), bandwidth = bw)
-  CairoMakie.density!( pos,  color = (:purple, 0.3), bandwidth = bw)
-  return(f)
+  pl = plot(ylabel="Density", xlabel=vn ) 
+  pl = density!(pl, pri,  fill=true, color = :slateblue, fillalpha=0.25, bandwidth = bw, lw=0, label="Prior")
+  pl = density!(pl, pos,  fill=true, color = :purple, fillalpha=0.5, bandwidth = bw, lw=0, label="Posterior")
+  return(pl)
 end
 
  

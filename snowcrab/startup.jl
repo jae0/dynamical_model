@@ -12,24 +12,36 @@ pkgs_startup = [
     "Plots", "StatsPlots" 
 ]
 
+
+# load directly can cause conflicts due to same function names 
+pkgtoskipload = ["CairoMakie", "CairoMakie", "PlotlyJS",  "PlotlyBase",  "PlotlyKaleido" ]
+
+
 if @isdefined pkgs 
     pkgs = unique!( [pkgs_startup; pkgs] )
 else 
     pkgs = pkgs_startup
 end
-    
+
+
 print( "Loading libraries:\n\n" )
 
-  # load libs and check settings
-  # pkgs are defined in snowcrab_startup.jl
-  using Pkg
-  for pk in pkgs; 
-      if Base.find_package(pk) === nothing
-          Pkg.add(pk)
-      else
-        @eval using $(Symbol(pk)); 
-      end
-  end   # Pkg.add( pkgs ) # add required packages
+# load libs and check settings
+# pkgs are defined in snowcrab_startup.jl
+using Pkg
+for pk in pkgs; 
+    if Base.find_package(pk) === nothing
+        Pkg.add(pk)
+    end
+end   # Pkg.add( pkgs ) # add required packages
+
+for pk in pkgs; 
+    if !(Base.find_package(pk) === nothing)
+        if !(pk in pkgtoskipload)
+            @eval using $(Symbol(pk)); 
+        end
+    end
+end
 
 
 

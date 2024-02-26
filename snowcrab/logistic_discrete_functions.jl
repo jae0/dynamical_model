@@ -247,7 +247,6 @@ function fishery_model_test( test=("basic" ) )
 
   ## test model by sampling from random priors 
   gr()
-  theme(:default)
   pl = plot()
 
   if any( occursin.( r"basic", test )  )
@@ -564,8 +563,8 @@ function fishery_model_plot(; toplot=("fishing", "survey"), n_sample=min(250, si
 
     FMbb = [quantile(FM[nt,:], 0.975), quantile(FM[nt,:], 0.025) ]
      
-    pl = scatter!(pl, [fb[nt,:]], [FM[nt,:]] ;  alpha=0.01, color=:goldenrod1, markersize=2.5, markerstrokewidth=0)
-    pl = scatter!(pl, fbbb, FMbb;  alpha=0.5, color=:goldenrod3, markershape=:star, markersize=6, markerstrokewidth=1)
+    pl = scatter!(pl, [fb[nt,:]], [FM[nt,:]] ;  alpha=0.01, color=:magenta, markersize=2.5, markerstrokewidth=0)
+    pl = scatter!(pl, fbbb, FMbb;  alpha=0.5, color=:magenta, markershape=:star, markersize=6, markerstrokewidth=1)
 
     pl = scatter!(pl,  [fb_mean[nt]], [fm_mean[nt]] ;  alpha=0.9, color=:gold, markersize=8, markerstrokewidth=1)
     
@@ -586,15 +585,16 @@ end
 
  
 
-function plot_prior_posterior( vn, prior, posterior; bw=0.02 )
+function plot_prior_posterior( vn, prior, posterior; bw=0.01 )
   pri =  vec(collect( prior[:,Symbol(vn),:] ))
   pos =  vec(collect( posterior[:,Symbol(vn),:] ))
-  f = Figure() 
-  ax = Axis(f[1, 1], xlabel = vn, ylabel = "Density", title = "")
-  vectors = randn(1000)  
-  CairoMakie.density!( pri,  color = (:slateblue, 0.4), bandwidth = bw)
-  CairoMakie.density!( pos,  color = (:purple, 0.3), bandwidth = bw)
-  return(f)
+  pl = plot(ylabel="Density", xlabel=vn ) 
+  pl = density!(pl, pri,  fill=true, color = :slateblue, fillalpha=0.25, bandwidth = bw, lw=0, label="Prior")
+  pl = density!(pl, pos,  fill=true, color = :purple, fillalpha=0.5, bandwidth = bw, lw=0, label="Posterior")
+  return(pl)
 end
+
+ 
+
 
  

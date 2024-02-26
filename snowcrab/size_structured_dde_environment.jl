@@ -18,11 +18,7 @@ if false
 end
 
 
-theme(:default)  # defaults for graphics
-#theme(:vibrant)
-#theme(:bright)
-
-
+ 
 # to start a graphics window
 # gr(size=(1000,1000),legend=false,markerstrokewidth=0,markersize=4)
 gr()

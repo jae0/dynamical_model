@@ -17,20 +17,19 @@ if false
 end
 
 
-# load libs and check settings
-# pkgs are defined in snowcrab_startup.jl
-for pk in pkgs; @eval using $(Symbol(pk)); end   # Pkg.add( pkgs ) # add required packages
+# # pkgs are defined in snowcrab_startup.jl and loaded in it
+# for pk in pkgs
+#   @eval using $(Symbol(pk))
+# end   # Pkg.add( pkgs ) # add required packages
 
-
-theme(:default)  # defaults for graphics
-#theme(:vibrant)
-#theme(:bright)
-
-
-# to start a graphics window
-# gr(size=(1000,1000),legend=false,markerstrokewidth=0,markersize=4)
-gr()
  
+
+# plotting backend
+# plotly(ticks=:native)                  # plotlyjs for richer saving options
+# gr(size=(1000,1000),legend=false,markerstrokewidth=0,markersize=4)
+# gr(size = (300, 300), legend = false)  # provide optional defaults
+gr()
+
 fndat  = joinpath( bio_data_directory, "biodyn_biomass.RData" )
 # fndat = "/home/jae/bio.data/bio.snowcrab/modelled/1999_present_fb/fishery_model_results/turing1/biodyn_biomass.RData"
   

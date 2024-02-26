@@ -133,7 +133,6 @@ function fishery_model_test( test=("basic", "random_external_forcing", "fishing"
 
   ## test DifferentialEquations DDE model 
   gr()
-  theme(:default)
   solver_test =  MethodOfSteps(Tsit5())
 
 
@@ -748,9 +747,9 @@ function fishery_model_plot(; toplot=("fishing", "nofishing", "survey"), n_sampl
 
     gbb = [quantile(g[nt,:], 0.975), quantile(g[nt,:], 0.025) ]
     
-    pl = scatter!(pl, [fb[nt,:]], [g[nt,:]] ;  alpha=0.01, color=:goldenrod1, markersize=2.5, markerstrokewidth=0)
-    pl = scatter!(pl, fbbb, gbb;  alpha=0.5, color=:goldenrod3, markershape=:star, markersize=6, markerstrokewidth=1)
-
+    pl = scatter!(pl, [fb[nt,:]], [g[nt,:]] ;  alpha=0.01, color=:lightslayeblue, markersize=2.5, markerstrokewidth=0)
+    pl = scatter!(pl, fbbb, gbb;  alpha=0.5, color=:lightslategrey, markershape=:star, markersize=6, markerstrokewidth=1)
+     
     pl = scatter!(pl,  [fb_mean[nt]], [g_mean[nt]] ;  alpha=0.9, color=:gold, markersize=8, markerstrokewidth=1)
   
     pl = plot!(pl, fb_mean, g_mean ;  alpha=0.8, color=:slateblue, lw=3)
@@ -800,8 +799,8 @@ function fishery_model_plot(; toplot=("fishing", "nofishing", "survey"), n_sampl
 
     FMbb = [quantile(FM[nt,:], 0.975), quantile(FM[nt,:], 0.025) ]
     
-    pl = scatter!(pl, [fb[nt,:]], [FM[nt,:]] ;  alpha=0.01, color=:goldenrod1, markersize=2.5, markerstrokewidth=0)
-    pl = scatter!(pl, fbbb, FMbb;  alpha=0.5, color=:goldenrod3, markershape=:star, markersize=6, markerstrokewidth=1)
+    pl = scatter!(pl, [fb[nt,:]], [FM[nt,:]] ;  alpha=0.01, color=:magenta, markersize=2.5, markerstrokewidth=0)
+    pl = scatter!(pl, fbbb, FMbb;  alpha=0.5, color=:magenta, markershape=:star, markersize=6, markerstrokewidth=1)
 
     pl = scatter!(pl,  [fb_mean[nt]], [fm_mean[nt]] ;  alpha=0.9, color=:gold, markersize=8, markerstrokewidth=1)
     
@@ -908,19 +907,16 @@ function project_with_constant_catch( res; solver_params=solver_params, PM=PM, C
   return m, num, bio, trace, trace_bio, trace_time
 end
 
-
-
  
+
 
 function plot_prior_posterior( vn, prior, posterior; bw=0.02 )
   pri =  vec(collect( prior[:,Symbol(vn),:] ))
   pos =  vec(collect( posterior[:,Symbol(vn),:] ))
-  f = Figure() 
-  ax = Axis(f[1, 1], xlabel = vn, ylabel = "Density", title = "")
-  vectors = randn(1000)  
-  CairoMakie.density!( pri,  color = (:slateblue, 0.4), bandwidth = bw)
-  CairoMakie.density!( pos,  color = (:purple, 0.3), bandwidth = bw)
-  return(f)
+  pl = plot(ylabel="Density", xlabel=vn ) 
+  pl = density!(pl, pri,  fill=true, color = :slateblue, fillalpha=0.25, bandwidth = bw, lw=0, label="Prior")
+  pl = density!(pl, pos,  fill=true, color = :purple, fillalpha=0.5, bandwidth = bw, lw=0, label="Posterior")
+  return(pl)
 end
 
  
