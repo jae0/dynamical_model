@@ -117,28 +117,29 @@ ki = aulab=="cfanorth" ? 1 :
 
 kmu = Kmu[ki]  
 
-survey_time = Y[:,:yrs]   # time of observations for survey
-# prediction_time = floor.(vcat( survey_time, collect(1:nP) .+ maximum(survey_time) ) )     
-fish_time = round.( round.( removals[:,:ts] ./ dt; digits=0 ) .* dt; digits=no_digits)   # time of observations for landings
-
-removed = removals[:,Symbol("$aulab")]
-  
 smallnumber = 1.0 / kmu / 10.0  # floating point value of sufficient to assume 0 valued
-
 no_digits = 3  # time floating point rounding
 
-survey_time =  round.( round.( Y[:,:yrs] ./ dt; digits=0 ) .* dt ; digits=no_digits)    # time of observations for survey
+survey_time = Y[:,:yrs]    # time of observations for survey .. for plotting
+# adjust survey time to be approximately in spring or autumn
+spring = findall( x -> x < 2004, survey_time )
+fall   = findall( x -> x >= 2004, survey_time )
+survey_time[spring] = survey_time[spring] .+ 5.0/12.0  # arbitrary ..  "spring"
+survey_time[fall]   = survey_time[fall] .+ 10.0/12.0   # time of survey in "fall" 
+survey_time =  round.(  survey_time ; digits=no_digits)    # time of observations for survey
  
-predtime =  4.0/12.0  # predictions ("m") are prefishery .. arbitrarily setting to 4/12
-prediction_time =
-  floor.( vcat( collect(minimum(yrs) : (maximum(yrs)+nP) ) )  ) .+  #yrs
-  round( predtime/dt ; digits=no_digits)   # april (m== prefishery)
+removed = removals[:,Symbol("$aulab")]
+
+predtime =  4.0/12.0  # predictions ("m") are "prefishery" .. arbitrarily setting to 4/12
+prediction_time = floor.( vcat( collect(minimum(yrs) : (maximum(yrs)+nP) ) )  ) .+  round( predtime/dt ; digits=no_digits)   # april (m== prefishery)
+# prediction_time = floor.(vcat( survey_time, collect(1:nP) .+ maximum(survey_time) ) )     
+yrs_pred_report = findall( x -> (x >= 1999.0) & (x <= (Real(year_assessment)+1.0)), prediction_time )
+prediction_time_ss = prediction_time[yrs_pred_report]
 
 iok = findall( !ismissing, S )
  
 include( "logistic_discrete_functions.jl" )  #specific to model form
-
-
+ 
 # basic params for "logistic_discrete"
 PM = (
   yrs=yrs,

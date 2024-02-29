@@ -180,7 +180,7 @@ dt = (0.02, 0.02, 0.02)[ki]    # resolution of time (fraction of year)  (i.e. da
 # spin up time of ~ 1 cycle prior to start of dymamics and project nP years into the future
 tspan = (minimum(yrs) - 11.1, maximum(yrs) + nP + 1.1 )
 
-survey_time = discretize_decimal( Y[:,:yrs], dt)     
+survey_time = discretize_decimal( (Y[:,:yrs] .+ 0.999), dt)     # add 0.999 to make it the end of the year
 
 Si = findall( x-> !ismissing(x), vec(sum(S, dims=2)))  # compute data likelihoods only when data exist ... to speed up comps
 nSI = length(Si)

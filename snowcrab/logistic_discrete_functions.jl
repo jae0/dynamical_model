@@ -401,8 +401,8 @@ end
 # ----------
     
 
-function fishery_model_mortality(; removed=removed, bio=bio, survey_time=survey_time )    
-  fb = bio[1:length(survey_time),:,1]  # the last 1 is for size struct; no effect in discrete 
+function fishery_model_mortality(; removed=removed, bio=bio, prediction_time_ss=prediction_time_ss )    
+  fb = bio[1:length(prediction_time_ss),:,1]  # the last 1 is for size struct; no effect in discrete 
   Fkt = removed
   FR =  Fkt ./ ( Fkt .+  fb )  # relative F
   FM = -1 .* log.(  1.0 .- min.( FR, 0.99) )  # instantaneous F
@@ -450,8 +450,8 @@ end
 function fishery_model_plot(; toplot=("fishing", "survey"), n_sample=min(250, size(bio)[2]),
   res=res, bio=bio, FM=FM, 
   S=S,
-  prediction_time=prediction_time, survey_time=survey_time, yrs=yrs, 
-  alphav=0.075, pl= plot(), time_range=(floor(minimum(survey_time))-1.0, ceil(maximum(survey_time))+1.0 )
+  prediction_time=prediction_time, prediction_time_ss=prediction_time_ss, survey_time=survey_time, yrs=yrs, 
+  alphav=0.075, pl= plot(), time_range=(floor(minimum(prediction_time_ss))-1.0, ceil(maximum(prediction_time_ss))+0.5 )
 )
  
   nsims = size(bio)[2]
@@ -469,7 +469,7 @@ function fishery_model_plot(; toplot=("fishing", "survey"), n_sample=min(250, si
 
   # extract sims (with fishing)
   # plot biomass
-  if any(isequal.("fishing", toplot))  
+  if any(isequal.("fishing", toplot))   # this means there is fishing occuring ( and plot biomass )
     g = bio   # [ yr,  sim ]
     pl = plot!(pl, prediction_time, g[:,ss] ;  alpha=alphav, color=:orange)
     pl = plot!(pl, prediction_time, mean(g, dims=2);  alpha=0.8, color=:darkorange, lw=4)
@@ -502,8 +502,8 @@ function fishery_model_plot(; toplot=("fishing", "survey"), n_sample=min(250, si
     FMmean = mean( FM, dims=2)
     FMmean[isnan.(FMmean)] .= zero(eltype(FM))
     ub = maximum(FMmean) * 1.1
-    pl = plot!(pl, survey_time, FM[:,ss] ;  alpha=0.02, color=:lightslateblue)
-    pl = plot!(pl, survey_time, FMmean ;  alpha=0.8, color=:slateblue, lw=4)
+    pl = plot!(pl, prediction_time_ss, FM[:,ss] ;  alpha=0.02, color=:lightslateblue)
+    pl = plot!(pl, prediction_time_ss, FMmean ;  alpha=0.8, color=:slateblue, lw=4)
     pl = plot!(pl, ylim=(0, ub ) )
     pl = plot!(pl ; legend=false )
     pl = plot!(pl; xlim=time_range )
@@ -551,11 +551,11 @@ function fishery_model_plot(; toplot=("fishing", "survey"), n_sample=min(250, si
     pl = vline!(pl, [quantile(K, 0.975)]/4.0;  alpha=0.5, color=:darkred, lw=2, line=:dash )
     pl = vline!(pl, [quantile(K, 0.025)]/4.0;  alpha=0.5, color=:darkred, lw=2, line=:dash )
   
-    nt = length(survey_time)
+    nt = length(prediction_time_ss)
     colours = get(ColorSchemes.tab20c, 1:nt, :extrema )[rand(1:nt, nt)]
   
     # scatter!( fb, FM ;  alpha=0.3, color=colours, markersize=4, markerstrokewidth=0)
-    fb = bio[1:length(survey_time),:]
+    fb = bio[1:length(prediction_time_ss),:]
     fb_mean = mean(fb, dims=2)
     fm_mean = mean(FM, dims=2)
   
@@ -571,7 +571,7 @@ function fishery_model_plot(; toplot=("fishing", "survey"), n_sample=min(250, si
     pl = plot!(pl, fb_mean, fm_mean ;  alpha=0.8, color=:slateblue, lw=3)
     pl = scatter!(pl,  fb_mean, fm_mean;  alpha=0.8, color=colours,  markersize=4, markerstrokewidth=0  )
     pl = scatter!(pl,  fb_mean .+0.051, fm_mean .-0.0025;  alpha=0.8, color=colours,  markersize=0, markerstrokewidth=0,
-      series_annotations = text.(trunc.(Int, survey_time), :top, :left, pointsize=8) )
+      series_annotations = text.(trunc.(Int, prediction_time_ss), :top, :left, pointsize=8) )
 
     ub = max( quantile(K, 0.75), maximum( fb_mean ), maximum(fmsy) ) * 1.05
     pl = plot!(pl; legend=false, xlim=(0, ub ), ylim=(0, maximum(fm_mean ) * 1.05  ) )
