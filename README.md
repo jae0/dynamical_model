@@ -1,3 +1,8 @@
+# NOTE: This project is in maintenance mode. Further development (backwards incompatible) in occuring on 
+
+[https://bitbucket.org/autocatalysis/model_fishery](https://bitbucket.org/autocatalysis/model_fishery)
+
+
 # Dynamical models for fishery assessment
 
 They are made possible by some excellent work:
