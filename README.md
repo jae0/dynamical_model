@@ -1,7 +1,9 @@
-# NOTE: This project is in maintenance mode. Further development (backwards incompatible) in occuring on 
+# NOTE: This project is in maintenance mode. Further development (backwards incompatible) of more general models is occuring on: 
 
 [https://bitbucket.org/autocatalysis/model_fishery](https://bitbucket.org/autocatalysis/model_fishery)
 
+This github instance is here to serve as a reference for the online manuscript
+on bioRxiv (see below).
 
 # Dynamical models for fishery assessment
 
